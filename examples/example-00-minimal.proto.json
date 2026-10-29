@@ -1,0 +1,948 @@
+{
+  "schemaVersion": "1.0",
+  "meta": {
+    "product": "新锂想质量管理系统",
+    "version": "0.1.0",
+    "domain": "qms",
+    "targets": [
+      "pc",
+      "pda"
+    ],
+    "designWidth": {
+      "pc": 1440,
+      "pda": 390
+    },
+    "baseResolution": "1920x1080",
+    "currentPageId": "pg-iqc-report",
+    "skin": "industrial-dark-sider"
+  },
+  "modules": [
+    {
+      "id": "m-iqc",
+      "code": "IQC",
+      "name": "来料检验",
+      "order": 1,
+      "owner": "质量部",
+      "icon": "inbox",
+      "pages": [
+        "pg-iqc-report",
+        "pg-iqc-sample-pda"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "id": "pg-iqc-report",
+      "moduleId": "m-iqc",
+      "target": "pc",
+      "route": "/iqc/report",
+      "title": "来料检验报告",
+      "parentId": null,
+      "layout": "list",
+      "entity": "inspection",
+      "contract": {
+        "task": "质量工程师按到货批次核对检验结论，并导出报告交供应商",
+        "actor": [
+          "u-qa"
+        ],
+        "owns": [
+          "cap-approve",
+          "cap-export-report"
+        ],
+        "doneWhen": "本批结论已审核且报告已导出",
+        "entryFrom": [
+          "pg-iqc-report"
+        ],
+        "submitBoundary": "单批报告审核"
+      },
+      "states": [
+        {
+          "id": "s-default",
+          "kind": "default",
+          "desc": "默认态：10 条/页，含查询条件回填",
+          "vars": {
+            "batchNo": "",
+            "status": "reported"
+          }
+        },
+        {
+          "id": "s-loading",
+          "kind": "loading",
+          "desc": "首屏骨架屏 + 表格 loading"
+        },
+        {
+          "id": "s-empty",
+          "kind": "empty",
+          "desc": "无任何到货批次时的引导态"
+        },
+        {
+          "id": "s-zero",
+          "kind": "zero-result",
+          "desc": "有条件但查不到，提示放宽条件",
+          "vars": {
+            "batchNo": "PA-20261028-001"
+          }
+        },
+        {
+          "id": "s-error",
+          "kind": "error",
+          "desc": "接口失败，可重试并保留查询条件"
+        }
+      ],
+      "componentTree": {
+        "id": "n-root",
+        "type": "PageShell",
+        "props": {
+          "fullWidth": true
+        },
+        "children": [
+          {
+            "id": "n-filter",
+            "type": "FilterBar",
+            "props": {
+              "layout": "inline",
+              "collapsible": true,
+              "fields": [
+                {
+                  "key": "batchNo",
+                  "label": "到货单号",
+                  "type": "input"
+                },
+                {
+                  "key": "taskNo",
+                  "label": "任务单号",
+                  "type": "input"
+                }
+              ]
+            }
+          },
+          {
+            "id": "n-toolbar",
+            "type": "ToolBar",
+            "props": {
+              "actions": [
+                {
+                  "key": "export",
+                  "text": "导出",
+                  "variant": "primary",
+                  "capability": "cap-export-report"
+                },
+                {
+                  "key": "print",
+                  "text": "打印",
+                  "variant": "default"
+                }
+              ]
+            }
+          },
+          {
+            "id": "n-table",
+            "type": "DataTable",
+            "props": {
+              "size": "xs",
+              "tableLayout": "fixed",
+              "pagination": {
+                "pageSize": 10,
+                "total": 9407
+              },
+              "columns": [
+                {
+                  "key": "idx",
+                  "title": "序号",
+                  "type": "index",
+                  "width": 56
+                },
+                {
+                  "key": "batchNo",
+                  "title": "到货单号",
+                  "width": 168
+                },
+                {
+                  "key": "taskNo",
+                  "title": "任务单号",
+                  "width": 176
+                },
+                {
+                  "key": "material",
+                  "title": "物资名称",
+                  "width": 200
+                },
+                {
+                  "key": "spec",
+                  "title": "规格型号",
+                  "width": 120
+                },
+                {
+                  "key": "qty",
+                  "title": "数量",
+                  "width": 72,
+                  "align": "right"
+                },
+                {
+                  "key": "supplier",
+                  "title": "供应商名称",
+                  "width": 240
+                },
+                {
+                  "key": "batch",
+                  "title": "供应商批次号",
+                  "width": 144
+                },
+                {
+                  "key": "status",
+                  "title": "报告状态",
+                  "type": "tag",
+                  "width": 100
+                },
+                {
+                  "key": "act",
+                  "title": "操作",
+                  "type": "action",
+                  "width": 96,
+                  "actions": [
+                    {
+                      "key": "detail",
+                      "text": "详情",
+                      "capability": "cap-export-report"
+                    }
+                  ]
+                }
+              ],
+              "data": [
+                {
+                  "batchNo": "PA-20261028-001",
+                  "taskNo": "INST20261029001",
+                  "material": "匣钵",
+                  "spec": "-",
+                  "qty": 320,
+                  "supplier": "萍乡市康明科技有限公司",
+                  "batch": "-",
+                  "status": "待审核"
+                },
+                {
+                  "batchNo": "PA-20261027-006",
+                  "taskNo": "INST20261028002",
+                  "material": "迷你撮箕扫把套",
+                  "spec": "-",
+                  "qty": 40,
+                  "supplier": "天津星辰自动化科技有限公司",
+                  "batch": "-",
+                  "status": "已审核"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      "interactions": [
+        {
+          "id": "ix-1",
+          "on": "n-table__row_click",
+          "do": "navigate",
+          "target": "pg-iqc-report",
+          "params": {
+            "batchNo": "{{row.batchNo}}"
+          },
+          "effect": "携带到货单号并保留当前查询条件"
+        },
+        {
+          "id": "ix-2",
+          "on": "n-toolbar__act_export",
+          "do": "submit",
+          "effect": "调用导出，成功提示已导出 N 条"
+        }
+      ],
+      "prd": {
+        "sections": [
+          {
+            "type": "goal",
+            "heading": "页面目标",
+            "body": "让质量工程师在一屏内完成「按批次找到报告 → 核对结论 → 审核 → 导出」，不来回跳页。"
+          },
+          {
+            "type": "flow",
+            "heading": "主流程",
+            "caption": "从到货批次到报告归档",
+            "nodes": [
+              {
+                "id": "f1",
+                "label": "进入报告列表",
+                "kind": "start",
+                "sub": "/iqc/report"
+              },
+              {
+                "id": "f2",
+                "label": "按到货单号查询",
+                "kind": "task"
+              },
+              {
+                "id": "f3",
+                "label": "有结果？",
+                "kind": "decision"
+              },
+              {
+                "id": "f4",
+                "label": "审核报告",
+                "kind": "task",
+                "sub": "cap-approve"
+              },
+              {
+                "id": "f5",
+                "label": "导出并归档",
+                "kind": "end"
+              },
+              {
+                "id": "f6",
+                "label": "放宽条件重查",
+                "kind": "warn"
+              }
+            ],
+            "edges": [
+              {
+                "from": "f1",
+                "to": "f2"
+              },
+              {
+                "from": "f2",
+                "to": "f3"
+              },
+              {
+                "from": "f3",
+                "to": "f4",
+                "label": "是"
+              },
+              {
+                "from": "f3",
+                "to": "f6",
+                "label": "否"
+              },
+              {
+                "from": "f6",
+                "to": "f2"
+              },
+              {
+                "from": "f4",
+                "to": "f5"
+              }
+            ]
+          },
+          {
+            "type": "availability",
+            "heading": "动作可用性",
+            "body": "审核仅在「待审核」可用；导出在任何状态下可用。",
+            "requirementIds": [
+              "REQ-002"
+            ]
+          },
+          {
+            "type": "state",
+            "heading": "页面状态",
+            "body": "默认 / 加载 / 空 / 零结果 / 异常 五态；零结果与空态文案、动作不同。"
+          },
+          {
+            "type": "acceptance",
+            "heading": "验收",
+            "body": "REQ-002 全部验收用例通过；导出文件含表头且与当前筛选一致。"
+          }
+        ]
+      }
+    },
+    {
+      "id": "pg-iqc-sample-pda",
+      "moduleId": "m-iqc",
+      "target": "pda",
+      "route": "/pda/iqc/sample",
+      "title": "取样任务（PDA）",
+      "parentId": null,
+      "layout": "pda-scan",
+      "entity": "inspection",
+      "contract": {
+        "task": "取样员在收货现场扫码进入取样任务，逐项录入并提交，弱网也能提交",
+        "actor": [
+          "u-sampler"
+        ],
+        "owns": [
+          "cap-submit-sample"
+        ],
+        "doneWhen": "取样记录提交成功并进入待审核",
+        "entryFrom": [],
+        "submitBoundary": "单批次取样提交"
+      },
+      "states": [
+        {
+          "id": "s-default",
+          "kind": "default",
+          "desc": "扫码前的待扫态",
+          "vars": {
+            "batchNo": "",
+            "qty": 0
+          }
+        },
+        {
+          "id": "s-loading",
+          "kind": "loading",
+          "desc": "扫码后拉取任务详情"
+        },
+        {
+          "id": "s-empty",
+          "kind": "empty",
+          "desc": "该批次无待取样任务"
+        },
+        {
+          "id": "s-error",
+          "kind": "error",
+          "desc": "码无效或网络不可用，转离线暂存"
+        }
+      ],
+      "componentTree": {
+        "id": "n-root",
+        "type": "PdaShell",
+        "props": {
+          "title": "取样任务",
+          "syncState": "pending"
+        },
+        "children": [
+          {
+            "id": "n-sync",
+            "type": "SyncBadge",
+            "props": {
+              "count": 1
+            }
+          },
+          {
+            "id": "n-scan",
+            "type": "ScanBar",
+            "props": {
+              "placeholder": "扫描到货单号 / 批次码",
+              "codeTypes": [
+                "qrcode",
+                "barcode"
+              ],
+              "manualInput": true
+            }
+          },
+          {
+            "id": "n-cards",
+            "type": "PdaCardList",
+            "props": {
+              "loadMore": false,
+              "cards": [
+                {
+                  "title": "PA-20261028-001",
+                  "sub": "匣钵 · 320 件",
+                  "status": "待取样"
+                },
+                {
+                  "title": "PA-20261027-006",
+                  "sub": "迷你撮箕扫把套 · 40 件",
+                  "status": "待取样"
+                }
+              ]
+            }
+          },
+          {
+            "id": "n-num",
+            "type": "NumpadInput",
+            "props": {
+              "unit": "件",
+              "precision": 0,
+              "range": [
+                1,
+                320
+              ]
+            }
+          },
+          {
+            "id": "n-submit",
+            "type": "BigAction",
+            "props": {
+              "label": "提交取样",
+              "capability": "cap-submit-sample",
+              "variant": "primary",
+              "fullWidth": true
+            }
+          }
+        ]
+      },
+      "interactions": [
+        {
+          "id": "ix-1",
+          "on": "n-scan__scan",
+          "do": "setState",
+          "params": {
+            "batchNo": "{{code}}"
+          },
+          "effect": "回填批次并拉取任务"
+        },
+        {
+          "id": "ix-2",
+          "on": "n-submit__click",
+          "do": "submit",
+          "effect": "校验数量区间，失败就地标红不打回上一步"
+        }
+      ],
+      "pda": {
+        "onlineOnly": false,
+        "offline": {
+          "queue": true,
+          "conflict": "server-wins",
+          "cacheTtlMinutes": 480
+        },
+        "scan": {
+          "fields": [
+            "batchNo"
+          ],
+          "codeTypes": [
+            "qrcode",
+            "barcode"
+          ]
+        },
+        "primaryAction": "n-submit",
+        "minTouchTarget": 44
+      },
+      "prd": {
+        "sections": [
+          {
+            "type": "goal",
+            "heading": "页面目标",
+            "body": "让取样员戴着劳保手套、单手、在货场弱网下 3 步内完成取样提交。"
+          },
+          {
+            "type": "flow",
+            "heading": "主流程",
+            "nodes": [
+              {
+                "id": "p1",
+                "label": "扫码",
+                "kind": "start"
+              },
+              {
+                "id": "p2",
+                "label": "匹配到任务？",
+                "kind": "decision"
+              },
+              {
+                "id": "p3",
+                "label": "录入数量",
+                "kind": "task"
+              },
+              {
+                "id": "p4",
+                "label": "提交（可离线）",
+                "kind": "end"
+              },
+              {
+                "id": "p5",
+                "label": "提示无任务",
+                "kind": "warn"
+              }
+            ],
+            "edges": [
+              {
+                "from": "p1",
+                "to": "p2"
+              },
+              {
+                "from": "p2",
+                "to": "p3",
+                "label": "是"
+              },
+              {
+                "from": "p2",
+                "to": "p5",
+                "label": "否"
+              },
+              {
+                "from": "p3",
+                "to": "p4"
+              }
+            ]
+          },
+          {
+            "type": "rule",
+            "heading": "业务规则",
+            "body": "数量必须在 [1, 到货数量] 内；离线提交按 server-wins 合并，冲突时保留服务端结论并提示取样员复核。",
+            "requirementIds": [
+              "REQ-001"
+            ]
+          },
+          {
+            "type": "acceptance",
+            "heading": "验收",
+            "body": "弱网下提交不丢数据；数量越界就地拦截；离线队列有可见角标。"
+          }
+        ]
+      }
+    }
+  ],
+  "capabilities": [
+    {
+      "id": "cap-submit-sample",
+      "name": "提交取样",
+      "actor": [
+        "u-sampler"
+      ],
+      "entity": "inspection",
+      "from": [
+        "created"
+      ],
+      "guard": "g-1",
+      "policy": "disabled",
+      "reason": "仅「待取样」可提交，当前为「已取样」",
+      "to": "sampled",
+      "stage": "submit",
+      "target": "pda",
+      "label": "提交取样"
+    },
+    {
+      "id": "cap-approve",
+      "name": "审核报告",
+      "actor": [
+        "u-qa"
+      ],
+      "entity": "inspection",
+      "from": [
+        "reported"
+      ],
+      "policy": "disabled",
+      "reason": "仅「待审核」可审核，当前为「已归档」",
+      "to": "approved",
+      "stage": "verify",
+      "target": "pc",
+      "label": "审核"
+    },
+    {
+      "id": "cap-export-report",
+      "name": "导出报告",
+      "actor": [
+        "u-qa"
+      ],
+      "entity": "inspection",
+      "from": [
+        "sampled",
+        "reported",
+        "approved"
+      ],
+      "policy": "disabled",
+      "reason": "报告尚未生成，仅「待审核 / 已审核」可导出",
+      "to": null,
+      "stage": null,
+      "target": "pc",
+      "label": "导出报告"
+    }
+  ],
+  "stateMachines": [
+    {
+      "id": "sm-inspection",
+      "entity": "inspection",
+      "label": "检验任务生命周期",
+      "initial": "created",
+      "states": [
+        {
+          "key": "created",
+          "label": "待取样",
+          "tone": "default"
+        },
+        {
+          "key": "sampled",
+          "label": "已取样",
+          "tone": "processing"
+        },
+        {
+          "key": "reported",
+          "label": "待审核",
+          "tone": "warning"
+        },
+        {
+          "key": "approved",
+          "label": "已归档",
+          "tone": "success",
+          "terminal": true
+        }
+      ],
+      "transitions": [
+        {
+          "from": "created",
+          "to": "sampled",
+          "trigger": "cap-submit-sample",
+          "actor": "u-sampler",
+          "guard": "g-1"
+        },
+        {
+          "from": "sampled",
+          "to": "reported",
+          "trigger": "system-auto-report",
+          "system": true
+        },
+        {
+          "from": "reported",
+          "to": "approved",
+          "trigger": "cap-approve",
+          "actor": "u-qa"
+        }
+      ]
+    }
+  ],
+  "dataModel": {
+    "entities": [
+      {
+        "id": "inspection",
+        "name": "Inspection",
+        "label": "检验任务",
+        "fields": [
+          {
+            "name": "batchNo",
+            "label": "到货单号",
+            "type": "string",
+            "pk": true,
+            "required": true
+          },
+          {
+            "name": "taskNo",
+            "label": "任务单号",
+            "type": "string",
+            "required": true
+          },
+          {
+            "name": "material",
+            "label": "物资名称",
+            "type": "string",
+            "required": true
+          },
+          {
+            "name": "qty",
+            "label": "到货数量",
+            "type": "number",
+            "required": true,
+            "unit": "件"
+          },
+          {
+            "name": "sampleQty",
+            "label": "取样数量",
+            "type": "number",
+            "constraint": "1 <= sampleQty <= qty"
+          },
+          {
+            "name": "status",
+            "label": "状态",
+            "type": "enum",
+            "enum": [
+              "created",
+              "sampled",
+              "reported",
+              "approved"
+            ],
+            "required": true
+          },
+          {
+            "name": "stdTemplateId",
+            "label": "质检标准模板",
+            "type": "ref",
+            "fk": "stdTemplate"
+          }
+        ]
+      },
+      {
+        "id": "stdTemplate",
+        "name": "StdTemplate",
+        "label": "质检标准模板",
+        "fields": [
+          {
+            "name": "id",
+            "type": "string",
+            "pk": true
+          },
+          {
+            "name": "name",
+            "label": "模板名称",
+            "type": "string",
+            "required": true
+          }
+        ]
+      }
+    ],
+    "relations": [
+      {
+        "from": "inspection",
+        "to": "stdTemplate",
+        "kind": "N:1",
+        "on": "stdTemplateId"
+      }
+    ],
+    "derived": [
+      {
+        "name": "取样完成率",
+        "expr": "sampledCount / totalCount",
+        "fallback": "无任务时显示「—」而非 0%"
+      }
+    ]
+  },
+  "requirements": [
+    {
+      "id": "REQ-001",
+      "title": "取样员提交取样记录",
+      "actor": "取样员",
+      "trigger": "扫描到货批次码并进入待取样任务时",
+      "rule": "取样数量必须在 1 到到货数量之间；同一批次仅允许一次有效提交；离线提交进入本地队列并在恢复网络后自动上传",
+      "stateMachine": "sm-inspection：created → sampled（cap-submit-sample，前置 guard g-1）",
+      "expectation": "系统保存取样记录并将任务状态置为「已取样」",
+      "acceptance": [
+        {
+          "given": "任务状态为「待取样」且网络正常",
+          "when": "取样员录入数量 32 并提交",
+          "then": "记录保存成功，任务状态变为「已取样」",
+          "kind": "happy"
+        },
+        {
+          "given": "任务状态为「已取样」",
+          "when": "取样员再次提交取样",
+          "then": "提交按钮置灰并提示「仅待取样可提交」",
+          "kind": "illegal"
+        },
+        {
+          "given": "录入数量为 0 或超过到货数量",
+          "when": "点击提交",
+          "then": "就地标红并拒绝提交，不得进入下一步",
+          "kind": "illegal"
+        }
+      ],
+      "priority": "P0",
+      "targets": [
+        "pda"
+      ],
+      "pageIds": [
+        "pg-iqc-sample-pda"
+      ],
+      "source": "stated",
+      "status": "confirmed"
+    },
+    {
+      "id": "REQ-002",
+      "title": "质量工程师审核并导出报告",
+      "actor": "质量工程师",
+      "trigger": "报告状态变为「待审核」时",
+      "rule": "仅「待审核」可审核；审核人与取样人不得为同一人；导出内容必须与当前筛选条件一致",
+      "stateMachine": "sm-inspection：reported → approved（cap-approve）",
+      "expectation": "系统记录审核结论、审核人与时间，并允许导出 PDF",
+      "acceptance": [
+        {
+          "given": "报告状态为「待审核」且当前用户为质量工程师",
+          "when": "点击审核并填写结论",
+          "then": "状态变为「已归档」并记录审核人",
+          "kind": "happy"
+        },
+        {
+          "given": "当前用户为提交该批取样的取样员",
+          "when": "尝试审核",
+          "then": "审核按钮不可用并提示「取样人不得自审」",
+          "kind": "illegal"
+        }
+      ],
+      "priority": "P0",
+      "targets": [
+        "pc"
+      ],
+      "pageIds": [
+        "pg-iqc-report"
+      ],
+      "source": "stated",
+      "status": "confirmed"
+    }
+  ],
+  "components": [
+    {
+      "id": "c-1",
+      "name": "报告列表",
+      "type": "DataTable",
+      "category": "pc-data",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "zero-result",
+        "error"
+      ],
+      "props": {
+        "size": "xs",
+        "tableLayout": "fixed"
+      },
+      "usage": "作业型列表页：全宽 + 560 抽屉"
+    },
+    {
+      "id": "c-2",
+      "name": "现场扫码取样",
+      "type": "ScanBar",
+      "category": "pda",
+      "states": [
+        "default",
+        "scanning",
+        "success",
+        "fail"
+      ],
+      "usage": "现场首选入口，手动输入为兜底"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "an-1",
+      "pageId": "pg-iqc-report",
+      "nodeId": "n-table",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.12
+      },
+      "body": "操作列只放「详情」太少，希望这里直接给「审核」，避免进详情再返回",
+      "severity": "major",
+      "status": "open",
+      "author": "用户",
+      "createdAt": "2026-10-29T16:30:00+08:00",
+      "affects": [
+        "componentTree",
+        "capability"
+      ]
+    }
+  ],
+  "openQuestions": [
+    {
+      "id": "q-1",
+      "question": "报告是否需要供应商在线确认环节？",
+      "priority": "P1",
+      "status": "assumed",
+      "answer": "本期不做，报告导出后线下发送",
+      "impact": "影响 sm-inspection 是否增加 supplier-confirmed 状态"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "D-001",
+      "stage": "schema",
+      "kind": "tradeoff",
+      "decision": "单文件交付 + 模块级逻辑拆页",
+      "rationale": "离线双击可用优先；跨文件导航与标注锚定会失效",
+      "active": true
+    }
+  ],
+  "guards": [
+    {
+      "id": "g-1",
+      "kind": "block",
+      "statement": "发起检验前必须先编质检标准模板",
+      "sourceRef": "蓝图v2 §4.2",
+      "capabilityId": "cap-submit-sample"
+    }
+  ],
+  "fieldRegistry": [
+    {
+      "name": "到货单号",
+      "sourceRef": "截图列头",
+      "type": "string",
+      "pageId": "pg-iqc-report",
+      "block": "n-table",
+      "required": true,
+      "scope": "in"
+    }
+  ],
+  "slices": [
+    "s-01"
+  ]
+}

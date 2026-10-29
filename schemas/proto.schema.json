@@ -1,0 +1,1423 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://iiot-prd/schemas/proto.schema.json",
+  "title": "IIOT-PRD 单一真源数据契约",
+  "description": "工业互联网需求分析与高保真原型的唯一真源。容器渲染、PRD 导出、标注迭代、切片合并全部基于本结构。schemaVersion 变更即为 breaking。",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "meta",
+    "modules",
+    "pages",
+    "capabilities",
+    "stateMachines",
+    "dataModel",
+    "requirements",
+    "components",
+    "annotations"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "string",
+      "enum": [
+        "1.0"
+      ]
+    },
+    "meta": {
+      "$ref": "#/$defs/meta"
+    },
+    "modules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/module"
+      }
+    },
+    "pages": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/page"
+      }
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/capability"
+      }
+    },
+    "stateMachines": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/stateMachine"
+      }
+    },
+    "dataModel": {
+      "$ref": "#/$defs/dataModel"
+    },
+    "requirements": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/requirement"
+      }
+    },
+    "components": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/componentDef"
+      }
+    },
+    "annotations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/annotation"
+      }
+    },
+    "openQuestions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/openQuestion"
+      }
+    },
+    "decisions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/decision"
+      }
+    },
+    "guards": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/guard"
+      }
+    },
+    "fieldRegistry": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/fieldRegistryItem"
+      }
+    },
+    "slices": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^s-[0-9]{2,}$"
+      }
+    },
+    "actors": {
+      "type": "array",
+      "description": "角色表：capabilities[].actor 与 contract.actor 只能引用这里的 id",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "exists"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^u-[A-Za-z0-9_-]+$"
+          },
+          "name": {
+            "type": "string",
+            "description": "中文岗位名，UI 与 PRD 都用它，不显示 id"
+          },
+          "dept": {
+            "type": "string"
+          },
+          "exists": {
+            "type": "boolean",
+            "description": "是否真实存在；false 表示由他人兼任，相关审批必须可关闭"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z]{1,4}-[A-Za-z0-9_-]+$"
+    },
+    "meta": {
+      "type": "object",
+      "required": [
+        "product",
+        "version",
+        "domain",
+        "targets",
+        "designWidth"
+      ],
+      "properties": {
+        "product": {
+          "type": "string",
+          "minLength": 2
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+        },
+        "domain": {
+          "type": "string",
+          "enum": [
+            "qms",
+            "lims",
+            "mes",
+            "wms",
+            "eam",
+            "spc",
+            "ems",
+            "generic"
+          ],
+          "description": "工业互联网业务域，决定领域词表与状态模板的加载"
+        },
+        "targets": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "enum": [
+              "pc",
+              "pda"
+            ]
+          },
+          "description": "本产品覆盖的端。双端共享 capabilities / stateMachines / requirements"
+        },
+        "designWidth": {
+          "type": "object",
+          "required": [
+            "pc"
+          ],
+          "properties": {
+            "pc": {
+              "type": "integer",
+              "minimum": 1280
+            },
+            "pda": {
+              "type": "integer",
+              "minimum": 320
+            }
+          },
+          "description": "画布设计宽＝布局宽，缩放只作用于呈现层，不改变布局宽"
+        },
+        "baseResolution": {
+          "type": "string",
+          "default": "1920x1080"
+        },
+        "currentPageId": {
+          "type": "string"
+        },
+        "skin": {
+          "type": "string",
+          "enum": [
+            "industrial-dark-sider",
+            "antd-light",
+            "pda-field"
+          ]
+        },
+        "tokens": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "设计令牌覆盖，键名对应 catalog.tokens"
+        }
+      }
+    },
+    "module": {
+      "type": "object",
+      "required": [
+        "id",
+        "code",
+        "name",
+        "order",
+        "pages"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "code": {
+          "type": "string",
+          "minLength": 2,
+          "description": "工业域惯用缩写，如 IQC / OQC / SPC"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 2
+        },
+        "order": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "owner": {
+          "type": "string",
+          "description": "业务归口部门"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "pages": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "page": {
+      "type": "object",
+      "required": [
+        "id",
+        "moduleId",
+        "target",
+        "route",
+        "title",
+        "layout",
+        "states",
+        "componentTree",
+        "interactions",
+        "prd"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^pg-[A-Za-z0-9_-]+$"
+        },
+        "moduleId": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string",
+          "enum": [
+            "pc",
+            "pda"
+          ]
+        },
+        "route": {
+          "type": "string",
+          "pattern": "^/"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 2
+        },
+        "parentId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "多级页面用 parentId 表达层级，不靠命名约定"
+        },
+        "layout": {
+          "type": "string",
+          "enum": [
+            "list",
+            "form",
+            "detail",
+            "dashboard",
+            "wizard",
+            "pda-list",
+            "pda-step",
+            "pda-scan"
+          ]
+        },
+        "entity": {
+          "type": "string",
+          "description": "主体实体，驱动「单据状态」切换与命令可用性"
+        },
+        "subtitle": {
+          "type": "string"
+        },
+        "contract": {
+          "$ref": "#/$defs/contract"
+        },
+        "states": {
+          "type": "array",
+          "minItems": 4,
+          "items": {
+            "$ref": "#/$defs/pageState"
+          }
+        },
+        "notApplicableStates": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "componentTree": {
+          "$ref": "#/$defs/componentNode"
+        },
+        "interactions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/interaction"
+          }
+        },
+        "prd": {
+          "$ref": "#/$defs/prd"
+        },
+        "pda": {
+          "$ref": "#/$defs/pdaPolicy"
+        }
+      }
+    },
+    "contract": {
+      "type": "object",
+      "required": [
+        "task",
+        "actor",
+        "owns",
+        "doneWhen"
+      ],
+      "properties": {
+        "task": {
+          "type": "string",
+          "description": "谁在什么场景下要完成什么，页面切分的唯一依据"
+        },
+        "actor": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "owns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "本页负责发起的命令；一条命令只能有一个主页面 owns"
+        },
+        "doneWhen": {
+          "type": "string"
+        },
+        "entryFrom": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "submitBoundary": {
+          "type": "string"
+        }
+      }
+    },
+    "pageState": {
+      "type": "object",
+      "required": [
+        "id",
+        "kind"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^s-[A-Za-z0-9_-]+$"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "default",
+            "loading",
+            "empty",
+            "zero-result",
+            "error",
+            "readonly"
+          ]
+        },
+        "desc": {
+          "type": "string"
+        },
+        "vars": {
+          "type": "object",
+          "description": "该态下的变量默认值，保证页面可独立渲染"
+        }
+      }
+    },
+    "componentNode": {
+      "type": "object",
+      "required": [
+        "id",
+        "type"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^n-[A-Za-z0-9_-]+$"
+        },
+        "type": {
+          "type": "string",
+          "description": "必须命中 catalog.json 的 types 白名单"
+        },
+        "props": {
+          "type": "object"
+        },
+        "text": {
+          "type": "string"
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/componentNode"
+          }
+        },
+        "visibleWhen": {
+          "type": "string",
+          "description": "显示条件，引用页面变量或单据状态"
+        }
+      }
+    },
+    "interaction": {
+      "type": "object",
+      "required": [
+        "id",
+        "on",
+        "do"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^ix-[A-Za-z0-9_-]+$"
+        },
+        "on": {
+          "type": "string",
+          "description": "事件源：节点 id，支持 __row_* / __act_* 通配"
+        },
+        "do": {
+          "type": "string",
+          "enum": [
+            "navigate",
+            "setState",
+            "openDrawer",
+            "openModal",
+            "submit",
+            "reset",
+            "toast",
+            "screenshot"
+          ]
+        },
+        "target": {
+          "type": "string"
+        },
+        "params": {
+          "type": "object"
+        },
+        "effect": {
+          "type": "string"
+        }
+      }
+    },
+    "prd": {
+      "type": "object",
+      "required": [
+        "sections"
+      ],
+      "properties": {
+        "sections": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/prdSection"
+          }
+        }
+      }
+    },
+    "prdSection": {
+      "type": "object",
+      "required": [
+        "type",
+        "heading"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "goal",
+            "flow",
+            "interaction",
+            "availability",
+            "rule",
+            "state",
+            "acceptance",
+            "data",
+            "api",
+            "note"
+          ]
+        },
+        "heading": {
+          "type": "string",
+          "minLength": 2
+        },
+        "body": {
+          "type": "string",
+          "description": "markdown；type=flow 时由 nodes/edges 渲染 SVG"
+        },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/flowNode"
+          }
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/flowEdge"
+          }
+        },
+        "requirementIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "flowNode": {
+      "type": "object",
+      "required": [
+        "id",
+        "label"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "start",
+            "end",
+            "task",
+            "decision",
+            "warn",
+            "system"
+          ]
+        },
+        "sub": {
+          "type": "string",
+          "description": "真实路由或真实节点 id，便于对照"
+        }
+      }
+    },
+    "flowEdge": {
+      "type": "object",
+      "required": [
+        "from",
+        "to"
+      ],
+      "properties": {
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string",
+          "description": "判定节点的每条出边必须有 label"
+        }
+      }
+    },
+    "capability": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "actor",
+        "entity",
+        "from",
+        "policy",
+        "reason"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^cap-[A-Za-z0-9_-]+$"
+        },
+        "name": {
+          "type": "string"
+        },
+        "actor": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "entity": {
+          "type": "string"
+        },
+        "from": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          },
+          "description": "允许的前置状态；空表示无状态约束"
+        },
+        "guard": {
+          "type": "string",
+          "description": "前置校验，引用 guards[].id 或自然语言条件"
+        },
+        "policy": {
+          "type": "string",
+          "enum": [
+            "hidden",
+            "disabled",
+            "reject"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "description": "不可用时对用户说什么：当前状态 + 允许状态"
+        },
+        "to": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "成功后单据状态"
+        },
+        "stage": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "submit",
+            "verify",
+            null
+          ]
+        },
+        "sameActorOk": {
+          "type": "boolean"
+        },
+        "target": {
+          "type": "string",
+          "description": "targets 子集，缺省继承页面"
+        }
+      }
+    },
+    "stateMachine": {
+      "type": "object",
+      "required": [
+        "id",
+        "entity",
+        "initial",
+        "states",
+        "transitions"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^sm-[A-Za-z0-9_-]+$"
+        },
+        "entity": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "initial": {
+          "type": "string"
+        },
+        "states": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "required": [
+              "key",
+              "label"
+            ],
+            "properties": {
+              "key": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "tone": {
+                "type": "string",
+                "enum": [
+                  "default",
+                  "processing",
+                  "success",
+                  "warning",
+                  "error"
+                ]
+              },
+              "terminal": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "transitions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "from",
+              "to",
+              "trigger"
+            ],
+            "properties": {
+              "from": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              },
+              "trigger": {
+                "type": "string",
+                "description": "cap-* 命令 id，或 system-* 自动流转"
+              },
+              "actor": {
+                "type": "string"
+              },
+              "guard": {
+                "type": "string"
+              },
+              "system": {
+                "type": "boolean",
+                "description": "定时任务 / 回调 / 超时关闭，标 true 可无命令入口"
+              }
+            }
+          }
+        }
+      }
+    },
+    "dataModel": {
+      "type": "object",
+      "required": [
+        "entities"
+      ],
+      "properties": {
+        "entities": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "name",
+              "fields"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "fields": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "name",
+                    "type"
+                  ],
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string",
+                      "enum": [
+                        "string",
+                        "text",
+                        "number",
+                        "decimal",
+                        "date",
+                        "datetime",
+                        "bool",
+                        "enum",
+                        "ref",
+                        "file",
+                        "json"
+                      ]
+                    },
+                    "required": {
+                      "type": "boolean"
+                    },
+                    "pk": {
+                      "type": "boolean"
+                    },
+                    "fk": {
+                      "type": "string",
+                      "description": "外键指向的实体 id"
+                    },
+                    "enum": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "constraint": {
+                      "type": "string"
+                    },
+                    "unit": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "relations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "from",
+              "to",
+              "kind"
+            ],
+            "properties": {
+              "from": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "1:1",
+                  "1:N",
+                  "N:1",
+                  "N:M"
+                ]
+              },
+              "on": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "derived": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "expr",
+              "fallback"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "expr": {
+                "type": "string"
+              },
+              "fallback": {
+                "type": "string",
+                "description": "无数据时的替代口径，必填，防止研发自行发明"
+              }
+            }
+          }
+        }
+      }
+    },
+    "requirement": {
+      "type": "object",
+      "required": [
+        "id",
+        "actor",
+        "trigger",
+        "rule",
+        "stateMachine",
+        "expectation",
+        "acceptance",
+        "priority"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^REQ-[0-9]{3,}$"
+        },
+        "title": {
+          "type": "string"
+        },
+        "actor": {
+          "type": "string",
+          "description": "EARS·角色：谁，用岗位而非人名"
+        },
+        "trigger": {
+          "type": "string",
+          "description": "EARS·触发：何时/何事触发"
+        },
+        "rule": {
+          "type": "string",
+          "description": "EARS·规则：约束与前置校验，无主观词"
+        },
+        "stateMachine": {
+          "type": "string",
+          "description": "EARS·状态机：关联状态机 id + 迁移条件"
+        },
+        "expectation": {
+          "type": "string",
+          "description": "EARS·预期：系统响应，单一响应"
+        },
+        "acceptance": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "given",
+              "when",
+              "then",
+              "kind"
+            ],
+            "properties": {
+              "given": {
+                "type": "string"
+              },
+              "when": {
+                "type": "string"
+              },
+              "then": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "happy",
+                  "illegal"
+                ]
+              }
+            }
+          }
+        },
+        "priority": {
+          "type": "string",
+          "enum": [
+            "P0",
+            "P1",
+            "P2"
+          ]
+        },
+        "targets": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "pc",
+              "pda"
+            ]
+          }
+        },
+        "pageIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "stated",
+            "inferred"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "draft",
+            "confirmed"
+          ]
+        }
+      }
+    },
+    "annotation": {
+      "type": "object",
+      "required": [
+        "id",
+        "pageId",
+        "nodeId",
+        "anchor",
+        "body",
+        "status",
+        "createdAt"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^an-[A-Za-z0-9_-]+$"
+        },
+        "pageId": {
+          "type": "string"
+        },
+        "nodeId": {
+          "type": "string",
+          "description": "锚定组件节点 id；重生成原型时不得变更"
+        },
+        "anchor": {
+          "type": "object",
+          "required": [
+            "x",
+            "y"
+          ],
+          "properties": {
+            "x": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "y": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          },
+          "description": "相对锚定节点的归一化坐标，与缩放无关"
+        },
+        "body": {
+          "type": "string",
+          "minLength": 2
+        },
+        "severity": {
+          "type": "string",
+          "enum": [
+            "blocker",
+            "major",
+            "minor",
+            "question"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "open",
+            "resolved",
+            "wontfix"
+          ]
+        },
+        "author": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "affects": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "componentTree",
+              "interaction",
+              "state",
+              "requirement",
+              "capability",
+              "prd"
+            ]
+          }
+        },
+        "replies": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "body",
+              "at"
+            ],
+            "properties": {
+              "body": {
+                "type": "string"
+              },
+              "at": {
+                "type": "string"
+              },
+              "by": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "componentDef": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "type",
+        "states"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "pc-shell",
+            "pc-data",
+            "pc-input",
+            "pda",
+            "common"
+          ]
+        },
+        "states": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "props": {
+          "type": "object"
+        },
+        "usage": {
+          "type": "string"
+        }
+      }
+    },
+    "pdaPolicy": {
+      "type": "object",
+      "description": "PDA 端专有约束。PDA 不是 PC 缩小版，必须逐页声明现场作业策略",
+      "properties": {
+        "onlineOnly": {
+          "type": "boolean",
+          "description": "必须显式声明；false 时需提供 offline"
+        },
+        "offline": {
+          "type": "object",
+          "properties": {
+            "queue": {
+              "type": "boolean"
+            },
+            "conflict": {
+              "type": "string",
+              "enum": [
+                "last-write-wins",
+                "server-wins",
+                "manual"
+              ]
+            },
+            "cacheTtlMinutes": {
+              "type": "integer"
+            }
+          }
+        },
+        "scan": {
+          "type": "object",
+          "properties": {
+            "fields": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "codeTypes": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "qrcode",
+                  "barcode",
+                  "rfid",
+                  "ocr"
+                ]
+              }
+            }
+          }
+        },
+        "primaryAction": {
+          "type": "string",
+          "description": "拇指热区主操作，一屏只能有一个"
+        },
+        "minTouchTarget": {
+          "type": "integer",
+          "default": 44
+        }
+      }
+    },
+    "openQuestion": {
+      "type": "object",
+      "required": [
+        "id",
+        "question",
+        "priority",
+        "status"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^q-[0-9]+$"
+        },
+        "question": {
+          "type": "string"
+        },
+        "priority": {
+          "type": "string",
+          "enum": [
+            "P0",
+            "P1",
+            "P2"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "open",
+            "resolved",
+            "assumed"
+          ]
+        },
+        "answer": {
+          "type": "string"
+        },
+        "impact": {
+          "type": "string"
+        }
+      }
+    },
+    "decision": {
+      "type": "object",
+      "required": [
+        "id",
+        "stage",
+        "kind",
+        "decision",
+        "rationale"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^D-[0-9]{3}$"
+        },
+        "stage": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "scope",
+            "model",
+            "tradeoff",
+            "no-decision"
+          ]
+        },
+        "decision": {
+          "type": "string"
+        },
+        "rationale": {
+          "type": "string"
+        },
+        "active": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "guard": {
+      "type": "object",
+      "required": [
+        "id",
+        "kind",
+        "statement"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^g-[0-9]+$"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "block",
+            "warn"
+          ]
+        },
+        "statement": {
+          "type": "string",
+          "description": "源文档原句（含必须/不得/仅当/至少）"
+        },
+        "sourceRef": {
+          "type": "string"
+        },
+        "capabilityId": {
+          "type": "string"
+        },
+        "fallback": {
+          "type": "string",
+          "description": "不在界面体现时的理由"
+        }
+      }
+    },
+    "fieldRegistryItem": {
+      "type": "object",
+      "required": [
+        "name",
+        "sourceRef",
+        "type",
+        "pageId",
+        "block",
+        "required",
+        "scope"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "逐字取自源文档"
+        },
+        "sourceRef": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "pageId": {
+          "type": "string"
+        },
+        "block": {
+          "type": "string",
+          "description": "组件树节点 id；该节点可渲染文本里必须真的看得到这个字段"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "scope": {
+          "type": "string",
+          "enum": [
+            "in",
+            "out"
+          ]
+        },
+        "reason": {
+          "type": "string"
+        },
+        "decisionId": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

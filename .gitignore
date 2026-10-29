@@ -1,0 +1,18 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# 工作产出（用户的澄清文档与契约，不入库）
+shaping/
+*.proto.json
+!examples/*.proto.json
+slices.json
+!examples/*slices.json
+
+# 编辑器
+.idea/
+.vscode/

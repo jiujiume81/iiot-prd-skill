@@ -1,0 +1,47 @@
+{
+  "gateVersion": "1.0",
+  "product": "新锂想质量管理系统 · 来料检验",
+  "protoFile": "../example-01-qms-incoming.proto.json",
+  "steps": [
+    { "no": 0, "key": "positioning", "file": "01-positioning.md", "status": "done" },
+    { "no": 1, "key": "problem", "file": "02-problem.md", "status": "done" },
+    { "no": 2, "key": "roles", "file": "03-roles.md", "status": "done" },
+    { "no": 3, "key": "scenarios", "file": "04-scenarios.md", "status": "done" },
+    { "no": 4, "key": "flows", "file": "05-user-flows.md", "status": "done" },
+    { "no": 5, "key": "exceptions", "file": "06-exceptions.md", "status": "done" },
+    { "no": 6, "key": "review", "file": "07-review.md", "status": "done" }
+  ],
+  "nonGoals": [
+    "不做供应商门户（供应商无系统账号，本期只发 PDF）",
+    "不做检验标准在线编制（标准由技术部用 Excel 维护，系统只导入与冻结版本）",
+    "不做 SPC 过程控制图（数据在 MES 侧，等 LIMS 上线后再接）",
+    "不做实验室委托检验（月均 3 单，先走线下）",
+    "不做移动端 H5（PDA 与 H5 是两种交互，混做必歪）"
+  ],
+  "scale": {
+    "records": 9407,
+    "dailyNew": 100,
+    "batchSize": [1, 3],
+    "note": "历史 9407 条（2024-01~2026-09），日增 80~120 批，单批取样 1~3 次；迁移仅近 12 个月约 3200 条"
+  },
+  "confirmations": {
+    "A1": {
+      "confirmed": true,
+      "by": "俞秀福（产品）· 王工（质量部经理）",
+      "at": "2026-10-29T16:20:00+08:00",
+      "decision": "确认真问题是「数据搬运占掉判定时间」，不是「缺一个审核按钮」。采纳路径 4（PDA + PC + 在线审核 + 标准版本冻结），并并行推进路径 1（审核下放）"
+    },
+    "A2": {
+      "confirmed": true,
+      "by": "俞秀福（产品）· 研发 / 测试 / 质量部 / 仓库取样员代表",
+      "at": "2026-10-29T16:45:00+08:00",
+      "decision": "四角色评审通过。三条改动：① 二级审批默认关闭；② 批量审核遇四眼冲突整批退回；③ 迁移数据打 migrated 标记并从效率统计中排除"
+    },
+    "A3": {
+      "confirmed": true,
+      "by": "俞秀福（产品）· 王工（质量部）",
+      "at": "2026-10-29T16:52:00+08:00",
+      "decision": "首个切片只做「来料检验」模块 2 个页面（PC 报告页 + PDA 取样页）、3 条命令、1 个状态机。确认后再写组件树"
+    }
+  }
+}

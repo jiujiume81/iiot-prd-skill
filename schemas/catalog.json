@@ -1,0 +1,812 @@
+{
+  "version": "1.0",
+  "note": "组件白名单 + 状态矩阵 + 设计令牌。容器只认这里的 type；未登记的 type 会被降级并打 WARN。PC 与 PDA 是两套组件，共用同一份 props 语义。",
+  "tokens": {
+    "source": "参考页实测（1920×1049 截图采样）",
+    "siderBg": "#001729",
+    "siderBgDeep": "#000D16",
+    "siderText": "#C9D4E3",
+    "siderTextActive": "#FFFFFF",
+    "primary": "#1677FF",
+    "primaryHover": "#4096FF",
+    "primaryBg": "#E6F4FF",
+    "workspaceBg": "#FFFFFF",
+    "pageBg": "#F5F7FA",
+    "tableHeadBg": "#FAFAFA",
+    "border": "#E5E8EF",
+    "borderSplit": "#EEEEEE",
+    "text1": "#1F2329",
+    "text2": "#4E5969",
+    "text3": "#86909C",
+    "success": "#00B42A",
+    "warning": "#FF7D00",
+    "error": "#F53F3F",
+    "radius": "6px",
+    "radiusLg": "8px",
+    "spaceUnit": "8px"
+  },
+  "grid": {
+    "baseResolution": "1920x1080",
+    "headerH": 50,
+    "siderW": 268,
+    "siderCollapsedW": 56,
+    "tabStripH": 40,
+    "filterRowH": 38,
+    "toolbarH": 48,
+    "tableRowH": 34,
+    "footerH": 48,
+    "fontSizes": [
+      18,
+      14,
+      12
+    ],
+    "pda": {
+      "designWidth": 390,
+      "headerH": 44,
+      "scanBarH": 56,
+      "bottomBarH": 64,
+      "minTouch": 44,
+      "cardGap": 8
+    }
+  },
+  "stateMatrix": {
+    "page": [
+      "default",
+      "loading",
+      "empty",
+      "zero-result",
+      "error",
+      "readonly"
+    ],
+    "component": [
+      "default",
+      "hover",
+      "active",
+      "disabled",
+      "loading",
+      "empty",
+      "error",
+      "readonly"
+    ],
+    "note": "三层状态不混：页面态（page.states）/ 业务态（stateMachines，按 entity 切换）/ 组件态（catalog 内声明）"
+  },
+  "types": {
+    "AppShell": {
+      "category": "pc-shell",
+      "states": [
+        "default"
+      ],
+      "slots": [
+        "sider",
+        "header",
+        "body"
+      ],
+      "props": {
+        "skin": "industrial-dark-sider"
+      },
+      "impl": "done"
+    },
+    "SiderNav": {
+      "category": "pc-shell",
+      "states": [
+        "default",
+        "collapsed",
+        "filtering"
+      ],
+      "props": {
+        "width": "number",
+        "collapsed": "boolean",
+        "search": "boolean"
+      },
+      "impl": "todo"
+    },
+    "HeaderBar": {
+      "category": "pc-shell",
+      "states": [
+        "default"
+      ],
+      "props": {
+        "title": "string",
+        "back": "boolean",
+        "user": "string",
+        "actions": "array"
+      },
+      "impl": "todo"
+    },
+    "TabStrip": {
+      "category": "pc-shell",
+      "states": [
+        "default",
+        "overflow"
+      ],
+      "props": {
+        "tabs": "array",
+        "activeKey": "string",
+        "closable": "boolean"
+      },
+      "impl": "done"
+    },
+    "Breadcrumb": {
+      "category": "pc-shell",
+      "states": [
+        "default"
+      ],
+      "props": {
+        "items": "array"
+      },
+      "impl": "todo"
+    },
+    "PageShell": {
+      "category": "pc-shell",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error"
+      ],
+      "slots": [
+        "head",
+        "filter",
+        "toolbar",
+        "body",
+        "footer"
+      ],
+      "props": {
+        "padded": "boolean",
+        "fullWidth": "boolean"
+      },
+      "impl": "done"
+    },
+    "SectionCard": {
+      "category": "pc-shell",
+      "states": [
+        "default",
+        "collapsed"
+      ],
+      "props": {
+        "title": "string",
+        "sub": "string",
+        "extra": "string",
+        "cols": "number",
+        "gap": "number",
+        "pad": "boolean"
+      },
+      "impl": "done",
+      "note": "cols 是卡片内部栅格列数（用于一行摆多个 KPI）；不要与 DataTable.columns 混用，后者是列定义数组"
+    },
+    "StatStrip": {
+      "category": "pc-shell",
+      "states": [
+        "default",
+        "loading",
+        "empty"
+      ],
+      "props": {
+        "items": "array"
+      },
+      "note": "列表页顶部 0 个指标卡，指标走独立统计页",
+      "impl": "done"
+    },
+    "StatusBar": {
+      "category": "pc-shell",
+      "states": [
+        "default"
+      ],
+      "props": {
+        "steps": "array",
+        "note": "string"
+      },
+      "note": "单据状态条：把 stateMachines 的当前态显式画在页面上，避免只用标签表达",
+      "impl": "done"
+    },
+    "Pager": {
+      "category": "pc-shell",
+      "states": [
+        "default",
+        "loading"
+      ],
+      "props": {
+        "total": "number",
+        "current": "number",
+        "pageSize": "number",
+        "pages": "number"
+      },
+      "note": "长列表分页器；9400 条以上必须显示总数与跳转",
+      "impl": "done"
+    },
+    "MetaBar": {
+      "category": "pc-shell",
+      "states": [
+        "default"
+      ],
+      "props": {
+        "fields": "array",
+        "statusKey": "string"
+      },
+      "impl": "todo"
+    },
+    "FilterBar": {
+      "category": "pc-input",
+      "states": [
+        "default",
+        "expanded",
+        "no-result"
+      ],
+      "props": {
+        "layout": "'inline'|'grid3'",
+        "fields": "array",
+        "collapsible": "boolean"
+      },
+      "impl": "done"
+    },
+    "ToolBar": {
+      "category": "pc-input",
+      "states": [
+        "default"
+      ],
+      "props": {
+        "actions": "array",
+        "align": "'left'|'right'"
+      },
+      "impl": "done"
+    },
+    "Form": {
+      "category": "pc-input",
+      "states": [
+        "default",
+        "readonly",
+        "error",
+        "submitting"
+      ],
+      "props": {
+        "layout": "'horizontal'|'vertical'|'grid'",
+        "columns": "number",
+        "fields": "array"
+      },
+      "impl": "todo"
+    },
+    "FormGrid": {
+      "category": "pc-input",
+      "states": [
+        "default"
+      ],
+      "props": {
+        "columns": "number",
+        "labelWidth": "number"
+      },
+      "impl": "todo"
+    },
+    "StepForm": {
+      "category": "pc-input",
+      "states": [
+        "default",
+        "partial",
+        "error"
+      ],
+      "props": {
+        "steps": "array",
+        "current": "number",
+        "draftSaving": "boolean"
+      },
+      "impl": "todo"
+    },
+    "Upload": {
+      "category": "pc-input",
+      "states": [
+        "default",
+        "uploading",
+        "done",
+        "error"
+      ],
+      "props": {
+        "accept": "string",
+        "max": "number"
+      },
+      "impl": "todo"
+    },
+    "Drawer": {
+      "category": "pc-input",
+      "states": [
+        "default",
+        "loading",
+        "error"
+      ],
+      "props": {
+        "width": "number",
+        "title": "string",
+        "footer": "boolean"
+      },
+      "note": "作业型列表页详情用 560 宽抽屉；长表单禁抽屉套抽屉",
+      "impl": "todo"
+    },
+    "Modal": {
+      "category": "pc-input",
+      "states": [
+        "default",
+        "loading",
+        "error"
+      ],
+      "props": {
+        "width": "number",
+        "title": "string",
+        "confirmText": "string"
+      },
+      "note": "≤3 字段确认；>15 字段禁用，禁 Modal 套 Modal",
+      "impl": "todo"
+    },
+    "Tabs": {
+      "category": "pc-input",
+      "states": [
+        "default"
+      ],
+      "props": {
+        "items": "array",
+        "activeKey": "string"
+      },
+      "impl": "todo"
+    },
+    "Alert": {
+      "category": "pc-input",
+      "states": [
+        "info",
+        "success",
+        "warning",
+        "error"
+      ],
+      "props": {
+        "type": "string",
+        "message": "string",
+        "closable": "boolean"
+      },
+      "impl": "todo"
+    },
+    "DataTable": {
+      "category": "pc-data",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "zero-result",
+        "error"
+      ],
+      "props": {
+        "columns": "array",
+        "data": "array",
+        "size": "'xs'|'small'|'middle'",
+        "tableLayout": "'fixed'|'auto'",
+        "rowClick": "boolean",
+        "radio": "boolean",
+        "stickyHeader": "boolean",
+        "pagination": "object",
+        "toolbar": "object",
+        "query": "object"
+      },
+      "note": "tableLayout:'fixed' 与每列 width 成对出现，缺一即红",
+      "impl": "done"
+    },
+    "MasterDetail": {
+      "category": "pc-data",
+      "states": [
+        "default",
+        "empty",
+        "loading"
+      ],
+      "props": {
+        "bind": "string",
+        "bindTo": "string",
+        "expandable": "boolean"
+      },
+      "note": "children[0]=主表 children[1]=子表；主表不设 rowClick",
+      "impl": "todo"
+    },
+    "DescList": {
+      "category": "pc-data",
+      "states": [
+        "default",
+        "empty"
+      ],
+      "props": {
+        "columns": "number",
+        "items": "array",
+        "bordered": "boolean"
+      },
+      "impl": "done"
+    },
+    "Timeline": {
+      "category": "pc-data",
+      "states": [
+        "default",
+        "empty"
+      ],
+      "props": {
+        "items": "array"
+      },
+      "impl": "done"
+    },
+    "StatusFlow": {
+      "category": "pc-data",
+      "states": [
+        "default"
+      ],
+      "props": {
+        "stateMachine": "string",
+        "current": "string",
+        "showGuard": "boolean"
+      },
+      "note": "按 stateMachines 渲染状态条，是『状态机在原型可见』的载体",
+      "impl": "done"
+    },
+    "Chart": {
+      "category": "pc-data",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "error"
+      ],
+      "props": {
+        "kind": "'line'|'bar'|'pie'|'control'|'pareto'",
+        "series": "array",
+        "xAxis": "array"
+      },
+      "impl": "done"
+    },
+    "KpiCard": {
+      "category": "pc-data",
+      "states": [
+        "default",
+        "loading",
+        "empty"
+      ],
+      "props": {
+        "label": "string",
+        "value": "string",
+        "unit": "string",
+        "delta": "number",
+        "tone": "string"
+      },
+      "note": "工业看板专用；涨红跌绿",
+      "impl": "done"
+    },
+    "ProgressList": {
+      "category": "pc-data",
+      "states": [
+        "default",
+        "empty"
+      ],
+      "props": {
+        "items": "array"
+      },
+      "impl": "done"
+    },
+    "TreeTable": {
+      "category": "pc-data",
+      "states": [
+        "default",
+        "loading",
+        "empty"
+      ],
+      "props": {
+        "columns": "array",
+        "data": "array"
+      },
+      "impl": "todo"
+    },
+    "TraceChain": {
+      "category": "pc-data",
+      "states": [
+        "default",
+        "empty",
+        "broken"
+      ],
+      "props": {
+        "nodes": "array",
+        "current": "string"
+      },
+      "note": "批次/一物一码追溯链；断链态必须可见",
+      "impl": "todo"
+    },
+    "PdaShell": {
+      "category": "pda",
+      "states": [
+        "default"
+      ],
+      "slots": [
+        "header",
+        "scan",
+        "body",
+        "bottom"
+      ],
+      "props": {
+        "title": "string",
+        "syncState": "'synced'|'pending'|'offline'"
+      },
+      "impl": "done"
+    },
+    "ScanBar": {
+      "category": "pda",
+      "states": [
+        "default",
+        "scanning",
+        "success",
+        "fail"
+      ],
+      "props": {
+        "placeholder": "string",
+        "codeTypes": "array",
+        "manualInput": "boolean"
+      },
+      "impl": "done"
+    },
+    "BigAction": {
+      "category": "pda",
+      "states": [
+        "default",
+        "disabled",
+        "loading",
+        "done"
+      ],
+      "props": {
+        "label": "string",
+        "capability": "string",
+        "variant": "'primary'|'danger'",
+        "fullWidth": "boolean"
+      },
+      "note": "一屏只能有一个主操作",
+      "impl": "done"
+    },
+    "PdaCardList": {
+      "category": "pda",
+      "states": [
+        "default",
+        "loading",
+        "empty",
+        "zero-result",
+        "error"
+      ],
+      "props": {
+        "cards": "array",
+        "loadMore": "boolean"
+      },
+      "impl": "done"
+    },
+    "PdaStepPager": {
+      "category": "pda",
+      "states": [
+        "default"
+      ],
+      "props": {
+        "steps": "array",
+        "current": "number"
+      },
+      "impl": "todo"
+    },
+    "PdaKeyValue": {
+      "category": "pda",
+      "states": [
+        "default",
+        "empty"
+      ],
+      "props": {
+        "items": "array",
+        "columns": "number"
+      },
+      "impl": "todo"
+    },
+    "PdaPhoto": {
+      "category": "pda",
+      "states": [
+        "default",
+        "uploading",
+        "done",
+        "fail"
+      ],
+      "props": {
+        "max": "number",
+        "watermark": "boolean"
+      },
+      "impl": "todo"
+    },
+    "SyncBadge": {
+      "category": "pda",
+      "states": [
+        "synced",
+        "pending",
+        "offline",
+        "conflict"
+      ],
+      "props": {
+        "state": "'synced'|'pending'|'offline'|'syncing'",
+        "count": "number",
+        "hint": "string"
+      },
+      "impl": "done"
+    },
+    "NumpadInput": {
+      "category": "pda",
+      "states": [
+        "default",
+        "focused",
+        "error"
+      ],
+      "props": {
+        "unit": "string",
+        "precision": "number",
+        "range": "array"
+      },
+      "impl": "done"
+    },
+    "PdaTabbar": {
+      "category": "pda",
+      "states": [
+        "default"
+      ],
+      "props": {
+        "items": "array",
+        "activeKey": "string"
+      },
+      "impl": "todo"
+    },
+    "Button": {
+      "category": "common",
+      "states": [
+        "default",
+        "hover",
+        "disabled",
+        "loading"
+      ],
+      "props": {
+        "text": "string",
+        "variant": "'primary'|'default'|'text'|'danger'",
+        "capability": "string"
+      },
+      "impl": "todo"
+    },
+    "Tag": {
+      "category": "common",
+      "states": [
+        "default"
+      ],
+      "props": {
+        "text": "string",
+        "tone": "'default'|'processing'|'success'|'warning'|'error'"
+      },
+      "impl": "todo"
+    },
+    "Badge": {
+      "category": "common",
+      "states": [
+        "default"
+      ],
+      "props": {
+        "count": "number",
+        "dot": "boolean"
+      },
+      "impl": "todo"
+    },
+    "Input": {
+      "category": "common",
+      "states": [
+        "default",
+        "focus",
+        "disabled",
+        "error"
+      ],
+      "props": {
+        "placeholder": "string",
+        "value": "string"
+      },
+      "impl": "todo"
+    },
+    "Select": {
+      "category": "common",
+      "states": [
+        "default",
+        "disabled"
+      ],
+      "props": {
+        "options": "array",
+        "mode": "'single'|'multiple'"
+      },
+      "impl": "todo"
+    },
+    "DatePicker": {
+      "category": "common",
+      "states": [
+        "default",
+        "disabled"
+      ],
+      "props": {
+        "range": "boolean",
+        "format": "string"
+      },
+      "impl": "todo"
+    },
+    "Text": {
+      "category": "common",
+      "states": [
+        "default"
+      ],
+      "props": {
+        "value": "string",
+        "tone": "string",
+        "strong": "boolean"
+      },
+      "impl": "todo"
+    },
+    "Divider": {
+      "category": "common",
+      "states": [
+        "default"
+      ],
+      "props": {
+        "vertical": "boolean"
+      },
+      "impl": "todo"
+    },
+    "Empty": {
+      "category": "common",
+      "states": [
+        "empty",
+        "zero-result"
+      ],
+      "props": {
+        "title": "string",
+        "desc": "string",
+        "action": "string"
+      },
+      "impl": "todo"
+    },
+    "Skeleton": {
+      "category": "common",
+      "states": [
+        "default"
+      ],
+      "props": {
+        "rows": "number"
+      },
+      "impl": "todo"
+    },
+    "Tooltip": {
+      "category": "common",
+      "states": [
+        "default"
+      ],
+      "props": {
+        "title": "string"
+      },
+      "impl": "todo"
+    },
+    "Avatar": {
+      "category": "common",
+      "states": [
+        "default"
+      ],
+      "props": {
+        "name": "string",
+        "src": "string"
+      },
+      "impl": "todo"
+    },
+    "Grid": {
+      "category": "pc-shell",
+      "states": [
+        "default"
+      ],
+      "props": {
+        "cols": "number",
+        "gap": "number"
+      },
+      "note": "布局容器；仅做栅格，不含业务语义。cols 默认 2",
+      "impl": "done"
+    }
+  },
+  "rules": [
+    "type 必须命中 types；未登记 → 容器降级为 Text 并打 WARN，校验器记 ERROR",
+    "业务按钮不写 disabled，写 props.capability；禁用态与原因由 capabilities 推导",
+    "DataTable 的 tableLayout:'fixed' 与每列 width 成对出现",
+    "PDA 页不得引用 category 为 pc-* 的组件；PC 页不得引用 pda 组件",
+    "PDA 页必须有且仅有一个 BigAction（primaryAction 指向它）",
+    "StatusFlow 的 stateMachine 必须指向真实 stateMachines[].id"
+  ]
+}
