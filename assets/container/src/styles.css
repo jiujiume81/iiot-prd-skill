@@ -628,7 +628,8 @@ button { font-family: inherit; }
   font-size: var(--fs-xs);
   color: var(--text-2);
 }
-.status-flow { display: flex; align-items: center; gap: 0; }
+.statusbar > span:first-child { flex: 0 0 auto; white-space: nowrap; }
+.status-flow { display: flex; align-items: center; gap: 0; flex: 0 1 auto; min-width: 0; overflow: hidden; }
 .sf-step { display: flex; align-items: center; gap: 6px; }
 .sf-dot {
   width: 8px; height: 8px; border-radius: 50%;

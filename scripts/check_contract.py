@@ -348,6 +348,37 @@ def check_proto(proto, catalog):
             add(E, "L2-63", f"命令 {c.get('id')} 用 {ui.get('kind')} 承载，但既没有 fields 也没有 successText："
                             "点开是个空弹层，用户不知道要干什么")
 
+    # 状态条不能渲染成空白：StatusBar 只认 steps 或 stateMachine，
+    # 两者都没给（或给的 stateMachine 不存在）时页面上就只剩「单据状态」两个字和一条空线，
+    # 而 JSON 里看起来什么都写了——这类"契约有、引擎无"只有读渲染结果才能发现，先在这里拦一道。
+    sm_by_id = {s.get("id"): s for s in sms}
+    for p in pages:
+        for n in walk(p.get("componentTree") or {}, []):
+            if n.get("type") != "StatusBar":
+                continue
+            pr = n.get("props") or {}
+            steps, smref = pr.get("steps") or [], pr.get("stateMachine")
+            if not steps and not smref:
+                add(E, "L2-64", f"页面 {p.get('id')} 的状态条 {n.get('id')} 既没有 steps 也没有 stateMachine："
+                                "渲染出来是一条空白状态条")
+            elif not steps and smref not in sm_by_id:
+                add(E, "L2-65", f"页面 {p.get('id')} 的状态条 {n.get('id')} 引用了不存在的状态机 {smref}："
+                                "引擎查不到就渲染成空白条")
+            elif steps and len(steps) < 2:
+                add(E, "L2-64", f"页面 {p.get('id')} 的状态条 {n.get('id')} 只有 {len(steps)} 个步骤："
+                                "只有一条状态的「状态条」没有意义")
+
+    # 表单栅格同理：契约写 fields、组件只认 items 的那一版，整张表单渲染成「暂无字段」，
+    # 而 JSON 校验全绿。字段名对不上属于引擎契约问题，不能指望评审时肉眼发现。
+    for p in pages:
+        for n in walk(p.get("componentTree") or {}, []):
+            if n.get("type") != "FormGrid":
+                continue
+            pr = n.get("props") or {}
+            if not (pr.get("items") or pr.get("fields")):
+                add(E, "L2-66", f"页面 {p.get('id')} 的表单 {n.get('id')} 没有 items/fields："
+                                "渲染出来是「暂无字段」的空表单")
+
     # ---------- L2 D. 命令策略 ----------
     owns = {}
     for p in pages:

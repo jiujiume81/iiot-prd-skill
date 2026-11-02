@@ -1939,7 +1939,18 @@
                       "label": "指派",
                       "value": "按发生部门自动指派安全员"
                     }
-                  ]
+                  ],
+                  "steps": [
+                    {
+                      "key": "draft",
+                      "label": "填报中"
+                    },
+                    {
+                      "key": "reported",
+                      "label": "待排查"
+                    }
+                  ],
+                  "current": "draft"
                 }
               },
               {

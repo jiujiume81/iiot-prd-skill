@@ -181,8 +181,16 @@
     setup: function (props) {
       return function () {
         var p = props.p || {};
+        // steps 可以直接给，也可以只给 stateMachine 由引擎从状态机里取。
+        // 只给 stateMachine 而不认的话，这条状态条会渲染成一整条空白——
+        // 「契约写了、引擎不认」是最难在评审时看出来的破绽，所以两条路都要通。
         var steps = p.steps || [];
-        var curKey = window.RD.entityStatus();
+        if (!steps.length && p.stateMachine) {
+          var sm = ((window.RD && window.RD.data && window.RD.data.stateMachines) || [])
+            .filter(function (s) { return s.id === p.stateMachine; })[0];
+          if (sm) steps = sm.states || [];
+        }
+        var curKey = (p.current && !p.followEntity) ? p.current : window.RD.entityStatus();
         var curIdx = -1;
         steps.forEach(function (s, i) { if (s.key === curKey) curIdx = i; });
 
@@ -196,10 +204,16 @@
           if (i < steps.length - 1) nodes.push(h('div', { class: 'sf-bar', key: 'b' + i }));
         });
 
+        // meta 是单据的关键事实（编号、发生时间、停留天数）。原来这里只认 note，
+        // 契约里写的 meta 全部丢掉，详情页看起来"单据状态这条怎么是空的"。
+        var metaText = (p.meta || []).filter(function (m) { return m && m.value; })
+          .map(function (m) { return (m.label ? m.label + ' ' : '') + m.value; }).join('　·　');
+
         return h('div', { class: 'statusbar' }, [
           h('span', { style: { color: 'var(--text-3)' } }, '单据状态'),
           h('div', { class: 'status-flow' }, nodes),
-          h('span', { style: { marginLeft: 'auto', color: 'var(--text-3)' } }, p.note || '')
+          h('span', { style: { marginLeft: 'auto', color: 'var(--text-3)', whiteSpace: 'nowrap' } },
+            metaText || p.note || '')
         ]);
       };
     }
@@ -929,7 +943,9 @@
     setup: function (props) {
       return function () {
         var p = props.p || {};
-        var items = p.items || [];
+        // 契约里写 fields（和命令弹层的 ui.fields 同名同义），这里兼容 items —— 两个名字
+        // 只认一个的结果是整张表单渲染成「暂无字段」，而 JSON 里字段一个不少。
+        var items = p.items || p.fields || [];
         var cols = p.cols || 2;
         if (!items.length) return h('div', { class: 'chart-empty' }, '暂无字段');
         var readonly = !!p.readonly || window.RD.pageState() === 'readonly';
