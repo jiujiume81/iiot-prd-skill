@@ -246,7 +246,8 @@
       ],
       "props": {
         "actions": "array",
-        "align": "'left'|'right'"
+        "align": "'left'|'right'",
+        "selected": "number|null（null=表单动作条，不显示「已选/列设置」）"
       },
       "impl": "done"
     },
@@ -268,13 +269,17 @@
     "FormGrid": {
       "category": "pc-input",
       "states": [
-        "default"
+        "default",
+        "readonly",
+        "error"
       ],
       "props": {
-        "columns": "number",
-        "labelWidth": "number"
+        "layout": "'grid2'|'grid3'",
+        "fields": "array",
+        "readonly": "boolean"
       },
-      "impl": "todo"
+      "impl": "done",
+      "note": "表单栅格容器。只渲染字段与控件，不做校验与提交；校验规则写 guards，提交动作写 capability"
     },
     "StepForm": {
       "category": "pc-input",

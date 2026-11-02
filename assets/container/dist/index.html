@@ -438,6 +438,9 @@ button { font-family: inherit; }
   background: var(--surface);
   overflow: hidden;
 }
+/* 详情/建单页内容高度不固定：整体滚动，子区块不被压缩 */
+.page.is-scroll { overflow: auto; }
+.page.is-scroll > * { flex: 0 0 auto; }
 .filter {
   padding: 12px 16px;
   border-bottom: 1px solid var(--line-2);
@@ -515,6 +518,8 @@ button { font-family: inherit; }
   border-bottom: 1px solid var(--line-2);
 }
 .toolbar-right { margin-left: auto; display: flex; align-items: center; gap: 12px; font-size: var(--fs-xs); color: var(--text-3); }
+/* 表单页的工具栏是底部动作条：分隔线在上，下不封口 */
+.toolbar.is-plain { border-bottom: 0; border-top: 1px solid var(--line-2); background: #fbfdfd; }
 .sel-info b { color: var(--brand-700); font-weight: 500; }
 
 /* 表格 */
@@ -870,8 +875,8 @@ button { font-family: inherit; }
 .sec-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; }
 .sec-head { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line-2); }
 .sec-title { margin: 0; font-size: var(--fs-md); font-weight: 600; color: var(--text-1); letter-spacing: .2px; }
-.sec-sub { font-size: var(--fs-xs); color: var(--text-3); }
-.sec-extra { margin-left: auto; font-size: var(--fs-xs); color: var(--text-2); }
+.sec-sub { font-size: var(--fs-xs); color: var(--text-3); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sec-extra { margin-left: auto; font-size: var(--fs-xs); color: var(--text-2); flex: 0 0 auto; white-space: nowrap; }
 .sec-body { padding: 12px 14px; }
 .sec-body.is-flush { padding: 0; }
 
@@ -951,6 +956,56 @@ button { font-family: inherit; }
 .desc-v.is-good { color: var(--ok-600); }
 .desc-v.is-num { font-variant-numeric: tabular-nums; }
 
+/* 表单栅格 */
+.form-grid { display: grid; gap: 12px 18px; }
+.form-item { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.form-label {
+  font-size: var(--fs-xs);
+  color: var(--text-2);
+  display: flex; align-items: baseline; gap: 4px;
+  white-space: nowrap;
+}
+.form-req { color: var(--danger-600); font-style: normal; }
+.form-unit { color: var(--text-3); font-size: 11px; }
+.form-hint { font-size: var(--fs-xs); color: var(--text-3); line-height: 1.5; }
+.form-ro {
+  min-height: 30px;
+  display: flex; align-items: center;
+  padding: 0 9px;
+  border-radius: var(--r-md);
+  background: var(--line-2);
+  font-size: var(--fs-sm);
+  color: var(--text-1);
+  word-break: break-all;
+}
+.form-ro.is-warn { color: var(--warn-600); }
+.form-ro.is-bad { color: var(--danger-600); }
+.form-ro.is-good { color: var(--ok-600); }
+.form-grid .input { width: 100%; box-sizing: border-box; }
+.form-grid .input.is-area {
+  height: auto;
+  padding: 7px 9px;
+  line-height: 1.6;
+  resize: vertical;
+  font-family: inherit;
+}
+.form-grid.is-readonly .form-ro { background: transparent; padding-left: 0; }
+.upload-box {
+  height: 30px;
+  display: flex; align-items: center; gap: 7px;
+  padding: 0 9px;
+  border: 1px dashed #c9d8dc;
+  border-radius: var(--r-md);
+  background: #fff;
+  font-size: var(--fs-xs);
+  color: var(--text-3);
+  cursor: pointer;
+}
+.upload-box:hover { border-color: var(--brand-500); color: var(--brand-700); }
+.upload-plus { font-size: 13px; line-height: 1; }
+.sec-actions { margin-left: auto; display: flex; gap: 6px; align-items: center; flex: 0 0 auto; }
+.btn-sm { height: 26px; padding: 0 10px; font-size: var(--fs-xs); }
+
 /* 时间线 */
 .tl { list-style: none; margin: 0; padding: 0 0 0 4px; }
 .tl-item { position: relative; padding: 0 0 14px 18px; border-left: 1px solid var(--line); }
@@ -998,6 +1053,107 @@ button { font-family: inherit; }
 .sync-badge.is-danger { color: var(--danger-600); background: var(--danger-50); }
 .sync-badge.is-info { color: var(--info-600); background: var(--info-50); }
 
+/* ============================================================
+   命令承载层（dialog / drawer）
+   推进型动作从这里进：表单字段来自 capabilities[].ui.fields，
+   尺寸与间距跟页面同一套令牌，评审时看不出是"另一种界面"。
+   ============================================================ */
+.layer-mask {
+  position: fixed; inset: 0; z-index: 90;
+  background: rgba(7, 22, 29, 0.38);
+  display: flex; align-items: flex-start; justify-content: center;
+  animation: layer-fade .12s ease-out;
+}
+@keyframes layer-fade { from { opacity: 0 } to { opacity: 1 } }
+
+.layer {
+  background: var(--surface);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-3);
+  display: flex; flex-direction: column;
+  max-height: calc(100vh - 96px);
+  margin-top: 64px;
+  animation: layer-in .14s ease-out;
+}
+@keyframes layer-in { from { transform: translateY(-6px); opacity: .6 } to { transform: none; opacity: 1 } }
+
+/* drawer 从右侧滑入，贴顶贴底，与"查看上下文同时填写"的用法一致 */
+.layer.layer-drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; margin: 0;
+  max-height: none; border-radius: 0;
+  box-shadow: -18px 0 48px rgba(9, 30, 38, .22);
+  animation: drawer-in .16s ease-out;
+}
+@keyframes drawer-in { from { transform: translateX(18px); opacity: .7 } to { transform: none; opacity: 1 } }
+
+.layer-head {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 14px 16px 12px; border-bottom: 1px solid var(--line);
+}
+.layer-title { font-size: var(--fs-lg); font-weight: 600; color: var(--text-1); line-height: 1.4; }
+.layer-sub { font-size: var(--fs-xs); color: var(--text-3); margin-top: 3px; }
+.layer-sub::first-line { color: var(--text-2); }
+
+.layer-body {
+  padding: 14px 16px; overflow: auto; flex: 1;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; align-content: start;
+}
+.layer-drawer .layer-body { grid-template-columns: 1fr; }
+
+.layer-foot {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 16px; border-top: 1px solid var(--line);
+  background: var(--page);
+}
+.layer-drawer .layer-foot { border-radius: 0; }
+.layer-tip { font-size: var(--fs-xs); color: var(--text-3); margin-right: auto; }
+.layer-empty {
+  grid-column: 1 / -1; font-size: var(--fs-sm); color: var(--text-2);
+  background: var(--brand-50); border: 1px solid var(--brand-100);
+  border-radius: var(--r-md); padding: 10px 12px; line-height: 1.7;
+}
+
+/* 表单字段 */
+.ff { display: flex; flex-direction: column; gap: 5px; }
+.ff.is-wide { grid-column: 1 / -1; }
+.ff-label { font-size: var(--fs-xs); color: var(--text-2); display: flex; align-items: center; gap: 3px; }
+.ff-req { color: var(--danger-600); font-style: normal; }
+.ff-input {
+  width: 100%; min-height: 32px; padding: 6px 9px;
+  border: 1px solid var(--line); border-radius: var(--r-sm);
+  font-size: var(--fs-sm); color: var(--text-1); background: var(--surface);
+  font-family: inherit; outline: none;
+  transition: border-color .12s, box-shadow .12s;
+}
+.ff-input:hover { border-color: var(--brand-400); }
+.ff-input:focus { border-color: var(--brand-600); box-shadow: 0 0 0 2px var(--brand-50); }
+.ff-input.is-err { border-color: var(--danger-600); background: var(--danger-50); }
+textarea.ff-input { resize: vertical; line-height: 1.6; }
+.ff-ro {
+  min-height: 32px; padding: 6px 9px; font-size: var(--fs-sm);
+  color: var(--text-2); background: var(--line-2); border-radius: var(--r-sm);
+  border: 1px solid var(--line-2);
+}
+.ff-hint { font-size: 11px; color: var(--text-3); line-height: 1.5; }
+.ff-err { font-size: 11px; color: var(--danger-600); line-height: 1.5; }
+.ff-radio { display: flex; gap: 6px; flex-wrap: wrap; }
+.ff-r {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px;
+  font-size: var(--fs-xs); color: var(--text-2); cursor: pointer;
+}
+.ff-r.is-on { border-color: var(--brand-600); color: var(--brand-700); background: var(--brand-50); }
+.ff-r input { display: none; }
+
+/* 可点击的行与卡片：给一眼可见的可交互提示 */
+.dt-row { cursor: pointer; }
+.dt-row:hover { background: var(--brand-50) !important; }
+
+/* 导航项：能到页面的可点，没建模的给原因，不做"看着能点其实没反应"的假菜单 */
+.nav-item { cursor: pointer; }
+.nav-item.is-void { opacity: .5; cursor: not-allowed; }
+.nav-item.is-void:hover { background: transparent; color: #b9cace; }
+
 </style>
 </head>
 <body>
@@ -1010,7 +1166,7 @@ window.addEventListener('error', function (e) {
   d.textContent = 'ERR: ' + (e.message || e.type);
   document.body.appendChild(d);
 });
-window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管理系统","version":"0.1.0","domain":"qms","targets":["pc","pda"],"designWidth":{"pc":1440,"pda":390},"baseResolution":"1920x1080","currentPageId":"pg-iqc-report","skin":"industrial-petrol"},"modules":[{"id":"m-iqc","code":"IQC","name":"来料检验","order":1,"owner":"质量部","icon":"inbox","pages":["pg-iqc-report","pg-iqc-sample-pda","pg-iqc-stats"]}],"pages":[{"id":"pg-iqc-report","moduleId":"m-iqc","target":"pc","route":"/iqc/report","title":"来料检验报告","parentId":null,"layout":"list","entity":"inspection","contract":{"task":"质量工程师按到货批次核对检验结论，审核后导出报告交供应商","actor":["u-qa"],"owns":["cap-approve","cap-export-report"],"doneWhen":"本批结论已审核且报告已导出","entryFrom":[],"submitBoundary":"单批报告审核"},"states":[{"id":"s-default","kind":"default","desc":"默认态：10 条/页，查询条件回填","vars":{"batchNo":"","taskNo":""}},{"id":"s-loading","kind":"loading","desc":"首屏骨架 + 表体 loading"},{"id":"s-empty","kind":"empty","desc":"系统内无任何到货批次时的引导态"},{"id":"s-zero","kind":"zero-result","desc":"有条件但查不到，提示放宽条件并保留条件","vars":{"batchNo":"PA-2026"}},{"id":"s-error","kind":"error","desc":"接口失败，可重试且不清空查询条件"}],"componentTree":{"id":"n-root","type":"AppShell","props":{"siderCollapsed":false,"brand":{"name":"质量管理","sub":"NILET QMS"},"search":"菜单搜索","groups":[{"title":"工作台","items":[{"key":"my-flow","label":"我的流程","count":3},{"key":"base","label":"基础数据管理"}]},{"title":"来料检验","items":[{"key":"data","label":"来料检测数据"},{"key":"notice","label":"检验通知"},{"key":"task","label":"检验任务"},{"key":"sample","label":"取样任务"},{"key":"my-task","label":"我的来料检验任务","count":5},{"key":"report","label":"来料检验报告","on":true},{"key":"process","label":"过程检验"},{"key":"delivery","label":"发货检验"},{"key":"patrol","label":"现场巡检"},{"key":"stock","label":"库存检验"},{"key":"return","label":"成品退货检验"}]}],"header":{"title":"来料检验报告","crumb":["来料检验","报告"],"user":"傅高修","actions":["刷新","全屏"]}},"children":[{"id":"n-page","type":"PageShell","children":[{"id":"n-tabs","type":"TabStrip","props":{"activeKey":"report","tabs":[{"key":"apply","label":"发起申请","closable":true},{"key":"data","label":"来料检测数据","closable":true},{"key":"notice","label":"检验通知","closable":true},{"key":"report","label":"来料检验报告","closable":true}]}},{"id":"n-filter","type":"FilterBar","props":{"fields":[{"key":"batchNo","label":"到货单号","placeholder":"请输入"},{"key":"taskNo","label":"任务单号","placeholder":"请输入"},{"key":"supplier","label":"供应商","placeholder":"请选择"},{"key":"material","label":"物资名称","placeholder":"请输入"}],"actions":[{"key":"reset","text":"重置","variant":"ghost"},{"key":"search","text":"搜索","variant":"primary"}]}},{"id":"n-status","type":"StatusBar","props":{"note":"单据状态由取样与审核推进，按钮可用性随状态变化","steps":[{"key":"created","label":"待取样"},{"key":"sampled","label":"已取样"},{"key":"reported","label":"待审核"},{"key":"approved","label":"已归档"}]}},{"id":"n-toolbar","type":"ToolBar","props":{"actions":[{"key":"export","text":"导出","variant":"primary","capability":"cap-export-report"},{"key":"approve","text":"审核","variant":"default","capability":"cap-approve"},{"key":"print","text":"打印","variant":"ghost"}],"selected":0}},{"id":"n-table","type":"DataTable","props":{"size":"xs","tableLayout":"fixed","rowKey":"batchNo","pagination":{"page":1,"pageSize":10,"total":9407,"pages":941},"columns":[{"key":"_idx","title":"序号","width":52,"type":"index"},{"key":"batchNo","title":"到货单号","width":130},{"key":"taskNo","title":"任务单号","width":136},{"key":"material","title":"物资名称","width":150},{"key":"spec","title":"规格型号","width":92},{"key":"qty","title":"数量","width":62,"type":"num","align":"right"},{"key":"supplier","title":"供应商名称","width":170},{"key":"supplierBatch","title":"供应商批次号","width":110},{"key":"stdTemplate","title":"质检标准模板","width":114},{"key":"status","title":"报告状态","width":86,"type":"tag"},{"key":"_act","title":"操作","width":94,"type":"action","actions":[{"key":"detail","text":"详情"},{"key":"approve","text":"审核","capability":"cap-approve"}]}],"data":[{"batchNo":"PA-20261028-001","taskNo":"INST20261029001","material":"匣钵","spec":"-","qty":320,"supplier":"萍乡市康明科技有限公司","supplierBatch":"-","secondCode":"-","stdTemplate":"匣钵来料检验","status":"待审核"},{"batchNo":"PA-20261027-006","taskNo":"INST20261028002","material":"迷你撮箕扫把套","spec":"-","qty":40,"supplier":"天津星辰自动化科技有限公司","supplierBatch":"-","secondCode":"-","stdTemplate":"辅材通用","status":"已审核"},{"batchNo":"PA-20261027-005","taskNo":"INST20261028001","material":"迷你撮箕扫把套","spec":"-","qty":40,"supplier":"天津星辰自动化科技有限公司","supplierBatch":"-","secondCode":"-","stdTemplate":"辅材通用","status":"待审核"},{"batchNo":"PA-20261027-002","taskNo":"INST20261027022","material":"泡沫镜","spec":"-","qty":60,"supplier":"安耐康（成都）智能装备科技有限公司","supplierBatch":"-","secondCode":"-","stdTemplate":"外观件","status":"已审核"},{"batchNo":"PA-20260928-008","taskNo":"INST20261027021","material":"加热棒","spec":"-","qty":24,"supplier":"辽阳宏图碳化物有限公司","supplierBatch":"-","secondCode":"-","stdTemplate":"电气件","status":"待取样"},{"batchNo":"PA-20260928-009","taskNo":"INST20261027020","material":"气缸","spec":"-","qty":12,"supplier":"华欧创联（天津）智能电气有限公司","supplierBatch":"-","secondCode":"-","stdTemplate":"气动件","status":"待取样"},{"batchNo":"PA-20260928-009","taskNo":"INST20261027019","material":"旋转气缸","spec":"-","qty":8,"supplier":"华欧创联（天津）智能电气有限公司","supplierBatch":"-","secondCode":"-","stdTemplate":"气动件","status":"待审核"},{"batchNo":"PA-20260928-010","taskNo":"INST20261027018","material":"气缸","spec":"-","qty":16,"supplier":"华欧创联（天津）智能电气有限公司","supplierBatch":"-","secondCode":"-","stdTemplate":"气动件","status":"已审核"},{"batchNo":"PA-20261016-003","taskNo":"INST20261027017","material":"加热棒","spec":"-","qty":30,"supplier":"辽阳宏图碳化物有限公司","supplierBatch":"-","secondCode":"-","stdTemplate":"电气件","status":"待审核"},{"batchNo":"PA-20261016-005","taskNo":"INST20261027016","material":"加热棒","spec":"-","qty":30,"supplier":"辽阳宏图碳化物有限公司","supplierBatch":"-","secondCode":"-","stdTemplate":"电气件","status":"已驳回"}]}},{"id":"n-footer","type":"Pager","props":{"total":9407,"current":1,"pageSize":10,"pages":941}}]}]},"interactions":[{"id":"ix-1","on":"n-table__act_approve","do":"submit","effect":"仅「待审核」可用；点击进入审核确认"},{"id":"ix-2","on":"n-toolbar__act_export","do":"submit","effect":"按当前筛选导出，成功提示条数"},{"id":"ix-3","on":"n-filter__act_search","do":"setState","effect":"有结果进 default，无结果进 zero-result"}],"prd":{"sections":[{"type":"goal","heading":"页面目标","body":"让质量工程师在一屏内完成「按批次找到报告 → 核对结论 → 审核 → 导出」，不需要来回跳页。这一页只承载「已出报告」的核对与审核，取样在现场 PDA 完成。"},{"type":"flow","heading":"主流程","caption":"从到货批次到报告归档","nodes":[{"id":"f1","label":"进入报告列表","kind":"start","sub":"/iqc/report"},{"id":"f2","label":"按到货单号 / 供应商查询","kind":"task"},{"id":"f3","label":"有结果？","kind":"decision"},{"id":"f4","label":"审核报告","kind":"task","sub":"cap-approve"},{"id":"f5","label":"导出报告交供应商","kind":"end"},{"id":"f6","label":"放宽条件重查","kind":"warn"}],"edges":[{"from":"f1","to":"f2"},{"from":"f2","to":"f3"},{"from":"f3","to":"f4","label":"是"},{"from":"f3","to":"f6","label":"否"},{"from":"f6","to":"f2"},{"from":"f4","to":"f5"}]},{"type":"availability","heading":"动作可用性","body":"审核：仅「待审核」可用，其余状态置灰并说明原因（取样人不得自审）。导出：待审核 / 已审核可用，待取样时报告尚未生成，置灰。打印：始终可用。","requirementIds":["REQ-002"]},{"type":"interaction","heading":"交互说明","body":"查询与翻页保留条件；行内「审核」与工具条「审核」同一入口同一能力；点行不跳页，避免误触（工业现场单手操作较多）。"},{"type":"rule","heading":"业务规则","body":"① 审核人与取样人不得为同一人；② 报告导出内容必须与当前筛选一致；③ 已驳回批次需重新发起检验，不允许直接改判。","requirementIds":["REQ-002"]},{"type":"state","heading":"页面状态","body":"默认 / 加载 / 空 / 零结果 / 异常 五态。空态引导去「发起申请」，零结果保留查询条件并给放宽建议，异常可重试。"},{"type":"acceptance","heading":"验收","body":"REQ-002 全部用例通过；9407 条数据下翻页与查询响应可接受；导出行数与列表总数一致。"}]}},{"id":"pg-iqc-sample-pda","moduleId":"m-iqc","target":"pda","route":"/m/iqc/sample","title":"取样任务","parentId":null,"layout":"pda-scan","entity":"inspection","contract":{"task":"取样员在收货现场扫码进入待取样任务，录入数量并提交，弱网可离线暂存","actor":["u-sampler"],"owns":["cap-submit-sample"],"doneWhen":"取样记录提交成功并进入待审核","entryFrom":[],"submitBoundary":"单批次取样提交"},"states":[{"id":"s-default","kind":"default","desc":"扫码前的待扫态","vars":{"batchNo":"","qty":0}},{"id":"s-loading","kind":"loading","desc":"扫码后拉取任务详情"},{"id":"s-empty","kind":"empty","desc":"该批次无待取样任务"},{"id":"s-error","kind":"error","desc":"码无效或网络不可用，转离线暂存"}],"componentTree":{"id":"n-root","type":"PdaShell","props":{"title":"取样任务","sync":"pending","syncCount":1},"children":[{"id":"n-scan","type":"ScanBar","props":{"placeholder":"扫描到货单号 / 批次码"}},{"id":"n-cards","type":"PdaCardList","props":{"cards":[{"id":"PA-20261028-001","sub":"匣钵 · 320 件","status":"待取样","tone":"warning","kv":[{"k":"供应商","v":"萍乡康明"},{"k":"到货时间","v":"10-28 14:20"}]},{"id":"PA-20260928-008","sub":"加热棒 · 24 件","status":"待取样","tone":"warning","kv":[{"k":"供应商","v":"辽阳宏图"},{"k":"到货时间","v":"09-28 09:05"}]}]}},{"id":"n-num","type":"NumpadInput","props":{"label":"取样数量","value":0,"unit":"件","max":320}},{"id":"n-submit","type":"BigAction","props":{"label":"提交取样","capability":"cap-submit-sample","sub":"提交后进入待审核，取样人不得自审"}}]},"interactions":[{"id":"ix-1","on":"n-scan__scan","do":"setState","effect":"回填批次并拉取任务，失败进 error 并转离线暂存"},{"id":"ix-2","on":"n-submit__click","do":"submit","effect":"数量必须在 1~320 之间，越界就地标红"}],"pda":{"onlineOnly":false,"offline":{"queue":true,"conflict":"server-wins","cacheTtlMinutes":480},"scan":{"fields":["batchNo"],"codeTypes":["qrcode","barcode"]},"primaryAction":"n-submit","minTouchTarget":44},"prd":{"sections":[{"type":"goal","heading":"页面目标","body":"让取样员戴着手套、单手、在货场弱网下三步内完成取样提交：扫码 → 填数量 → 提交。"},{"type":"flow","heading":"主流程","nodes":[{"id":"p1","label":"扫描批次码","kind":"start"},{"id":"p2","label":"匹配到待取样任务？","kind":"decision"},{"id":"p3","label":"录入取样数量","kind":"task"},{"id":"p4","label":"提交（可离线）","kind":"end"},{"id":"p5","label":"提示无任务 / 转离线","kind":"warn"}],"edges":[{"from":"p1","to":"p2"},{"from":"p2","to":"p3","label":"是"},{"from":"p2","to":"p5","label":"否"},{"from":"p3","to":"p4"}]},{"type":"rule","heading":"业务规则","body":"数量必须在 1 到到货数量之间；同一批次只允许一次有效提交；离线提交按 server-wins 合并，冲突时保留服务端结论并提示复核。","requirementIds":["REQ-001"]},{"type":"acceptance","heading":"验收","body":"弱网提交不丢数据；数量越界就地拦截；离线队列角标可见；扫码失败可手输。"}]}},{"id":"pg-iqc-stats","title":"来料检验统计","moduleId":"m-iqc","target":"pc","layout":"dashboard","contract":{"task":"质量经理与质量工程师查看本月来料合格率、报告及时率与供应商表现，发现异常后下钻到明细","actor":["u-qa","u-qm"],"owns":["cap-export-stats"],"doneWhen":"看到本月四项核心指标、近 8 周趋势与 TOP6 供应商排名，任一异常指标可一键下钻到明细列表","entryFrom":["pg-iqc-report"],"submitBoundary":"只读统计；所有写操作留在明细页，统计页不提供审核入口"},"states":[{"id":"s-default","kind":"default","desc":"默认态：本月 1 日至当日，四项指标 + 趋势 + 排名"},{"id":"s-loading","kind":"loading","desc":"指标卡骨架 + 图表骨架，不动布局（避免加载完成时页面跳动）"},{"id":"s-empty","kind":"empty","desc":"本月没有任何检验记录：四张指标卡显示「—」，图表区给出「发起申请」入口"},{"id":"s-error","kind":"error","desc":"统计接口失败：显示 trace id，保留上次成功结果并标注「数据截至 xx:xx」"}],"interactions":[{"id":"ix-1","on":"n-k4__click","do":"navigate","target":"pg-iqc-report","effect":"下钻：待审核超期 23 批 → 列表页并带上「超期未审」筛选，返回时保留统计页周期"},{"id":"ix-2","on":"n-export__click","do":"submit","capability":"cap-export-stats","effect":"导出本月统计为 Excel，含「指标」「趋势」「供应商排名」三个 sheet"}],"componentTree":{"id":"n-root","type":"AppShell","props":{"siderCollapsed":false,"brand":{"name":"质量管理","sub":"NILET QMS"},"search":"菜单搜索","groups":[{"title":"工作台","items":[{"key":"my-flow","label":"我的流程","count":3},{"key":"base","label":"基础数据管理"}]},{"title":"来料检验","items":[{"key":"data","label":"来料检测数据"},{"key":"notice","label":"检验通知"},{"key":"task","label":"检验任务"},{"key":"sample","label":"取样任务"},{"key":"my-task","label":"我的来料检验任务","count":5},{"key":"report","label":"来料检验报告"},{"key":"process","label":"过程检验"},{"key":"delivery","label":"发货检验"},{"key":"patrol","label":"现场巡检"},{"key":"stock","label":"库存检验"},{"key":"return","label":"成品退货检验"},{"key":"stats","label":"来料检验统计","on":true}]}],"header":{"title":"来料检验统计","crumb":["来料检验","统计"],"user":"傅高修","actions":["刷新","导出","全屏"]}},"children":[{"id":"n-page","type":"PageShell","props":{},"children":[{"id":"n-kpi","type":"SectionCard","props":{"title":"本月概况","sub":"2026-10-01 ~ 2026-10-29","extra":"截至 17:20","cols":4},"children":[{"id":"n-k1","type":"KpiCard","props":{"label":"来料批次","value":2847,"unit":"批","delta":8.2,"deltaLabel":"环比","foot":"其中待检 41 批、待审核 67 批","tone":"flat"}},{"id":"n-k2","type":"KpiCard","props":{"label":"报告及时率","value":86.4,"unit":"%","delta":12.1,"positiveIsGood":true,"deltaLabel":"环比","foot":"目标 ≥90%，尚差 3.6pt"}},{"id":"n-k3","type":"KpiCard","props":{"label":"来料不合格率","value":3.7,"unit":"%","delta":0.6,"deltaLabel":"环比","foot":"高于年度目标 3.0%，主要来自 2 家供应商"}},{"id":"n-k4","type":"KpiCard","props":{"label":"待审核超期","value":23,"unit":"批","delta":5,"deltaLabel":"环比","foot":"超 48 小时未审核，点击下钻","href":"pg-iqc-report","hrefLabel":"待审核超期明细"}}]},{"id":"n-grid","type":"Grid","props":{"cols":2,"gap":12},"children":[{"id":"n-trend","type":"SectionCard","props":{"title":"来料合格率趋势","sub":"近 8 周","extra":"口径：合格批次 ÷ 检验批次"},"children":[{"id":"n-chart","type":"Chart","props":{"kind":"line","yUnit":"%","yMin":90,"xAxis":["09-08","09-15","09-22","09-29","10-06","10-13","10-20","10-27"],"series":[{"key":"pass","name":"合格率","color":"#0A7183","data":[95.1,96.3,94.8,97.2,96.6,95.9,96.4,96.3]}],"height":200}}]},{"id":"n-supplier","type":"SectionCard","props":{"title":"供应商合格率 TOP6","sub":"按批次加权，仅统计本月 ≥3 批的供应商"},"children":[{"id":"n-supplier-list","type":"ProgressList","props":{"max":100,"items":[{"key":"s1","label":"江苏鑫材","value":99.2,"unit":"%","tone":"good","note":"42 批 / 不合格 0 批"},{"key":"s2","label":"宁波精铸","value":98.6,"unit":"%","tone":"good","note":"38 批 / 不合格 1 批"},{"key":"s3","label":"山东铝业","value":97.1,"unit":"%","tone":"good","note":"35 批 / 不合格 1 批"},{"key":"s4","label":"常州金属","value":94.3,"unit":"%","tone":"warn","note":"31 批 / 不合格 2 批"},{"key":"s5","label":"苏州铜业","value":91.8,"unit":"%","tone":"bad","note":"27 批 / 不合格 3 批 · 连续 2 月下降"},{"key":"s6","label":"河北型材","value":88.4,"unit":"%","tone":"bad","note":"24 批 / 不合格 4 批 · 建议加严检验"}]}}]}]},{"id":"n-grid2","type":"Grid","props":{"cols":2,"gap":12},"children":[{"id":"n-flow-card","type":"SectionCard","props":{"title":"单据状态分布","sub":"当前本批所处位置","extra":"切换顶部「单据状态」可看不同位置"},"children":[{"id":"n-flow","type":"StatusFlow","props":{"stateMachine":"sm-inspection","followEntity":true,"showGuard":true}}]},{"id":"n-log","type":"SectionCard","props":{"title":"最近异常","extra":"近 72 小时"},"children":[{"id":"n-timeline","type":"Timeline","props":{"items":[{"key":"t1","at":"10-29 15:42","actor":"系统","action":"标准未就绪，任务挂起","note":"RK202610290031 的物料「电解液 A」新版标准尚未发布，取样入口保持可用，审核按钮置灰","tone":"warn"},{"key":"t2","at":"10-28 09:17","actor":"王工","action":"判定不合格","note":"RK202610280012 · 苏州铜业 · 尺寸超差 0.8mm，已触发让步接收审批","tone":"bad"},{"key":"t3","at":"10-27 18:05","actor":"李取样","action":"离线补传 6 条","note":"货场无信号，回办公室后自动上传；其中 1 条与已有记录批次号重复，已作废重取","tone":"normal"}]}}]}]}]}]},"prd":{"sections":[{"type":"goal","heading":"这一页解决什么问题","body":"质量经理每天要知道两件事：**这批货能不能放**、**哪家供应商在变差**。前者在明细页解决，后者需要一个只看趋势和排名的页面。\n\n所以本页不做任何写操作——它只回答「现在正常吗」，异常的处置一律下钻到明细页。这也是列表页顶部不放指标卡的原因：指标和明细是两种查看方式，混在一页里两边都不好用。"},{"type":"flow","heading":"看数到下钻","caption":"指标 → 判定 → 下钻","nodes":[{"id":"s1","label":"进入统计页","kind":"start","sub":"/iqc/stats"},{"id":"s2","label":"看四项指标 + 趋势","kind":"task"},{"id":"s3","label":"有指标越界？","kind":"decision"},{"id":"s4","label":"下钻到明细列表","kind":"task","sub":"navigate pg-iqc-report"},{"id":"s5","label":"结束（本页只读）","kind":"end"}],"edges":[{"from":"s1","to":"s2"},{"from":"s2","to":"s3"},{"from":"s3","to":"s4","label":"越界"},{"from":"s3","to":"s5","label":"正常"},{"from":"s4","to":"s5"}]},{"type":"availability","heading":"动作可用性","body":"导出统计报表：始终可用，不受单据状态影响（`cap-export-stats` 的 `from` 为空）。\n审核、取样：**本页不出现**。统计页出现审核按钮会让「看数」和「处置」混在一起，也是批量误操作的高发点。\n下钻：只读跳转，跳转后带筛选条件，返回键回到本页并保留统计周期。","requirementIds":["REQ-002"]},{"type":"data","heading":"指标口径","body":"| 指标 | 口径 | 分母为 0 时 |\n|---|---|---|\n| 来料批次 | 本月 1 日至当日的检验任务数，按到货单去重 | 显示「—」 |\n| 报告及时率 | 24 小时内出报告的批次数 ÷ 已出报告批次数 | 显示「—」 |\n| 来料不合格率 | 判定不合格的批次数 ÷ 已判定批次数 | 显示「—」 |\n| 待审核超期 | 状态为「待审核」且滞留 >48 小时的批次数 | 显示 0（0 是有效值） |\n\n迁移数据（migrated 标记）**不参与**前三项计算，否则历史 3 200 条会把及时率拉到 11 小时口径，看板数字不能用于汇报。"},{"type":"state","heading":"状态分布怎么读","body":"状态分布图直接由 `sm-inspection` 渲染，不是另画一张图——所以状态机的任何改动（新增状态、改显示名、改迁移触发）都会立刻反映在这里，不会出现「图对不上流程」。\n\n切换顶部「单据状态」可看到同一批数据在不同位置的呈现，用于评审时演示：状态为「已归档」时，本页指标不变，但状态分布图的高亮会移动到末位。"},{"type":"note","heading":"已知限制","body":"1. 趋势图只给近 8 周，更长周期需要下钻到明细导出后自行透视；\n2. 供应商排名只统计本月 ≥3 批的供应商，1~2 批的不参与排名（样本太小，一次不合格就能把排名打到末位）；\n3. 指标为 T+0 实时算，未做预聚合；数据量到 5 万条以上时需改为每日快照。"}]},"route":"/iqc/stats"}],"capabilities":[{"id":"cap-submit-sample","name":"提交取样","actor":["u-sampler"],"entity":"inspection","from":["created"],"guard":"g-1","policy":"disabled","reason":"仅「待取样」可提交","to":"sampled","stage":"submit","target":"pda","label":"提交取样"},{"id":"cap-approve","name":"审核报告","actor":["u-qa"],"entity":"inspection","from":["reported"],"policy":"disabled","reason":"仅「待审核」可审核","to":"approved","stage":"verify","target":"pc","label":"审核"},{"id":"cap-export-report","name":"导出报告","actor":["u-qa"],"entity":"inspection","from":["reported","approved"],"policy":"disabled","reason":"报告尚未生成，仅「待审核 / 已归档」可导出","to":null,"stage":null,"target":"pc","label":"导出报告"},{"id":"cap-export-stats","label":"导出统计报表","entity":"inspection","actor":["u-qa"],"from":[],"policy":"disabled","reason":"统计导出不受单据状态限制；无数据时导出空表并提示","guard":"导出范围不得超过当前筛选的统计周期","pageIds":["pg-iqc-stats"]}],"stateMachines":[{"id":"sm-inspection","entity":"inspection","label":"检验任务生命周期","initial":"created","states":[{"key":"created","label":"待取样","tone":"default"},{"key":"sampled","label":"已取样","tone":"processing"},{"key":"reported","label":"待审核","tone":"warning"},{"key":"approved","label":"已归档","tone":"success","terminal":true}],"transitions":[{"from":"created","to":"sampled","trigger":"cap-submit-sample","actor":"u-sampler","guard":"g-1"},{"from":"sampled","to":"reported","trigger":"system-auto-report","system":true},{"from":"reported","to":"approved","trigger":"cap-approve","actor":"u-qa"}]}],"dataModel":{"entities":[{"id":"inspection","name":"Inspection","label":"检验任务","fields":[{"name":"batchNo","label":"到货单号","type":"string","pk":true,"required":true},{"name":"taskNo","label":"任务单号","type":"string","required":true},{"name":"material","label":"物资名称","type":"string","required":true},{"name":"qty","label":"到货数量","type":"number","required":true,"unit":"件"},{"name":"sampleQty","label":"取样数量","type":"number","constraint":"1 <= sampleQty <= qty"},{"name":"supplier","label":"供应商名称","type":"string"},{"name":"stdTemplateId","label":"质检标准模板","type":"ref","fk":"stdTemplate"},{"name":"status","label":"状态","type":"enum","enum":["created","sampled","reported","approved"],"required":true}]},{"id":"stdTemplate","name":"StdTemplate","label":"质检标准模板","fields":[{"name":"id","type":"string","pk":true},{"name":"name","label":"模板名称","type":"string","required":true},{"name":"version","label":"版本","type":"string","required":true}]}],"relations":[{"from":"inspection","to":"stdTemplate","kind":"N:1","on":"stdTemplateId"}],"derived":[{"name":"取样完成率","expr":"sampledCount / totalCount","fallback":"无任务时显示「—」而非 0%"},{"name":"来料合格率","expr":"passBatch / inspectedBatch","fallback":"检验批次为 0 时显示「—」，不显示 0%（0% 会被误读为全不合格）"},{"name":"报告及时率","expr":"reportWithin24h / reportedTotal","fallback":"报告尚未生成的单据不计入分母；迁移数据（migrated）不参与计算"}]},"requirements":[{"id":"REQ-001","title":"取样员提交取样记录","actor":"取样员","trigger":"扫描到货批次码并匹配到待取样任务时","rule":"取样数量必须在 1 到到货数量之间；同一批次仅允许一次有效提交；离线提交进本地队列，恢复网络后自动上传","stateMachine":"sm-inspection：created → sampled（cap-submit-sample，前置 g-1）","expectation":"系统保存取样记录并将任务状态置为「已取样」","acceptance":[{"given":"任务状态为「待取样」且网络正常","when":"取样员录入数量 32 并提交","then":"记录保存成功，状态变为「已取样」","kind":"happy"},{"given":"任务状态为「已取样」","when":"取样员再次提交","then":"按钮置灰并提示「仅待取样可提交」","kind":"illegal"},{"given":"录入数量为 0 或超过到货数量","when":"点击提交","then":"就地标红并拒绝提交","kind":"illegal"}],"priority":"P0","targets":["pda"],"pageIds":["pg-iqc-sample-pda"],"source":"stated","status":"confirmed"},{"id":"REQ-002","title":"质量工程师审核并导出报告","actor":"质量工程师","trigger":"报告状态变为「待审核」时","rule":"仅「待审核」可审核；审核人与取样人不得为同一人；导出内容必须与当前筛选一致","stateMachine":"sm-inspection：reported → approved（cap-approve）","expectation":"系统记录审核结论、审核人与时间，并允许导出 PDF","acceptance":[{"given":"报告状态为「待审核」","when":"质量工程师填写结论并审核","then":"状态变为「已归档」并记录审核人","kind":"happy"},{"given":"当前用户是该批取样人","when":"尝试审核","then":"按钮不可用并提示「取样人不得自审」","kind":"illegal"}],"priority":"P0","targets":["pc"],"pageIds":["pg-iqc-report"],"source":"stated","status":"confirmed"}],"components":[{"id":"c-1","name":"报告列表","type":"DataTable","category":"pc-data","states":["default","loading","empty","zero-result","error"],"props":{"size":"xs","tableLayout":"fixed"},"usage":"作业型列表页：全宽表格 + 行内操作"},{"id":"c-2","name":"现场扫码取样","type":"ScanBar","category":"pda","states":["default","scanning","success","fail"],"usage":"现场首选入口，手输为兜底"}],"annotations":[{"id":"an-1","pageId":"pg-iqc-report","nodeId":"n-toolbar","anchor":{"x":0.34,"y":0.5},"body":"导出和审核放一起容易误点，建议把审核挪到行内，工具条只留导出。","severity":"major","status":"open","author":"俞秀福","createdAt":"2026-10-29T16:50:00+08:00","affects":["componentTree","capability"]},{"id":"an-2","pageId":"pg-iqc-stats","nodeId":"n-k3","anchor":{"x":0.62,"y":0.42},"body":"不合格率 3.7% 只给了总数，看不出是哪两家贡献的。建议卡片下方加一行「TOP2 供应商：苏州铜业 1.2pt / 河北型材 0.9pt」，点击直接筛该供应商。","severity":"major","status":"open","author":"俞秀福","createdAt":"2026-10-29T17:22:00+08:00","affects":["componentTree","prd"]}],"openQuestions":[{"id":"q-1","question":"报告是否需要供应商在线确认环节？","priority":"P1","status":"assumed","answer":"本期不做，导出后线下发送","impact":"影响是否增加 supplier-confirmed 状态"}],"decisions":[{"id":"D-001","stage":"schema","kind":"tradeoff","decision":"单文件交付 + 模块级逻辑拆页","rationale":"离线双击可用优先；跨文件导航与标注锚定会失效","active":true},{"id":"D-002","stage":"container","kind":"tradeoff","decision":"取消缩放，1:1 渲染；导航与 PRD 以覆盖层出现","rationale":"原型要能直接交给开发；缩放会牺牲像素真实度，覆盖层保证画布永不被挤压","active":true}],"guards":[{"id":"g-1","kind":"block","statement":"发起检验前必须先编质检标准模板","sourceRef":"蓝图v2 §4.2","capabilityId":"cap-submit-sample"}],"fieldRegistry":[{"name":"到货单号","sourceRef":"列头","type":"string","pageId":"pg-iqc-report","block":"n-table","required":true,"scope":"in"},{"name":"供应商批次号","sourceRef":"列头","type":"string","pageId":"pg-iqc-report","block":"n-table","required":false,"scope":"in"},{"name":"报告状态","sourceRef":"列头","type":"enum","pageId":"pg-iqc-report","block":"n-table","required":true,"scope":"in"},{"name":"报告及时率","sourceRef":"统计口径","type":"number","pageId":"pg-iqc-stats","block":"n-k2","required":true,"scope":"out","reason":"本页是计算结果展示，不从表单采集"},{"name":"供应商合格率","sourceRef":"统计口径","type":"number","pageId":"pg-iqc-stats","block":"n-supplier-list","required":false,"scope":"out","reason":"聚合结果，来源为 inspection 明细计算"}],"slices":["s-01","s-02"],"actors":[{"id":"u-sampler","name":"取样员","dept":"仓库 / 车间","exists":true},{"id":"u-qa","name":"质量工程师","dept":"质量部","exists":true},{"id":"u-qm","name":"质量经理","dept":"质量部","exists":false,"note":"实际由质量工程师兼任（1/1 同一人），二级审批必须可关闭，否则单据全卡在一个人手上"},{"id":"u-keeper","name":"仓库保管员","dept":"仓库","exists":true,"note":"与取样员有 3 人重叠，因此「取样人≠收货人」不做，只做「审核人≠取样人」"},{"id":"u-admin","name":"IT 运维","dept":"信息部","exists":true}]};
+window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管理系统","version":"0.1.0","domain":"qms","targets":["pc","pda"],"designWidth":{"pc":1440,"pda":390},"baseResolution":"1920x1080","currentPageId":"pg-iqc-report","skin":"industrial-petrol"},"modules":[{"id":"m-iqc","code":"IQC","name":"来料检验","order":1,"owner":"质量部","icon":"inbox","pages":["pg-iqc-report","pg-iqc-sample-pda","pg-iqc-stats"]}],"pages":[{"id":"pg-iqc-report","moduleId":"m-iqc","target":"pc","route":"/iqc/report","title":"来料检验报告","parentId":null,"layout":"list","entity":"inspection","contract":{"task":"质量工程师按到货批次核对检验结论，审核后导出报告交供应商","actor":["u-qa"],"owns":["cap-approve","cap-export-report"],"doneWhen":"本批结论已审核且报告已导出","entryFrom":[],"submitBoundary":"单批报告审核"},"states":[{"id":"s-default","kind":"default","desc":"默认态：10 条/页，查询条件回填","vars":{"batchNo":"","taskNo":""}},{"id":"s-loading","kind":"loading","desc":"首屏骨架 + 表体 loading"},{"id":"s-empty","kind":"empty","desc":"系统内无任何到货批次时的引导态"},{"id":"s-zero","kind":"zero-result","desc":"有条件但查不到，提示放宽条件并保留条件","vars":{"batchNo":"PA-2026"}},{"id":"s-error","kind":"error","desc":"接口失败，可重试且不清空查询条件"}],"componentTree":{"id":"n-root","type":"AppShell","props":{"siderCollapsed":false,"brand":{"name":"质量管理","sub":"NILET QMS"},"search":"菜单搜索","groups":[{"title":"工作台","items":[{"key":"my-flow","label":"我的流程","count":3},{"key":"base","label":"基础数据管理"}]},{"title":"来料检验","items":[{"key":"data","label":"来料检测数据"},{"key":"notice","label":"检验通知"},{"key":"task","label":"检验任务"},{"key":"sample","label":"取样任务"},{"key":"my-task","label":"我的来料检验任务","count":5},{"key":"report","label":"来料检验报告","on":true},{"key":"process","label":"过程检验"},{"key":"delivery","label":"发货检验"},{"key":"patrol","label":"现场巡检"},{"key":"stock","label":"库存检验"},{"key":"return","label":"成品退货检验"}]}],"header":{"title":"来料检验报告","crumb":["来料检验","报告"],"user":"傅高修","actions":["刷新","全屏"]}},"children":[{"id":"n-page","type":"PageShell","children":[{"id":"n-tabs","type":"TabStrip","props":{"activeKey":"report","tabs":[{"key":"apply","label":"发起申请","closable":true},{"key":"data","label":"来料检测数据","closable":true},{"key":"notice","label":"检验通知","closable":true},{"key":"report","label":"来料检验报告","closable":true}]}},{"id":"n-filter","type":"FilterBar","props":{"fields":[{"key":"batchNo","label":"到货单号","placeholder":"请输入"},{"key":"taskNo","label":"任务单号","placeholder":"请输入"},{"key":"supplier","label":"供应商","placeholder":"请选择"},{"key":"material","label":"物资名称","placeholder":"请输入"}],"actions":[{"key":"reset","text":"重置","variant":"ghost"},{"key":"search","text":"搜索","variant":"primary"}]}},{"id":"n-status","type":"StatusBar","props":{"note":"单据状态由取样与审核推进，按钮可用性随状态变化","steps":[{"key":"created","label":"待取样"},{"key":"sampled","label":"已取样"},{"key":"reported","label":"待审核"},{"key":"approved","label":"已归档"}]}},{"id":"n-toolbar","type":"ToolBar","props":{"actions":[{"key":"export","text":"导出","variant":"primary","capability":"cap-export-report"},{"key":"approve","text":"审核","variant":"default","capability":"cap-approve"},{"key":"print","text":"打印","variant":"ghost"}],"selected":0}},{"id":"n-table","type":"DataTable","props":{"size":"xs","tableLayout":"fixed","rowKey":"batchNo","pagination":{"page":1,"pageSize":10,"total":9407,"pages":941},"columns":[{"key":"_idx","title":"序号","width":52,"type":"index"},{"key":"batchNo","title":"到货单号","width":130},{"key":"taskNo","title":"任务单号","width":136},{"key":"material","title":"物资名称","width":150},{"key":"spec","title":"规格型号","width":92},{"key":"qty","title":"数量","width":62,"type":"num","align":"right"},{"key":"supplier","title":"供应商名称","width":170},{"key":"supplierBatch","title":"供应商批次号","width":110},{"key":"stdTemplate","title":"质检标准模板","width":114},{"key":"status","title":"报告状态","width":86,"type":"tag"},{"key":"_act","title":"操作","width":94,"type":"action","actions":[{"key":"detail","text":"详情"},{"key":"approve","text":"审核","capability":"cap-approve"}]}],"data":[{"batchNo":"PA-20261028-001","taskNo":"INST20261029001","material":"匣钵","spec":"-","qty":320,"supplier":"萍乡市康明科技有限公司","supplierBatch":"-","secondCode":"-","stdTemplate":"匣钵来料检验","status":"待审核"},{"batchNo":"PA-20261027-006","taskNo":"INST20261028002","material":"迷你撮箕扫把套","spec":"-","qty":40,"supplier":"天津星辰自动化科技有限公司","supplierBatch":"-","secondCode":"-","stdTemplate":"辅材通用","status":"已审核"},{"batchNo":"PA-20261027-005","taskNo":"INST20261028001","material":"迷你撮箕扫把套","spec":"-","qty":40,"supplier":"天津星辰自动化科技有限公司","supplierBatch":"-","secondCode":"-","stdTemplate":"辅材通用","status":"待审核"},{"batchNo":"PA-20261027-002","taskNo":"INST20261027022","material":"泡沫镜","spec":"-","qty":60,"supplier":"安耐康（成都）智能装备科技有限公司","supplierBatch":"-","secondCode":"-","stdTemplate":"外观件","status":"已审核"},{"batchNo":"PA-20260928-008","taskNo":"INST20261027021","material":"加热棒","spec":"-","qty":24,"supplier":"辽阳宏图碳化物有限公司","supplierBatch":"-","secondCode":"-","stdTemplate":"电气件","status":"待取样"},{"batchNo":"PA-20260928-009","taskNo":"INST20261027020","material":"气缸","spec":"-","qty":12,"supplier":"华欧创联（天津）智能电气有限公司","supplierBatch":"-","secondCode":"-","stdTemplate":"气动件","status":"待取样"},{"batchNo":"PA-20260928-009","taskNo":"INST20261027019","material":"旋转气缸","spec":"-","qty":8,"supplier":"华欧创联（天津）智能电气有限公司","supplierBatch":"-","secondCode":"-","stdTemplate":"气动件","status":"待审核"},{"batchNo":"PA-20260928-010","taskNo":"INST20261027018","material":"气缸","spec":"-","qty":16,"supplier":"华欧创联（天津）智能电气有限公司","supplierBatch":"-","secondCode":"-","stdTemplate":"气动件","status":"已审核"},{"batchNo":"PA-20261016-003","taskNo":"INST20261027017","material":"加热棒","spec":"-","qty":30,"supplier":"辽阳宏图碳化物有限公司","supplierBatch":"-","secondCode":"-","stdTemplate":"电气件","status":"待审核"},{"batchNo":"PA-20261016-005","taskNo":"INST20261027016","material":"加热棒","spec":"-","qty":30,"supplier":"辽阳宏图碳化物有限公司","supplierBatch":"-","secondCode":"-","stdTemplate":"电气件","status":"已驳回"}]}},{"id":"n-footer","type":"Pager","props":{"total":9407,"current":1,"pageSize":10,"pages":941}}]}]},"interactions":[{"id":"ix-1","on":"n-table__act_approve","do":"submit","effect":"仅「待审核」可用；点击进入审核确认"},{"id":"ix-2","on":"n-toolbar__act_export","do":"submit","effect":"按当前筛选导出，成功提示条数"},{"id":"ix-3","on":"n-filter__act_search","do":"setState","effect":"有结果进 default，无结果进 zero-result"}],"prd":{"sections":[{"type":"goal","heading":"页面目标","body":"让质量工程师在一屏内完成「按批次找到报告 → 核对结论 → 审核 → 导出」，不需要来回跳页。这一页只承载「已出报告」的核对与审核，取样在现场 PDA 完成。"},{"type":"flow","heading":"主流程","caption":"从到货批次到报告归档","nodes":[{"id":"f1","label":"进入报告列表","kind":"start","sub":"/iqc/report"},{"id":"f2","label":"按到货单号 / 供应商查询","kind":"task"},{"id":"f3","label":"有结果？","kind":"decision"},{"id":"f4","label":"审核报告","kind":"task","sub":"cap-approve"},{"id":"f5","label":"导出报告交供应商","kind":"end"},{"id":"f6","label":"放宽条件重查","kind":"warn"}],"edges":[{"from":"f1","to":"f2"},{"from":"f2","to":"f3"},{"from":"f3","to":"f4","label":"是"},{"from":"f3","to":"f6","label":"否"},{"from":"f6","to":"f2"},{"from":"f4","to":"f5"}]},{"type":"availability","heading":"动作可用性","body":"审核：仅「待审核」可用，其余状态置灰并说明原因（取样人不得自审）。导出：待审核 / 已审核可用，待取样时报告尚未生成，置灰。打印：始终可用。","requirementIds":["REQ-002"]},{"type":"interaction","heading":"交互说明","body":"查询与翻页保留条件；行内「审核」与工具条「审核」同一入口同一能力；点行不跳页，避免误触（工业现场单手操作较多）。"},{"type":"rule","heading":"业务规则","body":"① 审核人与取样人不得为同一人；② 报告导出内容必须与当前筛选一致；③ 已驳回批次需重新发起检验，不允许直接改判。","requirementIds":["REQ-002"]},{"type":"state","heading":"页面状态","body":"默认 / 加载 / 空 / 零结果 / 异常 五态。空态引导去「发起申请」，零结果保留查询条件并给放宽建议，异常可重试。"},{"type":"acceptance","heading":"验收","body":"REQ-002 全部用例通过；9407 条数据下翻页与查询响应可接受；导出行数与列表总数一致。"}]}},{"id":"pg-iqc-sample-pda","moduleId":"m-iqc","target":"pda","route":"/m/iqc/sample","title":"取样任务","parentId":null,"layout":"pda-scan","entity":"inspection","contract":{"task":"取样员在收货现场扫码进入待取样任务，录入数量并提交，弱网可离线暂存","actor":["u-sampler"],"owns":["cap-submit-sample"],"doneWhen":"取样记录提交成功并进入待审核","entryFrom":[],"submitBoundary":"单批次取样提交"},"states":[{"id":"s-default","kind":"default","desc":"扫码前的待扫态","vars":{"batchNo":"","qty":0}},{"id":"s-loading","kind":"loading","desc":"扫码后拉取任务详情"},{"id":"s-empty","kind":"empty","desc":"该批次无待取样任务"},{"id":"s-error","kind":"error","desc":"码无效或网络不可用，转离线暂存"}],"componentTree":{"id":"n-root","type":"PdaShell","props":{"title":"取样任务","sync":"pending","syncCount":1},"children":[{"id":"n-scan","type":"ScanBar","props":{"placeholder":"扫描到货单号 / 批次码"}},{"id":"n-cards","type":"PdaCardList","props":{"cards":[{"id":"PA-20261028-001","sub":"匣钵 · 320 件","status":"待取样","tone":"warning","kv":[{"k":"供应商","v":"萍乡康明"},{"k":"到货时间","v":"10-28 14:20"}]},{"id":"PA-20260928-008","sub":"加热棒 · 24 件","status":"待取样","tone":"warning","kv":[{"k":"供应商","v":"辽阳宏图"},{"k":"到货时间","v":"09-28 09:05"}]}]}},{"id":"n-num","type":"NumpadInput","props":{"label":"取样数量","value":0,"unit":"件","max":320}},{"id":"n-submit","type":"BigAction","props":{"label":"提交取样","capability":"cap-submit-sample","sub":"提交后进入待审核，取样人不得自审"}}]},"interactions":[{"id":"ix-1","on":"n-scan__scan","do":"setState","effect":"回填批次并拉取任务，失败进 error 并转离线暂存"},{"id":"ix-2","on":"n-submit__click","do":"submit","effect":"数量必须在 1~320 之间，越界就地标红"}],"pda":{"onlineOnly":false,"offline":{"queue":true,"conflict":"server-wins","cacheTtlMinutes":480},"scan":{"fields":["batchNo"],"codeTypes":["qrcode","barcode"]},"primaryAction":"n-submit","minTouchTarget":44},"prd":{"sections":[{"type":"goal","heading":"页面目标","body":"让取样员戴着手套、单手、在货场弱网下三步内完成取样提交：扫码 → 填数量 → 提交。"},{"type":"flow","heading":"主流程","nodes":[{"id":"p1","label":"扫描批次码","kind":"start"},{"id":"p2","label":"匹配到待取样任务？","kind":"decision"},{"id":"p3","label":"录入取样数量","kind":"task"},{"id":"p4","label":"提交（可离线）","kind":"end"},{"id":"p5","label":"提示无任务 / 转离线","kind":"warn"}],"edges":[{"from":"p1","to":"p2"},{"from":"p2","to":"p3","label":"是"},{"from":"p2","to":"p5","label":"否"},{"from":"p3","to":"p4"}]},{"type":"rule","heading":"业务规则","body":"数量必须在 1 到到货数量之间；同一批次只允许一次有效提交；离线提交按 server-wins 合并，冲突时保留服务端结论并提示复核。","requirementIds":["REQ-001"]},{"type":"acceptance","heading":"验收","body":"弱网提交不丢数据；数量越界就地拦截；离线队列角标可见；扫码失败可手输。"}]}},{"id":"pg-iqc-stats","title":"来料检验统计","moduleId":"m-iqc","target":"pc","layout":"dashboard","contract":{"task":"质量经理与质量工程师查看本月来料合格率、报告及时率与供应商表现，发现异常后下钻到明细","actor":["u-qa","u-qm"],"owns":["cap-export-stats"],"doneWhen":"看到本月四项核心指标、近 8 周趋势与 TOP6 供应商排名，任一异常指标可一键下钻到明细列表","entryFrom":["pg-iqc-report"],"submitBoundary":"只读统计；所有写操作留在明细页，统计页不提供审核入口"},"states":[{"id":"s-default","kind":"default","desc":"默认态：本月 1 日至当日，四项指标 + 趋势 + 排名"},{"id":"s-loading","kind":"loading","desc":"指标卡骨架 + 图表骨架，不动布局（避免加载完成时页面跳动）"},{"id":"s-empty","kind":"empty","desc":"本月没有任何检验记录：四张指标卡显示「—」，图表区给出「发起申请」入口"},{"id":"s-error","kind":"error","desc":"统计接口失败：显示 trace id，保留上次成功结果并标注「数据截至 xx:xx」"}],"interactions":[{"id":"ix-1","on":"n-k4__click","do":"navigate","target":"pg-iqc-report","effect":"下钻：待审核超期 23 批 → 列表页并带上「超期未审」筛选，返回时保留统计页周期"},{"id":"ix-2","on":"n-toolbar-stats__act_export","do":"submit","capability":"cap-export-stats","effect":"导出本月统计为 Excel，含「指标」「趋势」「供应商排名」三个 sheet"}],"componentTree":{"id":"n-root","type":"AppShell","props":{"siderCollapsed":false,"brand":{"name":"质量管理","sub":"NILET QMS"},"search":"菜单搜索","groups":[{"title":"工作台","items":[{"key":"my-flow","label":"我的流程","count":3},{"key":"base","label":"基础数据管理"}]},{"title":"来料检验","items":[{"key":"data","label":"来料检测数据"},{"key":"notice","label":"检验通知"},{"key":"task","label":"检验任务"},{"key":"sample","label":"取样任务"},{"key":"my-task","label":"我的来料检验任务","count":5},{"key":"report","label":"来料检验报告"},{"key":"process","label":"过程检验"},{"key":"delivery","label":"发货检验"},{"key":"patrol","label":"现场巡检"},{"key":"stock","label":"库存检验"},{"key":"return","label":"成品退货检验"},{"key":"stats","label":"来料检验统计","on":true}]}],"header":{"title":"来料检验统计","crumb":["来料检验","统计"],"user":"傅高修","actions":["刷新","导出","全屏"]}},"children":[{"id":"n-page","type":"PageShell","props":{},"children":[{"id":"n-toolbar-stats","type":"ToolBar","props":{"actions":[{"key":"export","text":"导出统计报表","capability":"cap-export-stats"}]}},{"id":"n-kpi","type":"SectionCard","props":{"title":"本月概况","sub":"2026-10-01 ~ 2026-10-29","extra":"截至 17:20","cols":4},"children":[{"id":"n-k1","type":"KpiCard","props":{"label":"来料批次","value":2847,"unit":"批","delta":8.2,"deltaLabel":"环比","foot":"其中待检 41 批、待审核 67 批","tone":"flat"}},{"id":"n-k2","type":"KpiCard","props":{"label":"报告及时率","value":86.4,"unit":"%","delta":12.1,"positiveIsGood":true,"deltaLabel":"环比","foot":"目标 ≥90%，尚差 3.6pt"}},{"id":"n-k3","type":"KpiCard","props":{"label":"来料不合格率","value":3.7,"unit":"%","delta":0.6,"deltaLabel":"环比","foot":"高于年度目标 3.0%，主要来自 2 家供应商"}},{"id":"n-k4","type":"KpiCard","props":{"label":"待审核超期","value":23,"unit":"批","delta":5,"deltaLabel":"环比","foot":"超 48 小时未审核，点击下钻","href":"pg-iqc-report","hrefLabel":"待审核超期明细"}}]},{"id":"n-grid","type":"Grid","props":{"cols":2,"gap":12},"children":[{"id":"n-trend","type":"SectionCard","props":{"title":"来料合格率趋势","sub":"近 8 周","extra":"口径：合格批次 ÷ 检验批次"},"children":[{"id":"n-chart","type":"Chart","props":{"kind":"line","yUnit":"%","yMin":90,"xAxis":["09-08","09-15","09-22","09-29","10-06","10-13","10-20","10-27"],"series":[{"key":"pass","name":"合格率","color":"#0A7183","data":[95.1,96.3,94.8,97.2,96.6,95.9,96.4,96.3]}],"height":200}}]},{"id":"n-supplier","type":"SectionCard","props":{"title":"供应商合格率 TOP6","sub":"按批次加权，仅统计本月 ≥3 批的供应商"},"children":[{"id":"n-supplier-list","type":"ProgressList","props":{"max":100,"items":[{"key":"s1","label":"江苏鑫材","value":99.2,"unit":"%","tone":"good","note":"42 批 / 不合格 0 批"},{"key":"s2","label":"宁波精铸","value":98.6,"unit":"%","tone":"good","note":"38 批 / 不合格 1 批"},{"key":"s3","label":"山东铝业","value":97.1,"unit":"%","tone":"good","note":"35 批 / 不合格 1 批"},{"key":"s4","label":"常州金属","value":94.3,"unit":"%","tone":"warn","note":"31 批 / 不合格 2 批"},{"key":"s5","label":"苏州铜业","value":91.8,"unit":"%","tone":"bad","note":"27 批 / 不合格 3 批 · 连续 2 月下降"},{"key":"s6","label":"河北型材","value":88.4,"unit":"%","tone":"bad","note":"24 批 / 不合格 4 批 · 建议加严检验"}]}}]}]},{"id":"n-grid2","type":"Grid","props":{"cols":2,"gap":12},"children":[{"id":"n-flow-card","type":"SectionCard","props":{"title":"单据状态分布","sub":"当前本批所处位置","extra":"切换顶部「单据状态」可看不同位置"},"children":[{"id":"n-flow","type":"StatusFlow","props":{"stateMachine":"sm-inspection","followEntity":true,"showGuard":true}}]},{"id":"n-log","type":"SectionCard","props":{"title":"最近异常","extra":"近 72 小时"},"children":[{"id":"n-timeline","type":"Timeline","props":{"items":[{"key":"t1","at":"10-29 15:42","actor":"系统","action":"标准未就绪，任务挂起","note":"RK202610290031 的物料「电解液 A」新版标准尚未发布，取样入口保持可用，审核按钮置灰","tone":"warn"},{"key":"t2","at":"10-28 09:17","actor":"王工","action":"判定不合格","note":"RK202610280012 · 苏州铜业 · 尺寸超差 0.8mm，已触发让步接收审批","tone":"bad"},{"key":"t3","at":"10-27 18:05","actor":"李取样","action":"离线补传 6 条","note":"货场无信号，回办公室后自动上传；其中 1 条与已有记录批次号重复，已作废重取","tone":"normal"}]}}]}]}]}]},"prd":{"sections":[{"type":"goal","heading":"这一页解决什么问题","body":"质量经理每天要知道两件事：**这批货能不能放**、**哪家供应商在变差**。前者在明细页解决，后者需要一个只看趋势和排名的页面。\n\n所以本页不做任何写操作——它只回答「现在正常吗」，异常的处置一律下钻到明细页。这也是列表页顶部不放指标卡的原因：指标和明细是两种查看方式，混在一页里两边都不好用。"},{"type":"flow","heading":"看数到下钻","caption":"指标 → 判定 → 下钻","nodes":[{"id":"s1","label":"进入统计页","kind":"start","sub":"/iqc/stats"},{"id":"s2","label":"看四项指标 + 趋势","kind":"task"},{"id":"s3","label":"有指标越界？","kind":"decision"},{"id":"s4","label":"下钻到明细列表","kind":"task","sub":"navigate pg-iqc-report"},{"id":"s5","label":"结束（本页只读）","kind":"end"}],"edges":[{"from":"s1","to":"s2"},{"from":"s2","to":"s3"},{"from":"s3","to":"s4","label":"越界"},{"from":"s3","to":"s5","label":"正常"},{"from":"s4","to":"s5"}]},{"type":"availability","heading":"动作可用性","body":"导出统计报表：始终可用，不受单据状态影响（`cap-export-stats` 的 `from` 为空）。\n审核、取样：**本页不出现**。统计页出现审核按钮会让「看数」和「处置」混在一起，也是批量误操作的高发点。\n下钻：只读跳转，跳转后带筛选条件，返回键回到本页并保留统计周期。","requirementIds":["REQ-002"]},{"type":"data","heading":"指标口径","body":"| 指标 | 口径 | 分母为 0 时 |\n|---|---|---|\n| 来料批次 | 本月 1 日至当日的检验任务数，按到货单去重 | 显示「—」 |\n| 报告及时率 | 24 小时内出报告的批次数 ÷ 已出报告批次数 | 显示「—」 |\n| 来料不合格率 | 判定不合格的批次数 ÷ 已判定批次数 | 显示「—」 |\n| 待审核超期 | 状态为「待审核」且滞留 >48 小时的批次数 | 显示 0（0 是有效值） |\n\n迁移数据（migrated 标记）**不参与**前三项计算，否则历史 3 200 条会把及时率拉到 11 小时口径，看板数字不能用于汇报。"},{"type":"state","heading":"状态分布怎么读","body":"状态分布图直接由 `sm-inspection` 渲染，不是另画一张图——所以状态机的任何改动（新增状态、改显示名、改迁移触发）都会立刻反映在这里，不会出现「图对不上流程」。\n\n切换顶部「单据状态」可看到同一批数据在不同位置的呈现，用于评审时演示：状态为「已归档」时，本页指标不变，但状态分布图的高亮会移动到末位。"},{"type":"note","heading":"已知限制","body":"1. 趋势图只给近 8 周，更长周期需要下钻到明细导出后自行透视；\n2. 供应商排名只统计本月 ≥3 批的供应商，1~2 批的不参与排名（样本太小，一次不合格就能把排名打到末位）；\n3. 指标为 T+0 实时算，未做预聚合；数据量到 5 万条以上时需改为每日快照。"}]},"route":"/iqc/stats"}],"capabilities":[{"id":"cap-submit-sample","name":"提交取样","actor":["u-sampler"],"entity":"inspection","from":["created"],"guard":"g-1","policy":"disabled","reason":"仅「待取样」可提交","to":"sampled","stage":"submit","target":"pda","label":"提交取样","ui":{"kind":"inline","entry":"n-submit"}},{"id":"cap-approve","name":"审核报告","actor":["u-qa"],"entity":"inspection","from":["reported"],"policy":"disabled","reason":"仅「待审核」可审核","to":"approved","stage":"verify","target":"pc","label":"审核","ui":{"kind":"dialog","entry":"n-table__act_approve","title":"审核来料检验报告","width":560,"submitLabel":"审核通过","successText":"报告已归档","fields":[{"key":"opinion","label":"审核意见","type":"textarea","span":2,"hint":"结论与标准不符时写明依据条款"}]}},{"id":"cap-export-report","name":"导出报告","actor":["u-qa"],"entity":"inspection","from":["reported","approved"],"policy":"disabled","reason":"报告尚未生成，仅「待审核 / 已归档」可导出","to":null,"stage":null,"target":"pc","label":"导出报告","ui":{"kind":"inline","entry":"n-toolbar__act_export"}},{"id":"cap-export-stats","label":"导出统计报表","entity":"inspection","actor":["u-qa"],"from":[],"policy":"disabled","reason":"统计导出不受单据状态限制；无数据时导出空表并提示","guard":"导出范围不得超过当前筛选的统计周期","pageIds":["pg-iqc-stats"],"ui":{"kind":"inline","entry":"n-toolbar-stats__act_export"}}],"stateMachines":[{"id":"sm-inspection","entity":"inspection","label":"检验任务生命周期","initial":"created","states":[{"key":"created","label":"待取样","tone":"default"},{"key":"sampled","label":"已取样","tone":"processing"},{"key":"reported","label":"待审核","tone":"warning"},{"key":"approved","label":"已归档","tone":"success","terminal":true}],"transitions":[{"from":"created","to":"sampled","trigger":"cap-submit-sample","actor":"u-sampler","guard":"g-1"},{"from":"sampled","to":"reported","trigger":"system-auto-report","system":true},{"from":"reported","to":"approved","trigger":"cap-approve","actor":"u-qa"}]}],"dataModel":{"entities":[{"id":"inspection","name":"Inspection","label":"检验任务","fields":[{"name":"batchNo","label":"到货单号","type":"string","pk":true,"required":true},{"name":"taskNo","label":"任务单号","type":"string","required":true},{"name":"material","label":"物资名称","type":"string","required":true},{"name":"qty","label":"到货数量","type":"number","required":true,"unit":"件"},{"name":"sampleQty","label":"取样数量","type":"number","constraint":"1 <= sampleQty <= qty"},{"name":"supplier","label":"供应商名称","type":"string"},{"name":"stdTemplateId","label":"质检标准模板","type":"ref","fk":"stdTemplate"},{"name":"status","label":"状态","type":"enum","enum":["created","sampled","reported","approved"],"required":true}]},{"id":"stdTemplate","name":"StdTemplate","label":"质检标准模板","fields":[{"name":"id","type":"string","pk":true},{"name":"name","label":"模板名称","type":"string","required":true},{"name":"version","label":"版本","type":"string","required":true}]}],"relations":[{"from":"inspection","to":"stdTemplate","kind":"N:1","on":"stdTemplateId"}],"derived":[{"name":"取样完成率","expr":"sampledCount / totalCount","fallback":"无任务时显示「—」而非 0%"},{"name":"来料合格率","expr":"passBatch / inspectedBatch","fallback":"检验批次为 0 时显示「—」，不显示 0%（0% 会被误读为全不合格）"},{"name":"报告及时率","expr":"reportWithin24h / reportedTotal","fallback":"报告尚未生成的单据不计入分母；迁移数据（migrated）不参与计算"}]},"requirements":[{"id":"REQ-001","title":"取样员提交取样记录","actor":"取样员","trigger":"扫描到货批次码并匹配到待取样任务时","rule":"取样数量必须在 1 到到货数量之间；同一批次仅允许一次有效提交；离线提交进本地队列，恢复网络后自动上传","stateMachine":"sm-inspection：created → sampled（cap-submit-sample，前置 g-1）","expectation":"系统保存取样记录并将任务状态置为「已取样」","acceptance":[{"given":"任务状态为「待取样」且网络正常","when":"取样员录入数量 32 并提交","then":"记录保存成功，状态变为「已取样」","kind":"happy"},{"given":"任务状态为「已取样」","when":"取样员再次提交","then":"按钮置灰并提示「仅待取样可提交」","kind":"illegal"},{"given":"录入数量为 0 或超过到货数量","when":"点击提交","then":"就地标红并拒绝提交","kind":"illegal"}],"priority":"P0","targets":["pda"],"pageIds":["pg-iqc-sample-pda"],"source":"stated","status":"confirmed"},{"id":"REQ-002","title":"质量工程师审核并导出报告","actor":"质量工程师","trigger":"报告状态变为「待审核」时","rule":"仅「待审核」可审核；审核人与取样人不得为同一人；导出内容必须与当前筛选一致","stateMachine":"sm-inspection：reported → approved（cap-approve）","expectation":"系统记录审核结论、审核人与时间，并允许导出 PDF","acceptance":[{"given":"报告状态为「待审核」","when":"质量工程师填写结论并审核","then":"状态变为「已归档」并记录审核人","kind":"happy"},{"given":"当前用户是该批取样人","when":"尝试审核","then":"按钮不可用并提示「取样人不得自审」","kind":"illegal"}],"priority":"P0","targets":["pc"],"pageIds":["pg-iqc-report"],"source":"stated","status":"confirmed"}],"components":[{"id":"c-1","name":"报告列表","type":"DataTable","category":"pc-data","states":["default","loading","empty","zero-result","error"],"props":{"size":"xs","tableLayout":"fixed"},"usage":"作业型列表页：全宽表格 + 行内操作"},{"id":"c-2","name":"现场扫码取样","type":"ScanBar","category":"pda","states":["default","scanning","success","fail"],"usage":"现场首选入口，手输为兜底"}],"annotations":[{"id":"an-1","pageId":"pg-iqc-report","nodeId":"n-toolbar","anchor":{"x":0.34,"y":0.5},"body":"导出和审核放一起容易误点，建议把审核挪到行内，工具条只留导出。","severity":"major","status":"open","author":"俞秀福","createdAt":"2026-10-29T16:50:00+08:00","affects":["componentTree","capability"]},{"id":"an-2","pageId":"pg-iqc-stats","nodeId":"n-k3","anchor":{"x":0.62,"y":0.42},"body":"不合格率 3.7% 只给了总数，看不出是哪两家贡献的。建议卡片下方加一行「TOP2 供应商：苏州铜业 1.2pt / 河北型材 0.9pt」，点击直接筛该供应商。","severity":"major","status":"open","author":"俞秀福","createdAt":"2026-10-29T17:22:00+08:00","affects":["componentTree","prd"]}],"openQuestions":[{"id":"q-1","question":"报告是否需要供应商在线确认环节？","priority":"P1","status":"assumed","answer":"本期不做，导出后线下发送","impact":"影响是否增加 supplier-confirmed 状态"}],"decisions":[{"id":"D-001","stage":"schema","kind":"tradeoff","decision":"单文件交付 + 模块级逻辑拆页","rationale":"离线双击可用优先；跨文件导航与标注锚定会失效","active":true},{"id":"D-002","stage":"container","kind":"tradeoff","decision":"取消缩放，1:1 渲染；导航与 PRD 以覆盖层出现","rationale":"原型要能直接交给开发；缩放会牺牲像素真实度，覆盖层保证画布永不被挤压","active":true}],"guards":[{"id":"g-1","kind":"block","statement":"发起检验前必须先编质检标准模板","sourceRef":"蓝图v2 §4.2","capabilityId":"cap-submit-sample"}],"fieldRegistry":[{"name":"到货单号","sourceRef":"列头","type":"string","pageId":"pg-iqc-report","block":"n-table","required":true,"scope":"in"},{"name":"供应商批次号","sourceRef":"列头","type":"string","pageId":"pg-iqc-report","block":"n-table","required":false,"scope":"in"},{"name":"报告状态","sourceRef":"列头","type":"enum","pageId":"pg-iqc-report","block":"n-table","required":true,"scope":"in"},{"name":"报告及时率","sourceRef":"统计口径","type":"number","pageId":"pg-iqc-stats","block":"n-k2","required":true,"scope":"out","reason":"本页是计算结果展示，不从表单采集"},{"name":"供应商合格率","sourceRef":"统计口径","type":"number","pageId":"pg-iqc-stats","block":"n-supplier-list","required":false,"scope":"out","reason":"聚合结果，来源为 inspection 明细计算"}],"slices":["s-01","s-02"],"actors":[{"id":"u-sampler","name":"取样员","dept":"仓库 / 车间","exists":true},{"id":"u-qa","name":"质量工程师","dept":"质量部","exists":true},{"id":"u-qm","name":"质量经理","dept":"质量部","exists":false,"note":"实际由质量工程师兼任（1/1 同一人），二级审批必须可关闭，否则单据全卡在一个人手上"},{"id":"u-keeper","name":"仓库保管员","dept":"仓库","exists":true,"note":"与取样员有 3 人重叠，因此「取样人≠收货人」不做，只做「审核人≠取样人」"},{"id":"u-admin","name":"IT 运维","dept":"信息部","exists":true}]};
 </script>
 <script>/**
 * vue v3.4.38
@@ -1285,18 +1441,30 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
 (function () {
   var h = Vue.h;
 
-  function can(capId) {
+  function can(capId, rowState) {
     if (!capId) return { ok: true };
-    return window.RD.can(capId);
+    return window.RD.can(capId, rowState);
   }
 
   function statusTone(text) {
     var t = String(text || '');
-    if (/已审核|已归档|合格|通过/.test(t)) return 'tag-success';
-    if (/待审核|待取样|待处理|超期/.test(t)) return 'tag-warning';
-    if (/驳回|不合格|异常|失败/.test(t)) return 'tag-danger';
-    if (/已取样|进行中|处理中/.test(t)) return 'tag-info';
+    // 顺序有讲究：先判否定与超期，再判待办，最后判完成，否则「不合格」会被「合格」吃掉
+    if (/驳回|不合格|失败|异常|超期未关|已超期/.test(t)) return 'tag-danger';
+    if (/合格|通过|完成|关闭|已归档|已审核|已确认|已发布/.test(t)) return 'tag-success';
+    if (/待审核|待取样|待处理|待验证|待审批|待确认|待发布|临期|超期|预警/.test(t)) return 'tag-warning';
+    if (/已取样|进行中|处理中|执行中|已下发/.test(t)) return 'tag-info';
     return '';
+  }
+
+  function navTarget(it) {
+    // 目录是"能不能走到某一页"的承诺，不能只当装饰。
+    if (!it) return null;
+    if (it.page) return it.page;
+    var ps = (window.RD && window.RD.data && window.RD.data.pages) || [];
+    var hit = ps.filter(function (p) {
+      return p.layout !== 'detail' && (p.title === it.label || p.navLabel === it.label);
+    })[0];
+    return hit ? hit.id : null;
   }
 
   var AppShell = {
@@ -1326,10 +1494,18 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
             return h('div', { class: 'nav-group', key: g.title }, [
               collapsed ? null : h('div', { class: 'nav-group-title' }, g.title),
               (g.items || []).map(function (it) {
+                // 导航项要能点：优先用 item.page 显式绑定，否则按标签去匹配页面标题。
+                // 匹配不上的是"本原型没做的模块"，点了给一句原因，不让它变成死菜单。
+                var pg = navTarget(it);
+                var on = pg ? (window.RD && window.RD.state.pageId === pg) : !!it.on;
                 return h('div', {
                   key: it.key,
-                  class: ['nav-item', it.on ? 'is-on' : ''],
-                  title: collapsed ? it.label : null
+                  class: ['nav-item', on ? 'is-on' : '', pg ? 'is-link' : 'is-void'],
+                  title: collapsed ? it.label : (pg ? null : '本原型未覆盖此模块'),
+                  onClick: function () {
+                    if (pg) { window.RD.goto(pg, it.label); }
+                    else { window.RD.toast('「' + it.label + '」不在本原型范围，本次只交付已建模的模块'); }
+                  }
                 }, [
                   collapsed ? h('span', { style: { fontSize: '11px', opacity: '0.7' } }, (it.label || '').slice(0, 1)) : null,
                   collapsed ? null : h('span', null, it.label),
@@ -1373,7 +1549,10 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
     props: { p: { type: Object, default: function () { return {}; } } },
     setup: function (props, ctx) {
       return function () {
-        return h('div', { class: 'page' }, ctx.slots.default ? ctx.slots.default() : []);
+        var p = props.p || {};
+        var scrolling = p.layout === 'detail' || p.layout === 'form';
+        return h('div', { class: 'page' + (scrolling ? ' is-scroll' : '') },
+          ctx.slots.default ? ctx.slots.default() : []);
       };
     }
   };
@@ -1468,28 +1647,30 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
       return function () {
         var p = props.p || {};
         var actions = (p.actions || []).map(function (a) {
-          var c = can(a.capability);
-          var dis = a.capability && !c.ok;
+          // 批量动作先看"有没有勾选"，再看状态：没选就说没选，别拿单据状态糊弄
+          var none = a.needSelection && !(p.selected > 0);
+          var c = none ? { ok: false, reason: a.reasonIfNone || '先勾选要处理的记录' } : can(a.capability);
+          var dis = (a.capability || a.needSelection) && !c.ok;
           return h('button', {
             key: a.key,
             class: ['btn', a.variant === 'primary' ? 'btn-primary' : (a.variant === 'ghost' ? 'btn-ghost' : ''), dis ? 'is-disabled' : ''],
             title: dis ? c.reason : null,
             onClick: function () {
               if (dis) { window.RD.toast(c.reason); return; }
-              window.RD.action(a.key, a.text);
+              window.RD.action(a.key, a.text, null, a.capability);
             }
           }, [
             a.text,
             dis ? h('span', { class: 'hint-dot', title: c.reason }, '!') : null
           ]);
         });
-        return h('div', { class: 'toolbar' }, actions.concat([
-          h('div', { class: 'toolbar-right' }, [
-            h('span', { class: 'sel-info' }, ['已选 ', h('b', null, String(p.selected || 0)), ' 项']),
-            h('span', { style: { color: 'var(--line)' } }, '|'),
-            h('span', { class: 'link-more' }, '列设置')
-          ])
-        ]));
+        // 「已选 N 项 / 列设置」是表格专用尾巴，表单页的工具栏不该带出去
+        var tableChrome = p.selected != null ? h('div', { class: 'toolbar-right' }, [
+          h('span', { class: 'sel-info' }, ['已选 ', h('b', null, String(p.selected || 0)), ' 项']),
+          h('span', { style: { color: 'var(--line)' } }, '|'),
+          h('span', { class: 'link-more' }, '列设置')
+        ]) : null;
+        return h('div', { class: 'toolbar' + (tableChrome ? '' : ' is-plain') }, actions.concat(tableChrome ? [tableChrome] : []));
       };
     }
   };
@@ -1503,7 +1684,9 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
     }
     if (col.type === 'action') {
       var links = (col.actions || []).map(function (a) {
-        var c = can(a.capability);
+        // 行级动作看本行状态；表级动作（col.stateKey 为空的补「详情」这类无 capability）不看状态
+        var rowState = col.scope === 'row' ? row[col.stateKey || 'status'] : null;
+        var c = can(a.capability, rowState);
         var dis = a.capability && !c.ok;
         return h('a', {
           key: a.key,
@@ -1511,7 +1694,7 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
           title: dis ? c.reason : null,
           onClick: function () {
             if (dis) { window.RD.toast(c.reason); return; }
-            window.RD.action(a.key, a.text, row);
+            window.RD.action(a.key, a.text, row, a.capability);
           }
         }, a.text);
       });
@@ -1553,6 +1736,9 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
         var minW = cols.reduce(function (s, c) { return s + (c.width || 120); }, 0);
         var ps = window.RD.pageState();
         var rows = p.data || [];
+        // 四态文案由页面在 props 里给（empty / zero / error），组件不写死任何业务名词，
+        // 否则换个模块复用时页面会冒出上一个模块的空态文案
+        var sc = function (k, d) { return (p[k] || d); };
 
         var head = h('div', { class: 'dt-head', style: { gridTemplateColumns: tpl } },
           cols.map(function (c) {
@@ -1570,29 +1756,29 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
               }));
           }));
         } else if (ps === 'empty') {
-          body = h(StateBlock, {
+          body = h(StateBlock, sc('empty', {
             kind: 'empty',
-            title: '还没有来料检验报告',
-            desc: '当前系统内没有任何到货批次。先发起检验申请，取样完成后报告会自动出现在这里。',
-            hint: '数据来源：QMS 来料检验 · 与 PDA 取样任务同源',
-            actions: [{ key: 'create', text: '发起申请' }]
-          });
+            title: '暂无数据',
+            desc: '当前没有任何记录。先新建一条，保存后会出现在这里。',
+            hint: '数据来源：本模块主数据',
+            actions: [{ key: 'create', text: '新建' }]
+          }));
         } else if (ps === 'zero-result') {
-          body = h(StateBlock, {
+          body = h(StateBlock, sc('zero', {
             kind: 'zero-result',
-            title: '没有符合条件的报告',
-            desc: '已按「到货单号 / 任务单号 / 供应商 / 物资名称」筛选，共 0 条。试试放宽时间范围，或只保留一个条件。',
+            title: '没有符合条件的记录',
+            desc: '已按当前生效的筛选条件查询，共 0 条。试试放宽时间范围，或只保留一个条件。',
             hint: '查询条件已保留，不会因为切换状态丢失',
             actions: [{ key: 'clear', text: '清空条件' }]
-          });
+          }));
         } else if (ps === 'error') {
-          body = h(StateBlock, {
+          body = h(StateBlock, sc('error', {
             kind: 'error',
-            title: '报告列表加载失败',
-            desc: '接口返回 500（trace: iqc-report-7f3a）。已保留查询条件，重试不会重新填一遍。',
-            hint: '若持续失败，请联系质量系统管理员',
+            title: '列表加载失败',
+            desc: '接口返回 500。已保留查询条件，重试不会重新填一遍。',
+            hint: '若持续失败，请联系系统管理员',
             actions: [{ key: 'retry', text: '重新加载' }, { key: 'offline', text: '导出上次结果' }]
-          });
+          }));
         } else {
           body = h('div', null, rows.map(function (row, i) {
             return h('div', {
@@ -1624,21 +1810,28 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
     setup: function (props) {
       return function () {
         var p = props.p || {};
-        var pages = p.pages || 1;
-        var cur = p.current || 1;
-        var nums = [1, 2, 3, 4, 5];
+        // 空态/零结果/异常时数据是空的，分页不能还挂着 186 条
+        var ps = window.RD.pageState ? window.RD.pageState() : 'default';
+        var barren = ps === 'empty' || ps === 'zero-result' || ps === 'error';
+        var pages = barren ? 1 : Math.max(1, p.pages || 1);
+        var cur = barren ? 1 : Math.min(Math.max(1, p.current || 1), pages);
+        // 页码按总页数收敛：1 页就别摆出 2~5，摆出来就是假数据
+        var nums = [];
+        var start = Math.max(1, Math.min(cur - 2, pages - 4));
+        var end = Math.min(pages, start + 4);
+        for (var n = start; n <= end; n++) nums.push(n);
         var kids = [
           h('span', { class: 'num' }, cur + '/' + pages),
           h('span', { style: { color: 'var(--line)' } }, '|'),
-          h('span', null, ['共 ', h('b', { class: 'num', style: { fontWeight: 500, color: 'var(--text-1)' } }, String(p.total || 0)), ' 项']),
-          h('span', null, ['每页显示 ', h('select', { class: 'page-size' }, [10, 20, 50].map(function (n) {
-            return h('option', { key: n, value: n, selected: n === p.pageSize }, String(n));
+          h('span', null, ['共 ', h('b', { class: 'num', style: { fontWeight: 500, color: 'var(--text-1)' } }, String(barren ? 0 : (p.total || 0))), ' 项']),
+          h('span', null, ['每页显示 ', h('select', { class: 'page-size' }, [10, 20, 50].map(function (n2) {
+            return h('option', { key: n2, value: n2, selected: n2 === p.pageSize }, String(n2));
           }))]),
           h('div', { class: 'pager' }, [
             h('button', { class: 'pg', onClick: function () { window.RD.toast('上一页'); } }, '‹'),
-            nums.map(function (n) { return h('button', { key: n, class: ['pg', n === cur ? 'is-on' : ''], onClick: function () { window.RD.toast('第 ' + n + ' 页'); } }, String(n)); }),
-            h('span', { class: 'pg is-dots' }, '…'),
-            h('button', { class: 'pg', onClick: function () { window.RD.toast('末页'); } }, String(pages)),
+            nums.map(function (n2) { return h('button', { key: n2, class: ['pg', n2 === cur ? 'is-on' : ''], onClick: function () { window.RD.toast('第 ' + n2 + ' 页'); } }, String(n2)); }),
+            end < pages ? h('span', { class: 'pg is-dots' }, '…') : null,
+            end < pages ? h('button', { class: 'pg', onClick: function () { window.RD.toast('末页'); } }, String(pages)) : null,
             h('button', { class: 'pg', onClick: function () { window.RD.toast('下一页'); } }, '›'),
             h('span', { class: 'pg-jump' }, ['跳转至', h('input', { class: 'num' }), '页'])
           ])
@@ -1655,10 +1848,27 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
     setup: function (props, ctx) {
       return function () {
         var p = props.p || {};
-        var head = (p.title || p.extra || p.sub) ? h('header', { class: 'sec-head' }, [
+        // 区块级动作：排查、原因、措施各自有保存按钮，不能全塞进页面工具条
+        var acts = (p.actions || []).map(function (a) {
+          // blocked：业务前置没满足（比如还有措施没判定）。它不是权限问题，理由要写在按钮上
+          var c = a.blocked ? { ok: false, reason: a.blocked } : can(a.capability);
+          var dis = (a.capability || a.blocked) && !c.ok;
+          return h('button', {
+            key: a.key,
+            class: ['btn', 'btn-sm', a.variant === 'primary' ? 'btn-primary' : (a.variant === 'ghost' ? 'btn-ghost' : ''), dis ? 'is-disabled' : ''],
+            title: dis ? c.reason : null,
+            onClick: function () {
+              if (dis) { window.RD.toast(c.reason); return; }
+              window.RD.action(a.key, a.text, null, a.capability);
+            }
+          }, a.text);
+        });
+        var head = (p.title || p.extra || p.sub || acts.length) ? h('header', { class: 'sec-head' }, [
           h('h3', { class: 'sec-title' }, p.title || ''),
           p.sub ? h('span', { class: 'sec-sub' }, p.sub) : null,
-          p.extra ? h('span', { class: 'sec-extra' }, p.extra) : null
+          // 顺序：标题 → 副标题 → 右侧信息 → 按钮。信息在按钮左边，按钮永远贴最右
+          p.extra ? h('span', { class: 'sec-extra' }, p.extra) : null,
+          acts.length ? h('div', { class: 'sec-actions', style: { marginLeft: p.extra ? '0' : 'auto' } }, acts) : null
         ]) : null;
         var bodyStyle = p.cols ? { display: 'grid', gridTemplateColumns: 'repeat(' + p.cols + ', minmax(0,1fr))', gap: (p.gap || 12) + 'px' } : null;
         return h('section', { class: 'sec-card' }, [
@@ -2138,11 +2348,71 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
             class: ['big-btn', dis ? 'is-disabled' : ''],
             onClick: function () {
               if (dis) { window.RD.toast(c.reason); return; }
-              window.RD.action('submit', p.label);
+              window.RD.action('submit', p.label, null, p.capability);
             }
           }, p.label || '提交'),
           p.sub ? h('div', { class: 'big-btn-sub' }, dis ? c.reason : p.sub) : null
         ]);
+      };
+    }
+  };
+
+  // 表单栅格：建单、执行填报、审批意见都要它。只吃 props，不校验不提交（校验规则在 guards 里）
+  var FormGrid = {
+    name: 'FormGrid',
+    props: { p: { type: Object, default: function () { return {}; } } },
+    setup: function (props) {
+      return function () {
+        var p = props.p || {};
+        var items = p.items || [];
+        var cols = p.cols || 2;
+        if (!items.length) return h('div', { class: 'chart-empty' }, '暂无字段');
+        var readonly = !!p.readonly || window.RD.pageState() === 'readonly';
+        return h('div', {
+          class: ['form-grid', readonly ? 'is-readonly' : ''],
+          style: { gridTemplateColumns: 'repeat(' + cols + ', minmax(0,1fr))' }
+        }, items.map(function (it, i) {
+          var ctrl;
+          var val = it.value == null ? '' : String(it.value);
+          if (readonly || it.readonly) {
+            ctrl = h('div', { class: ['form-ro', it.tone ? 'is-' + it.tone : ''] }, val || '—');
+          } else if (it.type === 'select') {
+            ctrl = h('select', { class: 'input' }, (it.options || []).map(function (o) {
+              return h('option', { key: o, value: o, selected: o === it.value }, o);
+            }));
+          } else if (it.type === 'upload') {
+            ctrl = h('div', { class: 'upload-box' }, [
+              h('span', { class: 'upload-plus' }, '＋'),
+              h('span', null, it.value || '上传附件（单张 ≤20MB）')
+            ]);
+          } else if (it.type === 'textarea') {
+            ctrl = h('textarea', {
+              class: 'input is-area',
+              rows: it.rows || 3,
+              placeholder: it.placeholder || '请输入'
+            }, val);
+          } else {
+            ctrl = h('input', {
+              class: 'input',
+              placeholder: it.placeholder || '请输入',
+              value: val,
+              type: it.type === 'number' ? 'number' : null
+            });
+          }
+          return h('div', {
+            class: ['form-item', it.type === 'textarea' || it.span ? 'is-wide' : ''],
+            key: it.key || i,
+            style: it.span ? { gridColumn: 'span ' + it.span } : null
+          }, [
+            h('label', { class: 'form-label' }, [
+              it.label,
+              it.required ? h('i', { class: 'form-req' }, '*') : null,
+              it.unit ? h('span', { class: 'form-unit' }, '（' + it.unit + '）') : null
+            ]),
+            ctrl,
+            it.hint ? h('div', { class: 'form-hint' }, it.hint) : null
+          ]);
+        }));
       };
     }
   };
@@ -2185,6 +2455,7 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
     DescList: DescList,
     Timeline: Timeline,
     StatusFlow: StatusFlow,
+    FormGrid: FormGrid,
     PdaShell: PdaShell,
     SyncBadge: SyncBadge,
     ScanBar: ScanBar,
@@ -2207,7 +2478,9 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
   var computed = Vue.computed;
   var nextTick = Vue.nextTick || function (fn) { setTimeout(fn, 0); };
 
-  var DATA = window.__PROTO__;
+  // 数据必须是响应式的：行级命令（措施开始/完成、逐条排查）改的是某一行，
+  // 如果 DATA 是普通对象，Vue 追不到，就会出现"提交成功了但列表还是旧状态"。
+  var DATA = reactive ? reactive(window.__PROTO__) : window.__PROTO__;
   var KEY = 'iiot:' + DATA.meta.product + ':' + DATA.meta.version;
   var saved = {};
   try { saved = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { saved = {}; }
@@ -2217,14 +2490,44 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
   var smByEntity = {};
   (DATA.stateMachines || []).forEach(function (s) { smByEntity[s.entity] = s; });
 
+  // 角色与状态在界面上一律显示中文名；内部 id 只活在契约里
+  var actorNameMap = {};
+  (DATA.actors || []).forEach(function (a) { actorNameMap[a.id] = a.name || a.id; });
+  var stateNameMap = {};
+  (DATA.stateMachines || []).forEach(function (sm) {
+    (sm.states || []).forEach(function (st) { stateNameMap[st.key] = st.label || st.key; });
+  });
+  function actorName(id) { return actorNameMap[id] || id; }
+  function stateNames(list) {
+    return (list || []).map(function (k) { return stateNameMap[k] || k; }).join('、');
+  }
+
   var hashPage = (location.hash.match(/page=([A-Za-z0-9_-]+)/) || [])[1];
   var hashStatus = (location.hash.match(/status=([A-Za-z0-9_-]+)/) || [])[1];
-  function defaultStatus(pg) { return pg && pg.target === 'pda' ? 'created' : 'reported'; }
+  // 打开页面时落在「这一页有动作可做」的状态上，而不是状态机的 initial：
+  // 否则评审第一眼看到的是一屏灰按钮，还得先去顶栏找状态切换。
+  // 判定顺序 = contract.owns 的命令顺序 × 每个命令的 from 顺序，第一个命中状态机 states 的即为默认态。
+  function defaultStatus(pg) {
+    var sm = pg && smByEntity[pg.entity];
+    if (!sm) return 'new';
+    var keys = (sm.states || []).map(function (s) { return s.key; });
+    var owns = (pg.contract || {}).owns || [];
+    for (var i = 0; i < owns.length; i++) {
+      var cap = capsById[owns[i]];
+      var from = (cap && cap.from) || [];
+      for (var j = 0; j < from.length; j++) {
+        if (keys.indexOf(from[j]) >= 0) return from[j];
+      }
+    }
+    return sm.initial || keys[0] || 'new';
+  }
   var initialPageId = hashPage || saved.pageId || DATA.meta.currentPageId || DATA.pages[0].id;
   var initialPage = DATA.pages.filter(function (x) { return x.id === initialPageId; })[0] || DATA.pages[0];
+  // 评审经常要"直接看空态/异常态"：允许用 #page=x&state=empty 直达，省得每次点顶栏
+  var hashState = (location.hash.match(/state=([A-Za-z0-9_-]+)/) || [])[1];
   var store = reactive({
     pageId: initialPageId,
-    pageState: 'default',
+    pageState: hashState || 'default',
     entityStatus: hashStatus || saved.entityStatus || defaultStatus(initialPage),
     filters: {},
     pdaQty: 0,
@@ -2240,6 +2543,7 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
     prdEdits: saved.prdEdits || {},
     pins: [],
     popover: null,
+    layer: null,
     toastMsg: ''
   });
 
@@ -2268,44 +2572,167 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
     toastTimer = setTimeout(function () { store.toastMsg = ''; }, 2200);
   }
 
+  /* ---------------- 命令承载层（dialog / drawer） ----------------
+   * 推进型动作不写在页面里，写在契约的 capabilities[].ui 上：
+   * 入口节点 + 承载形式 + 字段清单。这里只负责按契约把层打开、校验、提交、关闭。
+   */
+  function openLayer(capId, row, kindOverride) {
+    var cap = capsById[capId];
+    if (!cap) { toast('命令不存在：' + capId); return; }
+    var ui = cap.ui || {};
+    var values = {};
+    (ui.fields || []).forEach(function (f) {
+      values[f.key] = f.value != null ? f.value : (f.type === 'select' && (f.options || []).length ? f.options[0] : '');
+    });
+    store.layer = {
+      capId: capId,
+      row: row || null,
+      kind: kindOverride || ui.kind || 'dialog',
+      title: ui.title || cap.name || capId,
+      width: ui.width || (kindOverride === 'drawer' ? 520 : 560),
+      fields: ui.fields || [],
+      submitLabel: ui.submitLabel || cap.name || '提交',
+      successText: ui.successText || '',
+      values: values,
+      errors: {}
+    };
+  }
+
+  function closeLayer() { store.layer = null; }
+
+  function submitLayer() {
+    var L = store.layer;
+    if (!L) return;
+    var cap = capsById[L.capId] || {};
+    var missing = [];
+    L.errors = {};
+    L.fields.forEach(function (f) {
+      if (f.required && !String(L.values[f.key] == null ? '' : L.values[f.key]).trim()) {
+        L.errors[f.key] = '必填：' + f.label;
+        missing.push(f.label);
+      }
+    });
+    if (missing.length) { toast('还有必填项没填：' + missing.join('、')); return; }
+
+    var toLabel = '';
+    if (cap.to) {
+      var sm = smByEntity[cap.entity] || { states: [] };
+      var to = (sm.states || []).filter(function (x) { return x.key === cap.to; })[0];
+      toLabel = to ? to.label : cap.to;
+      // 行级命令（措施单验证）只推进这一行，不动主单状态：它们是两张单据
+      if (L.row) { L.row.status = toLabel; } else { store.entityStatus = cap.to; }
+      persist();
+    }
+
+    var msg = L.successText || ((cap.name || '') + '已完成');
+    if (toLabel) msg += (L.row ? '（本条措施 → ' : '（单据 → ') + toLabel + '）';
+    store.layer = null;
+    toast(msg);
+    // 提交后若本页已无该状态可做的事，退回默认态，避免留在空白页
+    if (store.pageState !== 'default') store.pageState = 'default';
+    setTimeout(refreshPins, 0);
+  }
+
+  /* ---------------- 交互引擎 ----------------
+   * pages[].interactions 是契约里的交互真源。以前只有 schema 和校验器认它，
+   * 引擎从不读，于是"能点"只存在于文档里。这里把它接上。
+   */
+  function interactionsOf(pageId) {
+    var p = (DATA.pages || []).filter(function (x) { return x.id === pageId; })[0] || {};
+    return p.interactions || [];
+  }
+
+  function runInteraction(ix, row) {
+    if (!ix) return;
+    var doIt = ix.do;
+    if (doIt === 'navigate') { window.RD.goto(ix.target); return; }
+    if (doIt === 'openModal' || doIt === 'openDrawer') {
+      openLayer(ix.target, row, doIt === 'openDrawer' ? 'drawer' : 'dialog');
+      return;
+    }
+    if (doIt === 'setState') {
+      var st = (ix.params || {}).status;
+      if (st) { store.entityStatus = st; persist(); toast('单据状态已置为「' + ((smByEntity[page.value.entity] || {}).states || []).filter(function (x) { return x.key === st; }).map(function (x) { return x.label; })[0] + '」'); }
+      return;
+    }
+    if (doIt === 'reset') { store.filters = {}; store.pageState = 'default'; toast('已重置'); return; }
+    if (doIt === 'submit') {
+      var cap = capsById[ix.target];
+      if (cap && cap.ui && cap.ui.kind !== 'inline') { openLayer(ix.target, row); return; }
+      window.RD.action(ix.target, ix.effect, row, ix.target);
+      return;
+    }
+    if (doIt === 'toast') { toast((ix.params || {}).text || ix.effect || ''); return; }
+  }
+
   window.RD = {
     state: store,
     data: DATA,
-    can: function (capId) {
+    can: function (capId, rowState) {
       var cap = capsById[capId];
       if (!cap) return { ok: true };
-      if ((cap.from || []).length && (cap.from || []).indexOf(store.entityStatus) < 0) {
+      // 行级按钮（措施单/验证行）按自身状态判定，不跟随主单状态
+      var curKey = store.entityStatus;
+      var curLabel = null;
+      if (rowState) {
+        var smRow = smByEntity[cap.entity] || { states: [] };
+        var hit = (smRow.states || []).filter(function (x) {
+          return x.label === rowState || x.key === rowState;
+        })[0];
+        curKey = hit ? hit.key : rowState;
+        curLabel = hit ? hit.label : rowState;
+      }
+      if ((cap.from || []).length && (cap.from || []).indexOf(curKey) < 0) {
         var sm = smByEntity[cap.entity] || { states: [] };
-        var cur = (sm.states || []).filter(function (x) { return x.key === store.entityStatus; })[0];
-        var label = cur ? cur.label : store.entityStatus;
-        return { ok: false, reason: (cap.reason || '当前状态不可用') + '（当前为「' + label + '」）' };
+        var cur = curLabel || ((sm.states || []).filter(function (x) { return x.key === curKey; })[0] || {}).label || curKey;
+        return { ok: false, reason: (cap.reason || '当前状态不可用') + '（当前为「' + cur + '」）' };
       }
       return { ok: true };
     },
     entityStatus: function () { return store.entityStatus; },
     pageState: function () { return store.pageState; },
     toast: toast,
-    action: function (key, text, row) {
-      if (key === 'approve') {
-        store.entityStatus = 'approved';
+    // 点按钮 = 走一次命令。命令里写了 to 就真的迁移状态（原型因此能跑通整条状态机），
+    // 没写 to 的是查询/导出类动作，只提示不迁移。
+    // 命令声明了 ui 承载的，先按契约开层；填完在层里提交，而不是点一下就跳过填报。
+    action: function (key, text, row, capId) {
+      var cap = capId ? capsById[capId] : null;
+      if (cap && cap.ui) {
+        var kind = cap.ui.kind;
+        if (kind === 'dialog' || kind === 'drawer') { openLayer(capId, row || null, kind); return; }
+        if (kind === 'page') { window.RD.goto(cap.ui.pageId || cap.target, cap.ui.title); return; }
+      }
+      if (cap && cap.to) {
+        var sm = smByEntity[cap.entity] || { states: [] };
+        var to = (sm.states || []).filter(function (x) { return x.key === cap.to; })[0];
+        var toLabel = to ? to.label : cap.to;
+        // 行级命令只推进该行，不动主单状态（措施单与事故报告是两张单据）
+        if (row) {
+          var from = row.status;
+          row.status = toLabel;
+          toast('「' + (row.content || row.accNo || '本行') + '」' + from + ' → ' + toLabel + '（本条措施已推进，主单状态不变）');
+          return;
+        }
+        store.entityStatus = cap.to;
         persist();
-        toast('「' + (row ? row.batchNo : '本批') + '」已审核，状态置为已归档');
+        toast((cap.label || text || key) + '已完成，单据状态置为「' + toLabel + '」');
         return;
       }
-      if (key === 'export') { toast('已按当前筛选导出 ' + (store.pageState === 'zero-result' ? 0 : 10) + ' 条'); return; }
-      if (key === 'submit') {
-        if (store.pdaQty <= 0) { toast('请先填写取样数量'); return; }
-        store.entityStatus = 'sampled';
-        persist();
-        toast('取样已提交：' + store.pdaQty + ' 件 · 已进入待审核');
+      if (key === 'export') {
+        toast('已按当前筛选导出 ' + (store.pageState === 'zero-result' ? 0 : 10) + ' 条，导出人与时间已留痕');
         return;
       }
-      toast((text || key) + (row ? '：' + row.batchNo : '') + '（原型演示）');
+      if (key === 'create') { toast('新建：已打开建单页（原型演示）'); return; }
+      toast((text || key) + (row ? '（' + (row.accNo || row.id || '') + '）' : '') + ' · 原型演示，未接后端');
     },
     search: function (key) {
       if (key !== 'search') { store.filters = {}; store.pageState = 'default'; toast('已重置查询条件'); return; }
-      store.pageState = store.filters.batchNo || store.filters.taskNo || store.filters.supplier ? 'zero-result' : 'default';
-      toast(store.pageState === 'zero-result' ? '查询完成：0 条' : '查询完成：9407 条');
+      var any = false;
+      for (var k in store.filters) {
+        if (String(store.filters[k] == null ? '' : store.filters[k]).trim()) { any = true; break; }
+      }
+      store.pageState = any ? 'zero-result' : 'default';
+      toast(any ? '查询完成：0 条（条件已保留）' : '查询完成');
     },
     stateAction: function (key) {
       if (key === 'retry') {
@@ -2317,7 +2744,16 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
       if (key === 'create') { toast('跳转「发起申请」（原型演示）'); return; }
       if (key === 'offline') { toast('已导出上次成功结果'); return; }
     },
-    selectRow: function (row) { store.selectedRow = row; },
+    // 行点击也是一次交互：列表点行去详情，靠契约的 __row_click 声明，不靠组件写死
+    selectRow: function (row) {
+      store.selectedRow = row;
+      var ix = interactionsOf(store.pageId).filter(function (x) { return x.on === '__row_click'; })[0];
+      if (ix) runInteraction(ix, row);
+    },
+    openLayer: openLayer,
+    closeLayer: closeLayer,
+    submitLayer: submitLayer,
+    layer: function () { return store.layer; },
     // 页面间跳转：统计页指标卡下钻、详情跳回列表都走这里
     goto: function (pid, label) {
       var target = (DATA.pages || []).filter(function (p) { return p.id === pid; })[0];
@@ -2787,21 +3223,118 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
     }
   };
 
+  /* 命令承载层：dialog 居中 / drawer 右侧。字段由 capabilities[].ui.fields 渲染，
+     所以"要填什么"在契约里，不在组件里。 */
+  var LayerPanel = {
+    name: 'LayerPanel',
+    setup: function () {
+      return function () {
+        var L = store.layer;
+        if (!L) return null;
+        var cap = capsById[L.capId] || {};
+        var toLabel = cap.to ? (stateNameMap[cap.to] || cap.to) : '';
+        var fromLabel = stateNames(cap.from);
+
+        function field(f) {
+          var v = L.values[f.key] == null ? '' : L.values[f.key];
+          var err = L.errors[f.key];
+          var onIn = function (e) { L.values[f.key] = e.target.value; delete L.errors[f.key]; };
+          var ctl;
+          if (f.type === 'readonly') {
+            ctl = h('div', { class: 'ff-ro' }, v || '-');
+          } else if (f.type === 'textarea') {
+            ctl = h('textarea', { class: ['ff-input', err ? 'is-err' : ''], rows: 3, value: v, placeholder: f.placeholder || '', onInput: onIn });
+          } else if (f.type === 'select' || f.type === 'user') {
+            ctl = h('select', { class: ['ff-input', err ? 'is-err' : ''], value: v, onChange: onIn },
+              (f.options || []).map(function (o) {
+                return h('option', { key: o, value: o, selected: o === v }, o);
+              }));
+          } else if (f.type === 'radio') {
+            ctl = h('div', { class: 'ff-radio' }, (f.options || []).map(function (o) {
+              return h('label', { key: o, class: ['ff-r', v === o ? 'is-on' : ''] }, [
+                h('input', { type: 'radio', checked: v === o, onChange: function () { L.values[f.key] = o; } }),
+                o
+              ]);
+            }));
+          } else {
+            ctl = h('input', {
+              class: ['ff-input', err ? 'is-err' : ''],
+              type: f.type === 'number' ? 'number' : (f.type === 'date' ? 'date' : 'text'),
+              value: v, placeholder: f.placeholder || '', onInput: onIn
+            });
+          }
+          return h('label', { class: ['ff', f.span === 2 ? 'is-wide' : ''], key: f.key }, [
+            h('span', { class: 'ff-label' }, [f.label, f.required ? h('i', { class: 'ff-req' }, '*') : null]),
+            ctl,
+            err ? h('span', { class: 'ff-err' }, err) : (f.hint ? h('span', { class: 'ff-hint' }, f.hint) : null)
+          ]);
+        }
+
+        return h('div', {
+          class: 'layer-mask',
+          onClick: function (e) { if (e.target.classList && e.target.classList.contains('layer-mask')) closeLayer(); }
+        }, [
+          h('div', { class: ['layer', 'layer-' + L.kind], style: { width: L.width + 'px' } }, [
+            h('div', { class: 'layer-head' }, [
+              h('div', null, [
+                h('div', { class: 'layer-title' }, L.title),
+                h('div', { class: 'layer-sub' }, [
+                  (cap.name || ''),
+                  '　角色：' + ((cap.actor || []).map(actorName).join('、') || '不限'),
+                  cap.from && cap.from.length ? '　' + fromLabel + ' → ' + toLabel : ''
+                ])
+              ]),
+              h('button', { class: 'icon-btn', title: '关闭（Esc）', onClick: closeLayer }, '×')
+            ]),
+            h('div', { class: 'layer-body' },
+              L.fields.length
+                ? L.fields.map(field)
+                : h('div', { class: 'layer-empty' }, (cap.ui && cap.ui.successText) || '这一步只做确认，确认后单据进入下一个状态。')),
+            h('div', { class: 'layer-foot' }, [
+              h('span', { class: 'layer-tip' }, 'Esc 关闭'),
+              h('button', { class: 'btn', onClick: closeLayer }, '取消'),
+              h('button', { class: 'btn btn-primary', onClick: submitLayer }, L.submitLabel)
+            ])
+          ])
+        ]);
+      };
+    }
+  };
+
   var Container = {
     name: 'Container',
     setup: function () {
       var stageRef = Vue.ref ? Vue.ref(null) : { value: null };
 
       function onStageClick(e) {
-        if (!store.annotMode) return;
-        if (e.target.closest('.annot-pop') || e.target.closest('.annot-pin')) return;
+        if (store.annotMode) {
+          if (e.target.closest('.annot-pop') || e.target.closest('.annot-pin')) return;
+          var ael = e.target.closest('[data-node-id]');
+          if (!ael) { store.popover = null; return; }
+          addAnnotation(ael.getAttribute('data-node-id'), e);
+          return;
+        }
+        // 命令按钮/行内操作自己有 onClick，冒泡到这里不重复处理
+        if (e.target.closest('button') || e.target.closest('a')) return;
         var el = e.target.closest('[data-node-id]');
-        if (!el) { store.popover = null; return; }
-        addAnnotation(el.getAttribute('data-node-id'), e);
+        if (!el) return;
+        var nid = el.getAttribute('data-node-id');
+        var ix = interactionsOf(store.pageId).filter(function (x) { return x.on === nid; })[0];
+        if (ix) runInteraction(ix);
+      }
+
+      function onKey(e) {
+        if (e.key === 'Escape') {
+          if (store.layer) { closeLayer(); return; }
+          if (store.popover) { store.popover = null; return; }
+          if (store.showToc) { store.showToc = false; return; }
+          if (store.showPrd) { store.showPrd = false; }
+        }
       }
 
       Vue.onMounted && Vue.onMounted(function () {
         window.addEventListener('resize', refreshPins);
+        window.addEventListener('keydown', onKey);
         document.querySelector('.canvas').addEventListener('scroll', refreshPins);
         refreshPins();
       });
@@ -2824,7 +3357,7 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
         return h('div', { class: 'shell' }, [
           h('div', { class: 'shell-top' }, [
             h('div', { class: 'shell-brand' }, [
-              h('div', { class: 'shell-brand-mark' }, 'IQ'),
+              h('div', { class: 'shell-brand-mark' }, String(DATA.meta.product || 'II').slice(0, 2)),
               h('div', null, [
                 h('div', { class: 'shell-brand-name' }, DATA.meta.product),
                 h('div', { class: 'shell-brand-sub' }, 'IIOT-PRD · ' + pg.title)
@@ -2887,7 +3420,7 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
                 localStorage.removeItem(KEY);
                 store.annotations = JSON.parse(JSON.stringify(DATA.annotations || []));
                 store.prdEdits = {};
-                store.entityStatus = 'reported';
+                store.entityStatus = defaultStatus(page.value);
                 store.pageState = 'default';
                 toast('已重置为 AI 生成版本');
                 refreshPins();
@@ -2916,6 +3449,7 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
             store.showPrd && !store.audit ? h(PrdPanel) : null,
             h(Popover)
           ]),
+          h(LayerPanel),
           store.toastMsg ? h('div', { class: 'toast-wrap' }, [h('div', { class: 'toast' }, store.toastMsg)]) : null
         ]);
       };
@@ -2931,6 +3465,18 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
 
   (Vue.createApp(Container)).mount('#app');
   refreshPins();
+
+  // 标注锚点是相对坐标：字体加载、侧栏折叠、窗口缩放都会让位置漂移，统一在这里重算
+  window.addEventListener('resize', refreshPins);
+  if (window.ResizeObserver) {
+    var stageEl = document.getElementById('stage');
+    if (stageEl) new ResizeObserver(function () { refreshPins(); }).observe(stageEl);
+  }
+  requestAnimationFrame(function () {
+    refreshPins();
+    setTimeout(refreshPins, 250);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(refreshPins);
+  });
 
   // 自检钩子：#test=1 时量一遍覆盖层是否挤压画布、表格是否横滚，结果写进 #selftest
   if (/test=1/.test(location.hash)) {

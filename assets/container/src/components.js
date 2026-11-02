@@ -6,18 +6,30 @@
 (function () {
   var h = Vue.h;
 
-  function can(capId) {
+  function can(capId, rowState) {
     if (!capId) return { ok: true };
-    return window.RD.can(capId);
+    return window.RD.can(capId, rowState);
   }
 
   function statusTone(text) {
     var t = String(text || '');
-    if (/已审核|已归档|合格|通过/.test(t)) return 'tag-success';
-    if (/待审核|待取样|待处理|超期/.test(t)) return 'tag-warning';
-    if (/驳回|不合格|异常|失败/.test(t)) return 'tag-danger';
-    if (/已取样|进行中|处理中/.test(t)) return 'tag-info';
+    // 顺序有讲究：先判否定与超期，再判待办，最后判完成，否则「不合格」会被「合格」吃掉
+    if (/驳回|不合格|失败|异常|超期未关|已超期/.test(t)) return 'tag-danger';
+    if (/合格|通过|完成|关闭|已归档|已审核|已确认|已发布/.test(t)) return 'tag-success';
+    if (/待审核|待取样|待处理|待验证|待审批|待确认|待发布|临期|超期|预警/.test(t)) return 'tag-warning';
+    if (/已取样|进行中|处理中|执行中|已下发/.test(t)) return 'tag-info';
     return '';
+  }
+
+  function navTarget(it) {
+    // 目录是"能不能走到某一页"的承诺，不能只当装饰。
+    if (!it) return null;
+    if (it.page) return it.page;
+    var ps = (window.RD && window.RD.data && window.RD.data.pages) || [];
+    var hit = ps.filter(function (p) {
+      return p.layout !== 'detail' && (p.title === it.label || p.navLabel === it.label);
+    })[0];
+    return hit ? hit.id : null;
   }
 
   var AppShell = {
@@ -47,10 +59,18 @@
             return h('div', { class: 'nav-group', key: g.title }, [
               collapsed ? null : h('div', { class: 'nav-group-title' }, g.title),
               (g.items || []).map(function (it) {
+                // 导航项要能点：优先用 item.page 显式绑定，否则按标签去匹配页面标题。
+                // 匹配不上的是"本原型没做的模块"，点了给一句原因，不让它变成死菜单。
+                var pg = navTarget(it);
+                var on = pg ? (window.RD && window.RD.state.pageId === pg) : !!it.on;
                 return h('div', {
                   key: it.key,
-                  class: ['nav-item', it.on ? 'is-on' : ''],
-                  title: collapsed ? it.label : null
+                  class: ['nav-item', on ? 'is-on' : '', pg ? 'is-link' : 'is-void'],
+                  title: collapsed ? it.label : (pg ? null : '本原型未覆盖此模块'),
+                  onClick: function () {
+                    if (pg) { window.RD.goto(pg, it.label); }
+                    else { window.RD.toast('「' + it.label + '」不在本原型范围，本次只交付已建模的模块'); }
+                  }
                 }, [
                   collapsed ? h('span', { style: { fontSize: '11px', opacity: '0.7' } }, (it.label || '').slice(0, 1)) : null,
                   collapsed ? null : h('span', null, it.label),
@@ -94,7 +114,10 @@
     props: { p: { type: Object, default: function () { return {}; } } },
     setup: function (props, ctx) {
       return function () {
-        return h('div', { class: 'page' }, ctx.slots.default ? ctx.slots.default() : []);
+        var p = props.p || {};
+        var scrolling = p.layout === 'detail' || p.layout === 'form';
+        return h('div', { class: 'page' + (scrolling ? ' is-scroll' : '') },
+          ctx.slots.default ? ctx.slots.default() : []);
       };
     }
   };
@@ -189,28 +212,30 @@
       return function () {
         var p = props.p || {};
         var actions = (p.actions || []).map(function (a) {
-          var c = can(a.capability);
-          var dis = a.capability && !c.ok;
+          // 批量动作先看"有没有勾选"，再看状态：没选就说没选，别拿单据状态糊弄
+          var none = a.needSelection && !(p.selected > 0);
+          var c = none ? { ok: false, reason: a.reasonIfNone || '先勾选要处理的记录' } : can(a.capability);
+          var dis = (a.capability || a.needSelection) && !c.ok;
           return h('button', {
             key: a.key,
             class: ['btn', a.variant === 'primary' ? 'btn-primary' : (a.variant === 'ghost' ? 'btn-ghost' : ''), dis ? 'is-disabled' : ''],
             title: dis ? c.reason : null,
             onClick: function () {
               if (dis) { window.RD.toast(c.reason); return; }
-              window.RD.action(a.key, a.text);
+              window.RD.action(a.key, a.text, null, a.capability);
             }
           }, [
             a.text,
             dis ? h('span', { class: 'hint-dot', title: c.reason }, '!') : null
           ]);
         });
-        return h('div', { class: 'toolbar' }, actions.concat([
-          h('div', { class: 'toolbar-right' }, [
-            h('span', { class: 'sel-info' }, ['已选 ', h('b', null, String(p.selected || 0)), ' 项']),
-            h('span', { style: { color: 'var(--line)' } }, '|'),
-            h('span', { class: 'link-more' }, '列设置')
-          ])
-        ]));
+        // 「已选 N 项 / 列设置」是表格专用尾巴，表单页的工具栏不该带出去
+        var tableChrome = p.selected != null ? h('div', { class: 'toolbar-right' }, [
+          h('span', { class: 'sel-info' }, ['已选 ', h('b', null, String(p.selected || 0)), ' 项']),
+          h('span', { style: { color: 'var(--line)' } }, '|'),
+          h('span', { class: 'link-more' }, '列设置')
+        ]) : null;
+        return h('div', { class: 'toolbar' + (tableChrome ? '' : ' is-plain') }, actions.concat(tableChrome ? [tableChrome] : []));
       };
     }
   };
@@ -224,7 +249,9 @@
     }
     if (col.type === 'action') {
       var links = (col.actions || []).map(function (a) {
-        var c = can(a.capability);
+        // 行级动作看本行状态；表级动作（col.stateKey 为空的补「详情」这类无 capability）不看状态
+        var rowState = col.scope === 'row' ? row[col.stateKey || 'status'] : null;
+        var c = can(a.capability, rowState);
         var dis = a.capability && !c.ok;
         return h('a', {
           key: a.key,
@@ -232,7 +259,7 @@
           title: dis ? c.reason : null,
           onClick: function () {
             if (dis) { window.RD.toast(c.reason); return; }
-            window.RD.action(a.key, a.text, row);
+            window.RD.action(a.key, a.text, row, a.capability);
           }
         }, a.text);
       });
@@ -274,6 +301,9 @@
         var minW = cols.reduce(function (s, c) { return s + (c.width || 120); }, 0);
         var ps = window.RD.pageState();
         var rows = p.data || [];
+        // 四态文案由页面在 props 里给（empty / zero / error），组件不写死任何业务名词，
+        // 否则换个模块复用时页面会冒出上一个模块的空态文案
+        var sc = function (k, d) { return (p[k] || d); };
 
         var head = h('div', { class: 'dt-head', style: { gridTemplateColumns: tpl } },
           cols.map(function (c) {
@@ -291,29 +321,29 @@
               }));
           }));
         } else if (ps === 'empty') {
-          body = h(StateBlock, {
+          body = h(StateBlock, sc('empty', {
             kind: 'empty',
-            title: '还没有来料检验报告',
-            desc: '当前系统内没有任何到货批次。先发起检验申请，取样完成后报告会自动出现在这里。',
-            hint: '数据来源：QMS 来料检验 · 与 PDA 取样任务同源',
-            actions: [{ key: 'create', text: '发起申请' }]
-          });
+            title: '暂无数据',
+            desc: '当前没有任何记录。先新建一条，保存后会出现在这里。',
+            hint: '数据来源：本模块主数据',
+            actions: [{ key: 'create', text: '新建' }]
+          }));
         } else if (ps === 'zero-result') {
-          body = h(StateBlock, {
+          body = h(StateBlock, sc('zero', {
             kind: 'zero-result',
-            title: '没有符合条件的报告',
-            desc: '已按「到货单号 / 任务单号 / 供应商 / 物资名称」筛选，共 0 条。试试放宽时间范围，或只保留一个条件。',
+            title: '没有符合条件的记录',
+            desc: '已按当前生效的筛选条件查询，共 0 条。试试放宽时间范围，或只保留一个条件。',
             hint: '查询条件已保留，不会因为切换状态丢失',
             actions: [{ key: 'clear', text: '清空条件' }]
-          });
+          }));
         } else if (ps === 'error') {
-          body = h(StateBlock, {
+          body = h(StateBlock, sc('error', {
             kind: 'error',
-            title: '报告列表加载失败',
-            desc: '接口返回 500（trace: iqc-report-7f3a）。已保留查询条件，重试不会重新填一遍。',
-            hint: '若持续失败，请联系质量系统管理员',
+            title: '列表加载失败',
+            desc: '接口返回 500。已保留查询条件，重试不会重新填一遍。',
+            hint: '若持续失败，请联系系统管理员',
             actions: [{ key: 'retry', text: '重新加载' }, { key: 'offline', text: '导出上次结果' }]
-          });
+          }));
         } else {
           body = h('div', null, rows.map(function (row, i) {
             return h('div', {
@@ -345,21 +375,28 @@
     setup: function (props) {
       return function () {
         var p = props.p || {};
-        var pages = p.pages || 1;
-        var cur = p.current || 1;
-        var nums = [1, 2, 3, 4, 5];
+        // 空态/零结果/异常时数据是空的，分页不能还挂着 186 条
+        var ps = window.RD.pageState ? window.RD.pageState() : 'default';
+        var barren = ps === 'empty' || ps === 'zero-result' || ps === 'error';
+        var pages = barren ? 1 : Math.max(1, p.pages || 1);
+        var cur = barren ? 1 : Math.min(Math.max(1, p.current || 1), pages);
+        // 页码按总页数收敛：1 页就别摆出 2~5，摆出来就是假数据
+        var nums = [];
+        var start = Math.max(1, Math.min(cur - 2, pages - 4));
+        var end = Math.min(pages, start + 4);
+        for (var n = start; n <= end; n++) nums.push(n);
         var kids = [
           h('span', { class: 'num' }, cur + '/' + pages),
           h('span', { style: { color: 'var(--line)' } }, '|'),
-          h('span', null, ['共 ', h('b', { class: 'num', style: { fontWeight: 500, color: 'var(--text-1)' } }, String(p.total || 0)), ' 项']),
-          h('span', null, ['每页显示 ', h('select', { class: 'page-size' }, [10, 20, 50].map(function (n) {
-            return h('option', { key: n, value: n, selected: n === p.pageSize }, String(n));
+          h('span', null, ['共 ', h('b', { class: 'num', style: { fontWeight: 500, color: 'var(--text-1)' } }, String(barren ? 0 : (p.total || 0))), ' 项']),
+          h('span', null, ['每页显示 ', h('select', { class: 'page-size' }, [10, 20, 50].map(function (n2) {
+            return h('option', { key: n2, value: n2, selected: n2 === p.pageSize }, String(n2));
           }))]),
           h('div', { class: 'pager' }, [
             h('button', { class: 'pg', onClick: function () { window.RD.toast('上一页'); } }, '‹'),
-            nums.map(function (n) { return h('button', { key: n, class: ['pg', n === cur ? 'is-on' : ''], onClick: function () { window.RD.toast('第 ' + n + ' 页'); } }, String(n)); }),
-            h('span', { class: 'pg is-dots' }, '…'),
-            h('button', { class: 'pg', onClick: function () { window.RD.toast('末页'); } }, String(pages)),
+            nums.map(function (n2) { return h('button', { key: n2, class: ['pg', n2 === cur ? 'is-on' : ''], onClick: function () { window.RD.toast('第 ' + n2 + ' 页'); } }, String(n2)); }),
+            end < pages ? h('span', { class: 'pg is-dots' }, '…') : null,
+            end < pages ? h('button', { class: 'pg', onClick: function () { window.RD.toast('末页'); } }, String(pages)) : null,
             h('button', { class: 'pg', onClick: function () { window.RD.toast('下一页'); } }, '›'),
             h('span', { class: 'pg-jump' }, ['跳转至', h('input', { class: 'num' }), '页'])
           ])
@@ -376,10 +413,27 @@
     setup: function (props, ctx) {
       return function () {
         var p = props.p || {};
-        var head = (p.title || p.extra || p.sub) ? h('header', { class: 'sec-head' }, [
+        // 区块级动作：排查、原因、措施各自有保存按钮，不能全塞进页面工具条
+        var acts = (p.actions || []).map(function (a) {
+          // blocked：业务前置没满足（比如还有措施没判定）。它不是权限问题，理由要写在按钮上
+          var c = a.blocked ? { ok: false, reason: a.blocked } : can(a.capability);
+          var dis = (a.capability || a.blocked) && !c.ok;
+          return h('button', {
+            key: a.key,
+            class: ['btn', 'btn-sm', a.variant === 'primary' ? 'btn-primary' : (a.variant === 'ghost' ? 'btn-ghost' : ''), dis ? 'is-disabled' : ''],
+            title: dis ? c.reason : null,
+            onClick: function () {
+              if (dis) { window.RD.toast(c.reason); return; }
+              window.RD.action(a.key, a.text, null, a.capability);
+            }
+          }, a.text);
+        });
+        var head = (p.title || p.extra || p.sub || acts.length) ? h('header', { class: 'sec-head' }, [
           h('h3', { class: 'sec-title' }, p.title || ''),
           p.sub ? h('span', { class: 'sec-sub' }, p.sub) : null,
-          p.extra ? h('span', { class: 'sec-extra' }, p.extra) : null
+          // 顺序：标题 → 副标题 → 右侧信息 → 按钮。信息在按钮左边，按钮永远贴最右
+          p.extra ? h('span', { class: 'sec-extra' }, p.extra) : null,
+          acts.length ? h('div', { class: 'sec-actions', style: { marginLeft: p.extra ? '0' : 'auto' } }, acts) : null
         ]) : null;
         var bodyStyle = p.cols ? { display: 'grid', gridTemplateColumns: 'repeat(' + p.cols + ', minmax(0,1fr))', gap: (p.gap || 12) + 'px' } : null;
         return h('section', { class: 'sec-card' }, [
@@ -859,11 +913,71 @@
             class: ['big-btn', dis ? 'is-disabled' : ''],
             onClick: function () {
               if (dis) { window.RD.toast(c.reason); return; }
-              window.RD.action('submit', p.label);
+              window.RD.action('submit', p.label, null, p.capability);
             }
           }, p.label || '提交'),
           p.sub ? h('div', { class: 'big-btn-sub' }, dis ? c.reason : p.sub) : null
         ]);
+      };
+    }
+  };
+
+  // 表单栅格：建单、执行填报、审批意见都要它。只吃 props，不校验不提交（校验规则在 guards 里）
+  var FormGrid = {
+    name: 'FormGrid',
+    props: { p: { type: Object, default: function () { return {}; } } },
+    setup: function (props) {
+      return function () {
+        var p = props.p || {};
+        var items = p.items || [];
+        var cols = p.cols || 2;
+        if (!items.length) return h('div', { class: 'chart-empty' }, '暂无字段');
+        var readonly = !!p.readonly || window.RD.pageState() === 'readonly';
+        return h('div', {
+          class: ['form-grid', readonly ? 'is-readonly' : ''],
+          style: { gridTemplateColumns: 'repeat(' + cols + ', minmax(0,1fr))' }
+        }, items.map(function (it, i) {
+          var ctrl;
+          var val = it.value == null ? '' : String(it.value);
+          if (readonly || it.readonly) {
+            ctrl = h('div', { class: ['form-ro', it.tone ? 'is-' + it.tone : ''] }, val || '—');
+          } else if (it.type === 'select') {
+            ctrl = h('select', { class: 'input' }, (it.options || []).map(function (o) {
+              return h('option', { key: o, value: o, selected: o === it.value }, o);
+            }));
+          } else if (it.type === 'upload') {
+            ctrl = h('div', { class: 'upload-box' }, [
+              h('span', { class: 'upload-plus' }, '＋'),
+              h('span', null, it.value || '上传附件（单张 ≤20MB）')
+            ]);
+          } else if (it.type === 'textarea') {
+            ctrl = h('textarea', {
+              class: 'input is-area',
+              rows: it.rows || 3,
+              placeholder: it.placeholder || '请输入'
+            }, val);
+          } else {
+            ctrl = h('input', {
+              class: 'input',
+              placeholder: it.placeholder || '请输入',
+              value: val,
+              type: it.type === 'number' ? 'number' : null
+            });
+          }
+          return h('div', {
+            class: ['form-item', it.type === 'textarea' || it.span ? 'is-wide' : ''],
+            key: it.key || i,
+            style: it.span ? { gridColumn: 'span ' + it.span } : null
+          }, [
+            h('label', { class: 'form-label' }, [
+              it.label,
+              it.required ? h('i', { class: 'form-req' }, '*') : null,
+              it.unit ? h('span', { class: 'form-unit' }, '（' + it.unit + '）') : null
+            ]),
+            ctrl,
+            it.hint ? h('div', { class: 'form-hint' }, it.hint) : null
+          ]);
+        }));
       };
     }
   };
@@ -906,6 +1020,7 @@
     DescList: DescList,
     Timeline: Timeline,
     StatusFlow: StatusFlow,
+    FormGrid: FormGrid,
     PdaShell: PdaShell,
     SyncBadge: SyncBadge,
     ScanBar: ScanBar,

@@ -702,6 +702,114 @@
         "target": {
           "type": "string",
           "description": "targets 子集，缺省继承页面"
+        },
+        "ui": {
+          "$ref": "#/$defs/capUi",
+          "description": "这条命令怎么被执行：入口在哪、打开什么承载、要填哪些字段。缺省等于把推进动作留给页面自由发挥，必然堆进详情页"
+        }
+      }
+    },
+    "capUi": {
+      "type": "object",
+      "required": [
+        "kind",
+        "entry"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "inline",
+            "dialog",
+            "drawer",
+            "page"
+          ],
+          "description": "承载形式：inline=页面内直接完成（查询/导出）；dialog=少量字段弹框；drawer=中等字段侧滑抽屉；page=多区块独立页面"
+        },
+        "entry": {
+          "type": "string",
+          "description": "入口节点 id，必须存在于 owns 这条命令的页面组件树内（工具栏按钮或行内操作列）"
+        },
+        "pageId": {
+          "type": "string",
+          "description": "kind=page 时承载页面的 id"
+        },
+        "title": {
+          "type": "string",
+          "description": "弹层或承载页标题，用业务语言，不用命令名"
+        },
+        "width": {
+          "type": "number",
+          "description": "dialog 480~720，drawer 480~640"
+        },
+        "submitLabel": {
+          "type": "string",
+          "description": "提交按钮文案，写动作结果（如「提交排查结论」），不写「确定」"
+        },
+        "successText": {
+          "type": "string",
+          "description": "提交成功后的反馈文案，必须带出新的单据状态"
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/formField"
+          },
+          "description": "需要录入的字段。为空说明这个动作只做确认，弹层里只有一句提示"
+        }
+      }
+    },
+    "formField": {
+      "type": "object",
+      "required": [
+        "key",
+        "label",
+        "type"
+      ],
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "text",
+            "textarea",
+            "number",
+            "date",
+            "select",
+            "user",
+            "radio",
+            "readonly"
+          ]
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "select/radio 的候选值"
+        },
+        "placeholder": {
+          "type": "string"
+        },
+        "hint": {
+          "type": "string",
+          "description": "字段下方的填写提示，写清口径而不是写「请输入」"
+        },
+        "span": {
+          "type": "number",
+          "description": "占几列，默认 1；整行写 2"
+        },
+        "value": {
+          "type": "string",
+          "description": "原型预填值，用于展示典型填写状态"
         }
       }
     },

@@ -198,12 +198,17 @@
                   "key": "act",
                   "title": "操作",
                   "type": "action",
-                  "width": 96,
+                  "width": 140,
                   "actions": [
                     {
                       "key": "detail",
                       "text": "详情",
                       "capability": "cap-export-report"
+                    },
+                    {
+                      "key": "approve",
+                      "text": "审核",
+                      "capability": "cap-approve"
                     }
                   ]
                 }
@@ -592,7 +597,11 @@
       "to": "sampled",
       "stage": "submit",
       "target": "pda",
-      "label": "提交取样"
+      "label": "提交取样",
+      "ui": {
+        "kind": "inline",
+        "entry": "n-submit"
+      }
     },
     {
       "id": "cap-approve",
@@ -609,7 +618,24 @@
       "to": "approved",
       "stage": "verify",
       "target": "pc",
-      "label": "审核"
+      "label": "审核",
+      "ui": {
+        "kind": "dialog",
+        "entry": "n-table__act_approve",
+        "title": "审核来料检验报告",
+        "width": 520,
+        "submitLabel": "审核通过",
+        "successText": "报告已归档，可导出交供应商",
+        "fields": [
+          {
+            "key": "opinion",
+            "label": "审核意见",
+            "type": "textarea",
+            "span": 2,
+            "hint": "结论与标准不符时写明依据条款"
+          }
+        ]
+      }
     },
     {
       "id": "cap-export-report",
@@ -628,7 +654,11 @@
       "to": null,
       "stage": null,
       "target": "pc",
-      "label": "导出报告"
+      "label": "导出报告",
+      "ui": {
+        "kind": "inline",
+        "entry": "n-toolbar__act_export"
+      }
     }
   ],
   "stateMachines": [

@@ -9,7 +9,9 @@
   var computed = Vue.computed;
   var nextTick = Vue.nextTick || function (fn) { setTimeout(fn, 0); };
 
-  var DATA = window.__PROTO__;
+  // 数据必须是响应式的：行级命令（措施开始/完成、逐条排查）改的是某一行，
+  // 如果 DATA 是普通对象，Vue 追不到，就会出现"提交成功了但列表还是旧状态"。
+  var DATA = reactive ? reactive(window.__PROTO__) : window.__PROTO__;
   var KEY = 'iiot:' + DATA.meta.product + ':' + DATA.meta.version;
   var saved = {};
   try { saved = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { saved = {}; }
@@ -19,14 +21,44 @@
   var smByEntity = {};
   (DATA.stateMachines || []).forEach(function (s) { smByEntity[s.entity] = s; });
 
+  // 角色与状态在界面上一律显示中文名；内部 id 只活在契约里
+  var actorNameMap = {};
+  (DATA.actors || []).forEach(function (a) { actorNameMap[a.id] = a.name || a.id; });
+  var stateNameMap = {};
+  (DATA.stateMachines || []).forEach(function (sm) {
+    (sm.states || []).forEach(function (st) { stateNameMap[st.key] = st.label || st.key; });
+  });
+  function actorName(id) { return actorNameMap[id] || id; }
+  function stateNames(list) {
+    return (list || []).map(function (k) { return stateNameMap[k] || k; }).join('、');
+  }
+
   var hashPage = (location.hash.match(/page=([A-Za-z0-9_-]+)/) || [])[1];
   var hashStatus = (location.hash.match(/status=([A-Za-z0-9_-]+)/) || [])[1];
-  function defaultStatus(pg) { return pg && pg.target === 'pda' ? 'created' : 'reported'; }
+  // 打开页面时落在「这一页有动作可做」的状态上，而不是状态机的 initial：
+  // 否则评审第一眼看到的是一屏灰按钮，还得先去顶栏找状态切换。
+  // 判定顺序 = contract.owns 的命令顺序 × 每个命令的 from 顺序，第一个命中状态机 states 的即为默认态。
+  function defaultStatus(pg) {
+    var sm = pg && smByEntity[pg.entity];
+    if (!sm) return 'new';
+    var keys = (sm.states || []).map(function (s) { return s.key; });
+    var owns = (pg.contract || {}).owns || [];
+    for (var i = 0; i < owns.length; i++) {
+      var cap = capsById[owns[i]];
+      var from = (cap && cap.from) || [];
+      for (var j = 0; j < from.length; j++) {
+        if (keys.indexOf(from[j]) >= 0) return from[j];
+      }
+    }
+    return sm.initial || keys[0] || 'new';
+  }
   var initialPageId = hashPage || saved.pageId || DATA.meta.currentPageId || DATA.pages[0].id;
   var initialPage = DATA.pages.filter(function (x) { return x.id === initialPageId; })[0] || DATA.pages[0];
+  // 评审经常要"直接看空态/异常态"：允许用 #page=x&state=empty 直达，省得每次点顶栏
+  var hashState = (location.hash.match(/state=([A-Za-z0-9_-]+)/) || [])[1];
   var store = reactive({
     pageId: initialPageId,
-    pageState: 'default',
+    pageState: hashState || 'default',
     entityStatus: hashStatus || saved.entityStatus || defaultStatus(initialPage),
     filters: {},
     pdaQty: 0,
@@ -42,6 +74,7 @@
     prdEdits: saved.prdEdits || {},
     pins: [],
     popover: null,
+    layer: null,
     toastMsg: ''
   });
 
@@ -70,44 +103,167 @@
     toastTimer = setTimeout(function () { store.toastMsg = ''; }, 2200);
   }
 
+  /* ---------------- 命令承载层（dialog / drawer） ----------------
+   * 推进型动作不写在页面里，写在契约的 capabilities[].ui 上：
+   * 入口节点 + 承载形式 + 字段清单。这里只负责按契约把层打开、校验、提交、关闭。
+   */
+  function openLayer(capId, row, kindOverride) {
+    var cap = capsById[capId];
+    if (!cap) { toast('命令不存在：' + capId); return; }
+    var ui = cap.ui || {};
+    var values = {};
+    (ui.fields || []).forEach(function (f) {
+      values[f.key] = f.value != null ? f.value : (f.type === 'select' && (f.options || []).length ? f.options[0] : '');
+    });
+    store.layer = {
+      capId: capId,
+      row: row || null,
+      kind: kindOverride || ui.kind || 'dialog',
+      title: ui.title || cap.name || capId,
+      width: ui.width || (kindOverride === 'drawer' ? 520 : 560),
+      fields: ui.fields || [],
+      submitLabel: ui.submitLabel || cap.name || '提交',
+      successText: ui.successText || '',
+      values: values,
+      errors: {}
+    };
+  }
+
+  function closeLayer() { store.layer = null; }
+
+  function submitLayer() {
+    var L = store.layer;
+    if (!L) return;
+    var cap = capsById[L.capId] || {};
+    var missing = [];
+    L.errors = {};
+    L.fields.forEach(function (f) {
+      if (f.required && !String(L.values[f.key] == null ? '' : L.values[f.key]).trim()) {
+        L.errors[f.key] = '必填：' + f.label;
+        missing.push(f.label);
+      }
+    });
+    if (missing.length) { toast('还有必填项没填：' + missing.join('、')); return; }
+
+    var toLabel = '';
+    if (cap.to) {
+      var sm = smByEntity[cap.entity] || { states: [] };
+      var to = (sm.states || []).filter(function (x) { return x.key === cap.to; })[0];
+      toLabel = to ? to.label : cap.to;
+      // 行级命令（措施单验证）只推进这一行，不动主单状态：它们是两张单据
+      if (L.row) { L.row.status = toLabel; } else { store.entityStatus = cap.to; }
+      persist();
+    }
+
+    var msg = L.successText || ((cap.name || '') + '已完成');
+    if (toLabel) msg += (L.row ? '（本条措施 → ' : '（单据 → ') + toLabel + '）';
+    store.layer = null;
+    toast(msg);
+    // 提交后若本页已无该状态可做的事，退回默认态，避免留在空白页
+    if (store.pageState !== 'default') store.pageState = 'default';
+    setTimeout(refreshPins, 0);
+  }
+
+  /* ---------------- 交互引擎 ----------------
+   * pages[].interactions 是契约里的交互真源。以前只有 schema 和校验器认它，
+   * 引擎从不读，于是"能点"只存在于文档里。这里把它接上。
+   */
+  function interactionsOf(pageId) {
+    var p = (DATA.pages || []).filter(function (x) { return x.id === pageId; })[0] || {};
+    return p.interactions || [];
+  }
+
+  function runInteraction(ix, row) {
+    if (!ix) return;
+    var doIt = ix.do;
+    if (doIt === 'navigate') { window.RD.goto(ix.target); return; }
+    if (doIt === 'openModal' || doIt === 'openDrawer') {
+      openLayer(ix.target, row, doIt === 'openDrawer' ? 'drawer' : 'dialog');
+      return;
+    }
+    if (doIt === 'setState') {
+      var st = (ix.params || {}).status;
+      if (st) { store.entityStatus = st; persist(); toast('单据状态已置为「' + ((smByEntity[page.value.entity] || {}).states || []).filter(function (x) { return x.key === st; }).map(function (x) { return x.label; })[0] + '」'); }
+      return;
+    }
+    if (doIt === 'reset') { store.filters = {}; store.pageState = 'default'; toast('已重置'); return; }
+    if (doIt === 'submit') {
+      var cap = capsById[ix.target];
+      if (cap && cap.ui && cap.ui.kind !== 'inline') { openLayer(ix.target, row); return; }
+      window.RD.action(ix.target, ix.effect, row, ix.target);
+      return;
+    }
+    if (doIt === 'toast') { toast((ix.params || {}).text || ix.effect || ''); return; }
+  }
+
   window.RD = {
     state: store,
     data: DATA,
-    can: function (capId) {
+    can: function (capId, rowState) {
       var cap = capsById[capId];
       if (!cap) return { ok: true };
-      if ((cap.from || []).length && (cap.from || []).indexOf(store.entityStatus) < 0) {
+      // 行级按钮（措施单/验证行）按自身状态判定，不跟随主单状态
+      var curKey = store.entityStatus;
+      var curLabel = null;
+      if (rowState) {
+        var smRow = smByEntity[cap.entity] || { states: [] };
+        var hit = (smRow.states || []).filter(function (x) {
+          return x.label === rowState || x.key === rowState;
+        })[0];
+        curKey = hit ? hit.key : rowState;
+        curLabel = hit ? hit.label : rowState;
+      }
+      if ((cap.from || []).length && (cap.from || []).indexOf(curKey) < 0) {
         var sm = smByEntity[cap.entity] || { states: [] };
-        var cur = (sm.states || []).filter(function (x) { return x.key === store.entityStatus; })[0];
-        var label = cur ? cur.label : store.entityStatus;
-        return { ok: false, reason: (cap.reason || '当前状态不可用') + '（当前为「' + label + '」）' };
+        var cur = curLabel || ((sm.states || []).filter(function (x) { return x.key === curKey; })[0] || {}).label || curKey;
+        return { ok: false, reason: (cap.reason || '当前状态不可用') + '（当前为「' + cur + '」）' };
       }
       return { ok: true };
     },
     entityStatus: function () { return store.entityStatus; },
     pageState: function () { return store.pageState; },
     toast: toast,
-    action: function (key, text, row) {
-      if (key === 'approve') {
-        store.entityStatus = 'approved';
+    // 点按钮 = 走一次命令。命令里写了 to 就真的迁移状态（原型因此能跑通整条状态机），
+    // 没写 to 的是查询/导出类动作，只提示不迁移。
+    // 命令声明了 ui 承载的，先按契约开层；填完在层里提交，而不是点一下就跳过填报。
+    action: function (key, text, row, capId) {
+      var cap = capId ? capsById[capId] : null;
+      if (cap && cap.ui) {
+        var kind = cap.ui.kind;
+        if (kind === 'dialog' || kind === 'drawer') { openLayer(capId, row || null, kind); return; }
+        if (kind === 'page') { window.RD.goto(cap.ui.pageId || cap.target, cap.ui.title); return; }
+      }
+      if (cap && cap.to) {
+        var sm = smByEntity[cap.entity] || { states: [] };
+        var to = (sm.states || []).filter(function (x) { return x.key === cap.to; })[0];
+        var toLabel = to ? to.label : cap.to;
+        // 行级命令只推进该行，不动主单状态（措施单与事故报告是两张单据）
+        if (row) {
+          var from = row.status;
+          row.status = toLabel;
+          toast('「' + (row.content || row.accNo || '本行') + '」' + from + ' → ' + toLabel + '（本条措施已推进，主单状态不变）');
+          return;
+        }
+        store.entityStatus = cap.to;
         persist();
-        toast('「' + (row ? row.batchNo : '本批') + '」已审核，状态置为已归档');
+        toast((cap.label || text || key) + '已完成，单据状态置为「' + toLabel + '」');
         return;
       }
-      if (key === 'export') { toast('已按当前筛选导出 ' + (store.pageState === 'zero-result' ? 0 : 10) + ' 条'); return; }
-      if (key === 'submit') {
-        if (store.pdaQty <= 0) { toast('请先填写取样数量'); return; }
-        store.entityStatus = 'sampled';
-        persist();
-        toast('取样已提交：' + store.pdaQty + ' 件 · 已进入待审核');
+      if (key === 'export') {
+        toast('已按当前筛选导出 ' + (store.pageState === 'zero-result' ? 0 : 10) + ' 条，导出人与时间已留痕');
         return;
       }
-      toast((text || key) + (row ? '：' + row.batchNo : '') + '（原型演示）');
+      if (key === 'create') { toast('新建：已打开建单页（原型演示）'); return; }
+      toast((text || key) + (row ? '（' + (row.accNo || row.id || '') + '）' : '') + ' · 原型演示，未接后端');
     },
     search: function (key) {
       if (key !== 'search') { store.filters = {}; store.pageState = 'default'; toast('已重置查询条件'); return; }
-      store.pageState = store.filters.batchNo || store.filters.taskNo || store.filters.supplier ? 'zero-result' : 'default';
-      toast(store.pageState === 'zero-result' ? '查询完成：0 条' : '查询完成：9407 条');
+      var any = false;
+      for (var k in store.filters) {
+        if (String(store.filters[k] == null ? '' : store.filters[k]).trim()) { any = true; break; }
+      }
+      store.pageState = any ? 'zero-result' : 'default';
+      toast(any ? '查询完成：0 条（条件已保留）' : '查询完成');
     },
     stateAction: function (key) {
       if (key === 'retry') {
@@ -119,7 +275,16 @@
       if (key === 'create') { toast('跳转「发起申请」（原型演示）'); return; }
       if (key === 'offline') { toast('已导出上次成功结果'); return; }
     },
-    selectRow: function (row) { store.selectedRow = row; },
+    // 行点击也是一次交互：列表点行去详情，靠契约的 __row_click 声明，不靠组件写死
+    selectRow: function (row) {
+      store.selectedRow = row;
+      var ix = interactionsOf(store.pageId).filter(function (x) { return x.on === '__row_click'; })[0];
+      if (ix) runInteraction(ix, row);
+    },
+    openLayer: openLayer,
+    closeLayer: closeLayer,
+    submitLayer: submitLayer,
+    layer: function () { return store.layer; },
     // 页面间跳转：统计页指标卡下钻、详情跳回列表都走这里
     goto: function (pid, label) {
       var target = (DATA.pages || []).filter(function (p) { return p.id === pid; })[0];
@@ -589,21 +754,118 @@
     }
   };
 
+  /* 命令承载层：dialog 居中 / drawer 右侧。字段由 capabilities[].ui.fields 渲染，
+     所以"要填什么"在契约里，不在组件里。 */
+  var LayerPanel = {
+    name: 'LayerPanel',
+    setup: function () {
+      return function () {
+        var L = store.layer;
+        if (!L) return null;
+        var cap = capsById[L.capId] || {};
+        var toLabel = cap.to ? (stateNameMap[cap.to] || cap.to) : '';
+        var fromLabel = stateNames(cap.from);
+
+        function field(f) {
+          var v = L.values[f.key] == null ? '' : L.values[f.key];
+          var err = L.errors[f.key];
+          var onIn = function (e) { L.values[f.key] = e.target.value; delete L.errors[f.key]; };
+          var ctl;
+          if (f.type === 'readonly') {
+            ctl = h('div', { class: 'ff-ro' }, v || '-');
+          } else if (f.type === 'textarea') {
+            ctl = h('textarea', { class: ['ff-input', err ? 'is-err' : ''], rows: 3, value: v, placeholder: f.placeholder || '', onInput: onIn });
+          } else if (f.type === 'select' || f.type === 'user') {
+            ctl = h('select', { class: ['ff-input', err ? 'is-err' : ''], value: v, onChange: onIn },
+              (f.options || []).map(function (o) {
+                return h('option', { key: o, value: o, selected: o === v }, o);
+              }));
+          } else if (f.type === 'radio') {
+            ctl = h('div', { class: 'ff-radio' }, (f.options || []).map(function (o) {
+              return h('label', { key: o, class: ['ff-r', v === o ? 'is-on' : ''] }, [
+                h('input', { type: 'radio', checked: v === o, onChange: function () { L.values[f.key] = o; } }),
+                o
+              ]);
+            }));
+          } else {
+            ctl = h('input', {
+              class: ['ff-input', err ? 'is-err' : ''],
+              type: f.type === 'number' ? 'number' : (f.type === 'date' ? 'date' : 'text'),
+              value: v, placeholder: f.placeholder || '', onInput: onIn
+            });
+          }
+          return h('label', { class: ['ff', f.span === 2 ? 'is-wide' : ''], key: f.key }, [
+            h('span', { class: 'ff-label' }, [f.label, f.required ? h('i', { class: 'ff-req' }, '*') : null]),
+            ctl,
+            err ? h('span', { class: 'ff-err' }, err) : (f.hint ? h('span', { class: 'ff-hint' }, f.hint) : null)
+          ]);
+        }
+
+        return h('div', {
+          class: 'layer-mask',
+          onClick: function (e) { if (e.target.classList && e.target.classList.contains('layer-mask')) closeLayer(); }
+        }, [
+          h('div', { class: ['layer', 'layer-' + L.kind], style: { width: L.width + 'px' } }, [
+            h('div', { class: 'layer-head' }, [
+              h('div', null, [
+                h('div', { class: 'layer-title' }, L.title),
+                h('div', { class: 'layer-sub' }, [
+                  (cap.name || ''),
+                  '　角色：' + ((cap.actor || []).map(actorName).join('、') || '不限'),
+                  cap.from && cap.from.length ? '　' + fromLabel + ' → ' + toLabel : ''
+                ])
+              ]),
+              h('button', { class: 'icon-btn', title: '关闭（Esc）', onClick: closeLayer }, '×')
+            ]),
+            h('div', { class: 'layer-body' },
+              L.fields.length
+                ? L.fields.map(field)
+                : h('div', { class: 'layer-empty' }, (cap.ui && cap.ui.successText) || '这一步只做确认，确认后单据进入下一个状态。')),
+            h('div', { class: 'layer-foot' }, [
+              h('span', { class: 'layer-tip' }, 'Esc 关闭'),
+              h('button', { class: 'btn', onClick: closeLayer }, '取消'),
+              h('button', { class: 'btn btn-primary', onClick: submitLayer }, L.submitLabel)
+            ])
+          ])
+        ]);
+      };
+    }
+  };
+
   var Container = {
     name: 'Container',
     setup: function () {
       var stageRef = Vue.ref ? Vue.ref(null) : { value: null };
 
       function onStageClick(e) {
-        if (!store.annotMode) return;
-        if (e.target.closest('.annot-pop') || e.target.closest('.annot-pin')) return;
+        if (store.annotMode) {
+          if (e.target.closest('.annot-pop') || e.target.closest('.annot-pin')) return;
+          var ael = e.target.closest('[data-node-id]');
+          if (!ael) { store.popover = null; return; }
+          addAnnotation(ael.getAttribute('data-node-id'), e);
+          return;
+        }
+        // 命令按钮/行内操作自己有 onClick，冒泡到这里不重复处理
+        if (e.target.closest('button') || e.target.closest('a')) return;
         var el = e.target.closest('[data-node-id]');
-        if (!el) { store.popover = null; return; }
-        addAnnotation(el.getAttribute('data-node-id'), e);
+        if (!el) return;
+        var nid = el.getAttribute('data-node-id');
+        var ix = interactionsOf(store.pageId).filter(function (x) { return x.on === nid; })[0];
+        if (ix) runInteraction(ix);
+      }
+
+      function onKey(e) {
+        if (e.key === 'Escape') {
+          if (store.layer) { closeLayer(); return; }
+          if (store.popover) { store.popover = null; return; }
+          if (store.showToc) { store.showToc = false; return; }
+          if (store.showPrd) { store.showPrd = false; }
+        }
       }
 
       Vue.onMounted && Vue.onMounted(function () {
         window.addEventListener('resize', refreshPins);
+        window.addEventListener('keydown', onKey);
         document.querySelector('.canvas').addEventListener('scroll', refreshPins);
         refreshPins();
       });
@@ -626,7 +888,7 @@
         return h('div', { class: 'shell' }, [
           h('div', { class: 'shell-top' }, [
             h('div', { class: 'shell-brand' }, [
-              h('div', { class: 'shell-brand-mark' }, 'IQ'),
+              h('div', { class: 'shell-brand-mark' }, String(DATA.meta.product || 'II').slice(0, 2)),
               h('div', null, [
                 h('div', { class: 'shell-brand-name' }, DATA.meta.product),
                 h('div', { class: 'shell-brand-sub' }, 'IIOT-PRD · ' + pg.title)
@@ -689,7 +951,7 @@
                 localStorage.removeItem(KEY);
                 store.annotations = JSON.parse(JSON.stringify(DATA.annotations || []));
                 store.prdEdits = {};
-                store.entityStatus = 'reported';
+                store.entityStatus = defaultStatus(page.value);
                 store.pageState = 'default';
                 toast('已重置为 AI 生成版本');
                 refreshPins();
@@ -718,6 +980,7 @@
             store.showPrd && !store.audit ? h(PrdPanel) : null,
             h(Popover)
           ]),
+          h(LayerPanel),
           store.toastMsg ? h('div', { class: 'toast-wrap' }, [h('div', { class: 'toast' }, store.toastMsg)]) : null
         ]);
       };
@@ -733,6 +996,18 @@
 
   (Vue.createApp(Container)).mount('#app');
   refreshPins();
+
+  // 标注锚点是相对坐标：字体加载、侧栏折叠、窗口缩放都会让位置漂移，统一在这里重算
+  window.addEventListener('resize', refreshPins);
+  if (window.ResizeObserver) {
+    var stageEl = document.getElementById('stage');
+    if (stageEl) new ResizeObserver(function () { refreshPins(); }).observe(stageEl);
+  }
+  requestAnimationFrame(function () {
+    refreshPins();
+    setTimeout(refreshPins, 250);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(refreshPins);
+  });
 
   // 自检钩子：#test=1 时量一遍覆盖层是否挤压画布、表格是否横滚，结果写进 #selftest
   if (/test=1/.test(location.hash)) {

@@ -20,6 +20,9 @@
 **二、原型与 PRD 各写一遍，然后对不上。**
 一份 `proto.json` 同时驱动容器渲染、PRD 导出、标注、切片。一致性由 `check_parity.py` 读 DOM 与导出 MD 反查 JSON 来守，抓的是"改了 proto 忘了重建"这类肉眼看不出的漂移。
 
+**三、所有操作都堆进详情页，进去不知道先干什么。**
+「过程排查」「原因分析」「措施下发」如果做成详情页里的三个可编辑区块，信息是齐的，但责任、时点、校验全糊在一起。这套把每个推进动作立成**一个单据状态 + 一条命令 + 一个权限点**（待排查→排查、待分析→分析、待下发→下发…），详情页只读，动作由 `capabilities[].ui` 声明用弹框、抽屉还是独立页承载。`check_interact.py` 会把每条命令真点一遍，确认弹得出来、关得上、状态推进后列表跟着变。
+
 ## 开工第一件事：先过闸门，再看契约，最后才画页面
 
 ```bash
@@ -28,9 +31,11 @@ python3 scripts/check_contract.py out.proto.json                     # ② 契�
 python3 assets/container/src/build.py --proto out.proto.json \
         --out assets/container/dist/index.html                       # ③ 重出容器
 python3 scripts/check_parity.py out.proto.json                       # ④ 三处是否一致
+python3 scripts/check_interact.py --proto out.proto.json \
+        --html assets/container/dist/index.html                       # ⑤ 真点一遍
 ```
 
-顺序不能换。① 拦"跳步"和"事后补签"，② 拦"契约不自洽"，③ 把已成立的东西渲染出来，④ 确认"契约写的 = 容器显示的 = 导出的 PRD"。
+顺序不能换。① 拦"跳步"和"事后补签"，② 拦"契约不自洽"，③ 把已成立的东西渲染出来，④ 确认"契约写的 = 容器显示的 = 导出的 PRD"，⑤ 确认"点下去真的有反应"。
 
 首次使用先起骨架，七份澄清模板自动生成：
 
@@ -80,11 +85,12 @@ PDA 页不得引用 `pc-*` 组件，反之亦然，校验器会红。
 
 ## 容器：三栏，覆盖式，不缩放
 
-`assets/container/dist/index.html` 是单文件、双击即开、离线可用的交付物，内含 Vue 3.4.38 运行时（143KB）、23 个组件、渲染引擎与数据。
+`assets/container/dist/index.html` 是单文件、双击即开、离线可用的交付物，内含 Vue 3.4.38 运行时（143KB）、24 个组件、渲染引擎与数据。
 
 - 左侧页面目录、右侧 PRD 都是**覆盖层**，展开时压在原型上，不挤压画布。原型必须是 1:1 真实页面，不能被栏宽压缩成"另一个分辨率"。
 - **不缩放**。设计宽即真实宽；要看全貌就收起覆盖层，不靠 `transform: scale` 糊弄。
 - 顶部：页面态（默认 / 加载 / 空 / 零结果 / 异常）· 单据状态（由状态机驱动）· 标注 · 审核模式 · PRD · 导出。
+- **可点击**：命令按 `capabilities[].ui` 打开弹框 / 抽屉 / 独立页，表格行点了进详情，目录项点了换页（未建模模块给原因）。弹层四条关闭通道（× / 取消 / Esc / 遮罩）都通。
 - 标注锚定 `nodeId` + 归一化坐标，换页、改栏宽、重开都不跑位；导出为「修改指令」可直接喂给下一轮。
 - 直达参数：`#page=pg-xxx&status=approved&prd=1&toc=1`，方便把某个状态分享给评审。
 
@@ -104,24 +110,25 @@ PDA 页不得引用 `pc-*` 组件，反之亦然，校验器会红。
 
 ## 组件：登记 ≠ 实现
 
-`schemas/catalog.json` 登记 54 个组件，`components.js` 实际实现 23 个，每个带 `impl: done|todo`。契约里只能用 `impl=done` 的组件——用了没实现的，运行时会降级成红色虚线框，原型就是残的。这条把"账实不符"从运行时问题提前到构建前。
+`schemas/catalog.json` 登记 54 个组件，`components.js` 实际实现 24 个，每个带 `impl: done|todo`。契约里只能用 `impl=done` 的组件——用了没实现的，运行时会降级成红色虚线框，原型就是残的。这条把"账实不符"从运行时问题提前到构建前。
 
 要用的组件不在已实现清单里，先实现再写契约。
 
-## 验收：110 条判据，每条都做过造红验证
+## 验收：120 条判据 + 交互实测，每条都做过造红验证
 
 | 层 | 手段 | 条数 | 管什么 |
 |---|---|---|---|
 | G 流程 | `check_gate.py` | 26 | 七步文档齐、三道卡点已确认、非目标 ≥3、量级已量化、异常 11 类、评审四角色各 ≥10 问 |
 | L1 结构 | `check_contract.py` | 6 | 顶层必填、schemaVersion、设计宽声明、页面必填字段、route 格式 |
-| L2 语义 | `check_contract.py` | 53 | 四态齐、组件白名单且已实现、命令唯一 owner、状态机端点、EARS 非法路径、标注锚点、PDA 策略、角色引用有效 |
+| L2 语义 | `check_contract.py` | 63 | 四态齐、组件白名单且已实现、命令唯一 owner、状态机端点、EARS 非法路径、标注锚点、PDA 策略、角色引用有效 |
 | P 切片 | `check_contract.py --plan` | 11 | 切片上限、依赖成环、可独立验收 |
 | C 一致 | `check_parity.py` | 14 | 契约 / 容器 DOM / 导出 MD 三处一致；无降级组件、无 boot-error、无内部标识泄漏 |
+| R 交互 | `check_interact.py` | 用例随契约生成 | 每条 dialog/drawer 命令点了要弹、Esc 要关；目录项点了要换页；行点了要进详情 |
 | L3 呈现 | 容器内 + 截图 | — | 覆盖层展开时画布宽度不变、表头不裁切、短字段不折行、字号集合、截图非空白 |
 
-判据的准入门槛只有一条：**答不出「什么输入能让它红」的判据不写**。110 条全部做过变异造红：闸门 12 条、契约 8 条、一致性 3 条，全部命中预期报错。
+判据的准入门槛只有一条：**答不出「什么输入能让它红」的判据不写**。120 条全部做过变异造红：闸门 12 条、契约 15 条、一致性 3 条，全部命中预期报错。R 层同样造过红：把引擎里开弹层那行去掉，9 条命令立刻失败。
 
-C 层需要本机装 Chrome。
+C 层与 R 层需要本机装 Chrome。
 
 ## 目录
 
@@ -136,14 +143,15 @@ IIOT-PRD/
 │  ├─ 05-demo-reverse.md          从 Demo 抽模块 / 规则 / 状态机
 │  └─ 06-container.md             容器工程与扩展方式
 ├─ schemas/                       proto.schema.json · catalog.json · slice.schema.json
-├─ scripts/                       check_gate.py · check_contract.py · check_parity.py
+├─ scripts/                       check_gate.py · check_contract.py · check_parity.py · check_interact.py
 ├─ examples/
 │  ├─ example-00-minimal.*.json   最小可跑样例
 │  ├─ example-01-qms-incoming.proto.json   三页：报告列表 / PDA 取样 / 统计看板
+│  ├─ example-02-accident.proto.json       四页：台账 / 我的待办 / 只读详情 / 新建（推进动作样例）
 │  └─ shaping-qms/                七份澄清文档 + _gate.json（正向样例）
 └─ assets/container/
    ├─ src/                        runtime.js · components.js · app.js · styles.css · build.py
-   └─ dist/index.html             交付物（单文件，291KB）
+   └─ dist/index.html             交付物（单文件，317KB）
 ```
 
 ## 装到本地
@@ -160,7 +168,7 @@ Claude Code 用户放 `~/.claude/skills/IIOT-PRD`。目录名须为 `IIOT-PRD`�
 
 ## 依赖
 
-Python 3.8+（三个校验脚本 + 构建脚本，仅标准库）。C 层一致性检查需 Chrome。容器运行时不依赖网络。
+Python 3.8+（四个校验脚本 + 构建脚本，仅标准库）。C 层一致性与 R 层交互实测需 Chrome。容器运行时不依赖网络。
 
 ## License
 

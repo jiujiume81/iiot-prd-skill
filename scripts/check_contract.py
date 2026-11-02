@@ -193,8 +193,160 @@ def check_proto(proto, catalog):
 
         for ix in (p.get("interactions") or []):
             tgt = ix.get("target")
-            if ix.get("do") in ("navigate", "openDrawer", "openModal") and tgt and tgt not in page_ids:
+            doit = ix.get("do")
+            # navigate 去的是页面；openModal/openDrawer 打开的是"哪条命令的承载层"，target 应是 capId
+            if doit == "navigate" and tgt and tgt not in page_ids:
                 add(E, "L2-19", f"页面 {pid} 的交互 {ix.get('id')} 跳转到不存在的页面 {tgt}")
+            if doit in ("openDrawer", "openModal") and tgt and tgt not in cap_ids and tgt not in page_ids:
+                add(E, "L2-19", f"页面 {pid} 的交互 {ix.get('id')} 打开的 target={tgt} 既不是命令也不是页面")
+
+    # ---------- L2 C2. 推进型动作：状态化 + 承载声明 ----------
+    # 这一组是给「过程排查 / 原因分析 / 措施下发 全塞进详情页」这类产出兜底的。
+    # 详情页只读、推进动作落成命令、每条命令声明承载与入口，三条缺一条就会退回"一屏表单不知道先干啥"。
+    cap_by_id = {c.get("id"): c for c in caps}
+    for p in pages:
+        pid = p.get("id")
+        if p.get("layout") != "detail":
+            continue
+        for nd in walk(p.get("componentTree") or {}, []):
+            if nd.get("type") in ("FormGrid",):
+                add(E, "L2-54", f"详情页 {pid} 含可编辑表单 {nd.get('type')}（节点 {nd.get('id')}）："
+                                "推进动作应做成命令 + 弹框/抽屉/独立页，详情页只读")
+
+    UI_KINDS = ("inline", "dialog", "drawer", "page")
+    for c in caps:
+        cid = c.get("id")
+        ui = c.get("ui") or {}
+        kind = ui.get("kind")
+        entry = ui.get("entry")
+        if kind not in UI_KINDS:
+            add(E, "L2-55", f"命令 {cid} 未声明 ui.kind（{'/'.join(UI_KINDS)}），"
+                            "说不清这个动作弹框、抽屉还是整页，落地时就会堆进详情页")
+            continue
+        if not entry:
+            add(E, "L2-55", f"命令 {cid} 未声明 ui.entry，无法判断按钮挂在哪")
+        if kind == "page" and ui.get("pageId") not in page_ids:
+            add(E, "L2-56", f"命令 {cid} 用独立页面承载，但 pageId={ui.get('pageId')} 不存在")
+
+        if entry:
+            hit = False
+            for p in pages:
+                nodes = walk(p.get("componentTree") or {}, [])
+                nids = {n.get("id") for n in nodes}
+                if entry in nids:
+                    hit = True
+                    break
+                if "__act_" in entry:
+                    base, akey = entry.split("__act_", 1)
+                    node = [n for n in nodes if n.get("id") == base]
+                    if node:
+                        props = node[0].get("props") or {}
+                        keys = [a.get("key") for a in (props.get("actions") or [])]
+                        for col in props.get("columns") or []:
+                            keys += [a.get("key") for a in (col.get("actions") or [])]
+                        if akey in keys:
+                            hit = True
+                            break
+            if not hit:
+                add(E, "L2-55", f"命令 {cid} 的 ui.entry={entry} 在页面组件树里找不到对应节点或行内动作")
+
+    # 状态机不能有进得去出不来的非终态
+    for sm in sms:
+        outs = {}
+        for t in (sm.get("transitions") or []):
+            outs.setdefault(t.get("from"), []).append(t)
+        for st in (sm.get("states") or []):
+            if st.get("terminal"):
+                continue
+            if not outs.get(st.get("key")):
+                add(E, "L2-57", f"状态机 {sm.get('id')} 的状态「{st.get('label')}」没有出向迁移，"
+                                "单据会永久卡在这一步")
+
+    # 管理视角与执行视角：状态一多，一个列表装不下两种人
+    for m in modules:
+        mpages = [p for p in pages if p.get("id") in (m.get("pages") or [])]
+        lists = [p for p in mpages if p.get("layout") in ("list", "pda-list")]
+        for ent in {p.get("entity") for p in lists if p.get("entity")}:
+            sm = next((s for s in sms if s.get("entity") == ent), None)
+            if not sm:
+                continue
+            human = [s for s in (sm.get("states") or []) if not s.get("terminal")]
+            if len(human) < 4:
+                continue
+            same = [p for p in lists if p.get("entity") == ent]
+            if len(same) < 2:
+                add(E, "L2-58", f"模块 {m.get('id')} 的 {ent} 有 {len(human)} 个人工推进状态，"
+                                f"却只有 {len(same)} 个列表页：管理视角（看全量与下发/审批）与"
+                                "执行视角（只看我的待办）是两种任务，各需自己的列表")
+            else:
+                actors = [set((p.get("contract") or {}).get("actor") or []) for p in same]
+                if not any(actors[i] != actors[j]
+                           for i in range(len(actors)) for j in range(i + 1, len(actors))):
+                    add(E, "L2-58", f"模块 {m.get('id')} 的 {len(same)} 个 {ent} 列表页面向同一批角色 "
+                                    f"{sorted(actors[0])}：没有形成「管理 / 执行」两种视角")
+
+    # 契约里声明的交互，引擎得真的实现，否则"能点"只存在于文档里
+    IMPLEMENTED_DO = {"navigate", "openModal", "openDrawer", "setState", "submit", "toast", "reset"}
+    for p in pages:
+        pid = p.get("id")
+        for ix in (p.get("interactions") or []):
+            if ix.get("do") not in IMPLEMENTED_DO:
+                add(E, "L2-59", f"页面 {pid} 的交互 {ix.get('id')} 用了引擎未实现的 do={ix.get('do')}，"
+                                "原型上点了不会有任何反应")
+            on = ix.get("on") or ""
+            if not on:
+                add(E, "L2-60", f"页面 {pid} 的交互 {ix.get('id')} 没有 on，绑不到任何元素")
+            elif not on.startswith("__"):
+                base = on.split("__")[0]
+                nids = {n.get("id") for n in walk(p.get("componentTree") or {}, [])}
+                if base not in nids:
+                    add(E, "L2-60", f"页面 {pid} 的交互 {ix.get('id')} 绑定的节点 {base} 不在本页组件树内")
+
+    # 目录是"能不能走到某一页"的承诺。目录写 A、页面做 B，评审时点过去就是空的。
+    has_shell = any(
+        n.get("type") == "AppShell"
+        for p in pages for n in walk(p.get("componentTree") or {}, [])
+    )
+    nav_targets = set()
+    for p in pages:
+        pts = ((p.get("componentTree") or {}).get("props") or {})
+        for g in (pts.get("groups") or []):
+            for it in (g.get("items") or []):
+                lab = it.get("label") or ""
+                pg_ref = it.get("page")
+                if pg_ref:
+                    if pg_ref not in page_ids:
+                        add(E, "L2-61", f"页面 {p.get('id')} 的目录项「{lab}」指向不存在的页面 {pg_ref}")
+                    else:
+                        nav_targets.add(pg_ref)
+                    continue
+                # 没写 page 的，按标签去对页面名；对上了算能到达，对不上就是本原型没建模的模块
+                hit = next((x for x in pages
+                            if x.get("layout") != "detail"
+                            and (x.get("title") == lab or x.get("navLabel") == lab)), None)
+                if hit:
+                    nav_targets.add(hit.get("id"))
+    for p in pages:
+        if not has_shell:
+            break
+        if p.get("layout") in ("list", "pda-list") and p.get("id") not in nav_targets:
+            add(E, "L2-61", f"列表页 {p.get('id')}「{p.get('title')}」在目录里没有入口："
+                            "用户只能靠直达链接才到得了，实际使用中等于不存在")
+
+    # 页头标题要跟页面名一致：写死一张单据号，换数据进来就张冠李戴
+    for p in pages:
+        hdr = (((p.get("componentTree") or {}).get("props") or {}).get("header") or {})
+        ht = hdr.get("title")
+        if ht and ht != p.get("title"):
+            add(E, "L2-62", f"页面 {p.get('id')} 的页头标题「{ht}」与页面名「{p.get('title')}」不一致："
+                            "页头是页面身份，不能拿某条数据的编号顶替")
+
+    # 弹层不能是空壳：要么有要填的字段，要么说清确认后发生什么
+    for c in caps:
+        ui = c.get("ui") or {}
+        if ui.get("kind") in ("dialog", "drawer") and not (ui.get("fields") or ui.get("successText")):
+            add(E, "L2-63", f"命令 {c.get('id')} 用 {ui.get('kind')} 承载，但既没有 fields 也没有 successText："
+                            "点开是个空弹层，用户不知道要干什么")
 
     # ---------- L2 D. 命令策略 ----------
     owns = {}
