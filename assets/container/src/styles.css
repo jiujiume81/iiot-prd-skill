@@ -50,6 +50,7 @@
   --fs-xs: 12px;
 
   --h-header: 52px;
+  --h-topbar: 44px;      /* 顶部全局工具条（目录/标注/审核/导出），弹层不得盖它 */
   --h-tabs: 38px;
   --h-toolbar: 44px;
   --h-footer: 44px;
@@ -80,8 +81,8 @@ button { font-family: inherit; }
 .shell { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 
 .shell-top {
-  height: 44px;
-  flex: 0 0 44px;
+  height: var(--h-topbar);
+  flex: 0 0 var(--h-topbar);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1052,8 +1053,10 @@ button { font-family: inherit; }
    推进型动作从这里进：表单字段来自 capabilities[].ui.fields，
    尺寸与间距跟页面同一套令牌，评审时看不出是"另一种界面"。
    ============================================================ */
+/* 遮罩只盖内容区，不盖顶部工具条：弹层开着时「标注 / 审核 / PRD / 导出」
+   仍然要能点，评审时经常边看弹框边开标注。所以不用 inset: 0。 */
 .layer-mask {
-  position: fixed; inset: 0; z-index: 90;
+  position: fixed; top: var(--h-topbar); left: 0; right: 0; bottom: 0; z-index: 90;
   background: rgba(7, 22, 29, 0.38);
   display: flex; align-items: flex-start; justify-content: center;
   animation: layer-fade .12s ease-out;
@@ -1065,15 +1068,15 @@ button { font-family: inherit; }
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-3);
   display: flex; flex-direction: column;
-  max-height: calc(100vh - 96px);
-  margin-top: 64px;
+  max-height: calc(100vh - var(--h-topbar) - 52px);
+  margin-top: 20px;
   animation: layer-in .14s ease-out;
 }
 @keyframes layer-in { from { transform: translateY(-6px); opacity: .6 } to { transform: none; opacity: 1 } }
 
-/* drawer 从右侧滑入，贴顶贴底，与"查看上下文同时填写"的用法一致 */
+/* drawer 从右侧滑入，贴底但让开顶部工具条——上沿与弹框同一条基准线 */
 .layer.layer-drawer {
-  position: fixed; top: 0; right: 0; bottom: 0; margin: 0;
+  position: fixed; top: var(--h-topbar); right: 0; bottom: 0; margin: 0;
   max-height: none; border-radius: 0;
   box-shadow: -18px 0 48px rgba(9, 30, 38, .22);
   animation: drawer-in .16s ease-out;

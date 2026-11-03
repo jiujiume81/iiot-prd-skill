@@ -170,6 +170,22 @@ PROBE = r"""
     while (Date.now() - t0 < (ms || 1500)) { var v = fn(); if (v) return v; await sleep(40); }
     return null;
   }
+  // 弹层不许盖住顶部工具条：遮罩上沿不能高于顶栏下沿，
+  // 且顶栏按钮中心做命中测试时必须还是按钮本身（拿到 layer-mask 就是被盖了）
+  function topbarUsable() {
+    var top = document.querySelector('.shell-top');
+    var m = mask();
+    if (!top || !m) return true;
+    var tb = top.getBoundingClientRect();
+    var mr = m.getBoundingClientRect();
+    if (mr.top < tb.bottom - 1) return false;
+    var btn = top.querySelector('.tool-btn');
+    if (!btn) return true;
+    var br = btn.getBoundingClientRect();
+    var hit = document.elementFromPoint(br.left + br.width / 2, br.top + br.height / 2);
+    if (!hit) return true;
+    return !(hit.closest && hit.closest('.layer-mask'));
+  }
   function findClickable(text) {
     // 先找行内动作：同名文本在工具栏里也有时（如「审核」），行内那个才是命令入口
     var groups = [
@@ -216,11 +232,13 @@ PROBE = r"""
             ok = false;
           } else {
             var kindOk = L && L.classList.contains('layer-' + c.expectKind);
+            var tbOk = topbarUsable();
             document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
             await sleep(250);
             var closed = !mask();
-            ok = kindOk && closed;
-            detail = (L ? L.className : '') + (closed ? ' / Esc 已关闭' : ' / Esc 关不掉');
+            ok = kindOk && closed && tbOk;
+            detail = (L ? L.className : '') + (closed ? ' / Esc 已关闭' : ' / Esc 关不掉')
+              + (tbOk ? ' / 顶栏可点' : ' / 遮罩盖住了顶部工具条（标注、审核、导出点不到）');
           }
         }
       }

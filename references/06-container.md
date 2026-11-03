@@ -259,6 +259,23 @@ python3 scripts/check_interact.py \
 推论：新增组件时，props 的键名要么和已有约定一致（表单字段一律 `fields`），要么在组件里同时兼容两种写法。
 **"我写了一种、引擎认另一种"是原型返工里最贵的一种错**，它不会报错，只会安静地渲染成空白。
 
+### 11.9 弹层的上沿：让开外壳，只压内容
+
+`.layer-mask` 原来写的是 `inset: 0`，等于连顶部工具条一起罩住。后果不是"少点一个按钮"，而是**弹框一开，目录 / 标注 / 审核 / PRD / 导出 整排全哑**——评审时最常见的动作恰恰是"开着弹框顺手点标注圈一下"。
+
+外壳和内容的分界要写进令牌，不能靠眼估：
+
+| 层 | 高度 | 弹层怎么对待 |
+|---|---|---|
+| `.shell-top` 顶部工具条 | `--h-topbar`（44px） | 不许盖，遮罩从它下沿开始 |
+| `.app-header` 页头 | `--h-header`（52px） | 属于内容区，被压暗是正常的 |
+
+三处改动：`.layer-mask` 用 `top: var(--h-topbar)` 取代 `inset: 0`；`.layer` 的 `margin-top` 从 64 改 20、`max-height` 扣掉顶栏高；`.layer-drawer` 的 `top` 从 0 改 `var(--h-topbar)`。
+
+`check_interact.py` 里加了 `topbarUsable()`，每条弹层用例打开后做两件事：量遮罩上沿是否低于顶栏下沿、在顶栏按钮中心做 `elementFromPoint` 命中测试（拿到 `.layer-mask` 就是被盖了）。造红验证：把 `inset: 0` 改回去，12 条里 9 条弹层用例立刻失败并报「遮罩盖住了顶部工具条」。
+
+注意 `elementFromPoint.apply(null, [...])` 在页面上下文里会抛 `Illegal invocation`，直接调用即可。
+
 ## 12 已知限制
 
 | 限制 | 影响 | 缓解 |
