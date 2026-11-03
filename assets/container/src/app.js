@@ -12,9 +12,22 @@
   // 数据必须是响应式的：行级命令（措施开始/完成、逐条排查）改的是某一行，
   // 如果 DATA 是普通对象，Vue 追不到，就会出现"提交成功了但列表还是旧状态"。
   var DATA = reactive ? reactive(window.__PROTO__) : window.__PROTO__;
-  var KEY = 'iiot:' + DATA.meta.product + ':' + DATA.meta.version;
+  // 存储按「产品 + 模块前缀」分键，**不带版本号**：
+  // 版本一升、原型一重建，上一轮的标注就整批消失，等于每轮评审都不留痕。
+  // 这是"改完之后之前的标注没了"的根因，不是浏览器清缓存。
+  var MOD_SIG = ((DATA.pages || [])[0] || {}).id
+    ? String(DATA.pages[0].id).split('-').slice(0, 2).join('-') : 'misc';
+  var KEY = 'iiot:' + DATA.meta.product + ':' + MOD_SIG;
+  var LEGACY_KEY = 'iiot:' + DATA.meta.product + ':' + DATA.meta.version;
   var saved = {};
-  try { saved = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { saved = {}; }
+  try {
+    saved = JSON.parse(localStorage.getItem(KEY) || '{}');
+    if (!(saved.annotations || []).length) {
+      // 从上一版的分版本鍵搬一次：老用户打开新原型不该看到"一条标注都没有"
+      var old = JSON.parse(localStorage.getItem(LEGACY_KEY) || '{}');
+      if ((old.annotations || []).length) saved = old;
+    }
+  } catch (e) { saved = {}; }
 
   var capsById = {};
   (DATA.capabilities || []).forEach(function (c) { capsById[c.id] = c; });
@@ -31,6 +44,27 @@
   function actorName(id) { return actorNameMap[id] || id; }
   function stateNames(list) {
     return (list || []).map(function (k) { return stateNameMap[k] || k; }).join('、');
+  }
+
+  // 重建原型后 DATA.annotations 是新一份，本地存档是上一轮的意见。
+  // 按 id 合并：本地有的一律保留（含已解决状态与解决方法），新契约里多出来的追加进来；
+  // 若契约里的版本已经被处理过（resolved + resolution）而本地还是 open，以契约为准。
+  function mergeAnnotations(builtin, local) {
+    var out = [], seen = {};
+    (builtin || []).forEach(function (a) {
+      if (a && a.id && !seen[a.id]) { out.push(a); seen[a.id] = 1; }
+    });
+    (local || []).forEach(function (a) {
+      if (!a || !a.id) return;
+      var i = -1;
+      out.forEach(function (x, k) { if (x.id === a.id) i = k; });
+      if (i < 0) { out.push(a); seen[a.id] = 1; return; }
+      var b = out[i];
+      var builtinDone = b.status && b.status !== 'open' && b.resolution;
+      var localDone = a.status && a.status !== 'open';
+      out[i] = (builtinDone && !localDone) ? b : a;
+    });
+    return out;
   }
 
   var hashPage = (location.hash.match(/page=([A-Za-z0-9_-]+)/) || [])[1];
@@ -68,11 +102,16 @@
     prdTab: 'page',
     prdWidth: 500,
     annotMode: false,
+    annotScope: 'page',
     audit: false,
     showExport: false,
-    annotations: saved.annotations || JSON.parse(JSON.stringify(DATA.annotations || [])),
+    // 目录树的开合状态与搜索词：功能一多，平铺菜单就靠记忆找了
+    navOpen: saved.navOpen || {},
+    navQuery: '',
+    annotations: mergeAnnotations(DATA.annotations || [], saved.annotations || []),
     prdEdits: saved.prdEdits || {},
     pins: [],
+    missingPins: [],
     popover: null,
     layer: null,
     toastMsg: ''
@@ -91,6 +130,7 @@
         pageId: store.pageId,
         entityStatus: store.entityStatus,
         annotations: store.annotations,
+        navOpen: store.navOpen,
         prdEdits: store.prdEdits
       }));
     } catch (e) { /* 隐私模式下静默失败 */ }
@@ -127,9 +167,11 @@
       values: values,
       errors: {}
     };
+    // 弹层里也可能有标注要钉：开了层就把 pin 重算一遍
+    refreshPins();
   }
 
-  function closeLayer() { store.layer = null; }
+  function closeLayer() { store.layer = null; refreshPins(); }
 
   function submitLayer() {
     var L = store.layer;
@@ -316,49 +358,100 @@
     return h(C, props);
   }
 
-  /* ---------------- 标注 ---------------- */
+  /* ---------------- 标注 ----------------
+   * 锚点有两种载体：
+   *   1) 页面元素        data-node-id = "n-xxx"
+   *   2) 弹框/抽屉字段    data-node-id = "layer:<capId>:<fieldKey>"
+   * 第二种是评审里最常被漏掉的地方——"这个字段该拆成两个"往往是在弹框打开时才发现的。
+   * 所以 pin 层挂在视口上（fixed），不是挂在画布上；否则弹层一开、pin 就被压在遮罩下面。
+   */
+  function anchorEl(nodeId) {
+    if (!nodeId) return null;
+    if (String(nodeId).indexOf('layer:') === 0) {
+      var host = document.querySelector('.layer-mask');
+      if (!host) return null;            // 弹层没开：这枚 pin 暂时无处安放，但仍留在列表里
+      return host.querySelector('[data-node-id="' + nodeId + '"]');
+    }
+    return document.querySelector('#stage [data-node-id="' + nodeId + '"]');
+  }
+
+  function nodeLabelOf(el) {
+    if (!el) return '';
+    var lab = el.getAttribute('data-node-label');
+    if (lab) return lab;
+    return (el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 24);
+  }
+
+  function annById(id) {
+    return store.annotations.filter(function (x) { return x.id === id; })[0] || null;
+  }
+
   function refreshPins() {
     nextTick(function () {
-      var stage = document.getElementById('stage');
-      if (!stage) return;
-      var base = stage.getBoundingClientRect();
-      var out = [];
-      store.annotations.filter(function (a) { return a.pageId === store.pageId && a.status !== 'deleted'; })
-        .forEach(function (a) {
-          var el = stage.querySelector('[data-node-id="' + a.nodeId + '"]');
-          if (!el) return;
-          var r = el.getBoundingClientRect();
-          out.push({
-            id: a.id,
-            idx: store.annotations.filter(function (x) { return x.pageId === store.pageId; }).indexOf(a) + 1,
-            x: r.left - base.left + r.width * a.anchor.x,
-            y: r.top - base.top + r.height * a.anchor.y,
-            status: a.status
-          });
+      var cur = store.pageId;
+      var out = [], missing = [];
+      store.annotations.forEach(function (a) {
+        if (a.pageId !== cur || a.status === 'deleted') return;
+        var el = anchorEl(a.nodeId);
+        if (!el) { missing.push(a.id); return; }
+        var r = el.getBoundingClientRect();
+        if (!r.width && !r.height) { missing.push(a.id); return; }
+        out.push({
+          id: a.id,
+          idx: store.annotations.filter(function (x) { return x.pageId === cur; }).indexOf(a) + 1,
+          x: r.left + r.width * a.anchor.x,
+          y: r.top + r.height * a.anchor.y,
+          status: a.status
         });
+      });
       store.pins = out;
+      store.missingPins = missing;
     });
   }
 
   function addAnnotation(nodeId, evt) {
-    var stage = document.getElementById('stage');
-    var el = stage.querySelector('[data-node-id="' + nodeId + '"]');
+    var el = anchorEl(nodeId);
+    if (!el) return;
     var r = el.getBoundingClientRect();
-    var base = stage.getBoundingClientRect();
-    var ax = Math.min(0.98, Math.max(0.02, (evt.clientX - r.left) / r.width));
-    var ay = Math.min(0.98, Math.max(0.02, (evt.clientY - r.top) / r.height));
+    var ax = Math.min(0.98, Math.max(0.02, (evt.clientX - r.left) / (r.width || 1)));
+    var ay = Math.min(0.98, Math.max(0.02, (evt.clientY - r.top) / (r.height || 1)));
+    var inLayer = String(nodeId).indexOf('layer:') === 0;
     store.popover = {
       mode: 'new', nodeId: nodeId,
-      x: evt.clientX - base.left, y: evt.clientY - base.top,
-      text: '', anchor: { x: ax, y: ay }
+      x: evt.clientX, y: evt.clientY,
+      text: '', anchor: { x: ax, y: ay },
+      // 落点快照：换一版原型后 nodeId 可能不在了，靠它把意见还原成"哪个页面的哪一块"
+      target: {
+        pageTitle: page.value.title,
+        nodeLabel: nodeLabelOf(el),
+        nodeText: (el.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 40),
+        carrier: inLayer ? ((store.layer && store.layer.kind) || 'dialog') : 'page',
+        capId: inLayer ? String(nodeId).split(':')[1] : undefined
+      }
     };
+  }
+
+  // 标注模式下的点击统一入口：画布和弹层共用。弹层不共用的话，
+  // "这个弹框字段该拆开"这类意见就只能写在整页上，落点说不清。
+  function annotClick(e) {
+    if (!store.annotMode) return false;
+    if (e.target.closest('.annot-pop') || e.target.closest('.annot-pin')) return true;
+    var ael = e.target.closest('[data-node-id]');
+    if (!ael) { store.popover = null; return true; }
+    addAnnotation(ael.getAttribute('data-node-id'), e);
+    return true;
   }
 
   function saveAnnotation() {
     var p = store.popover;
-    if (!p || !p.text.trim()) { toast('先写一句要改什么'); return; }
+    if (!p) return;
+    if (!p.text.trim()) {
+      toast(p.mode === 'resolve' ? '写一句「怎么改的」——下一轮的人只能看到这句话' : '先写一句要改什么');
+      return;
+    }
     if (p.mode === 'new') {
       var seq = store.annotations.length + 1;
+      while (annById('an-' + seq)) seq += 1;
       store.annotations.push({
         id: 'an-' + seq,
         pageId: store.pageId,
@@ -369,11 +462,20 @@
         status: 'open',
         author: '我',
         createdAt: new Date().toISOString(),
+        target: p.target,
         affects: ['componentTree']
       });
       toast('标注已加，点「标注」可导出成修改指令');
+    } else if (p.mode === 'resolve') {
+      var r = annById(p.id);
+      if (r) {
+        r.status = 'resolved';
+        r.resolution = p.text.trim();
+        r.resolvedAt = new Date().toISOString();
+      }
+      toast('已标记完成，并记下解决方法');
     } else {
-      var a = store.annotations.filter(function (x) { return x.id === p.id; })[0];
+      var a = annById(p.id);
       if (a) a.body = p.text.trim();
       toast('标注已更新');
     }
@@ -451,11 +553,21 @@
     });
     if (store.annotations.length) {
       L.push('');
-      L.push('## 5 标注（待处理）');
+      L.push('## 5 标注');
       L.push('');
-      store.annotations.filter(function (a) { return a.status === 'open'; }).forEach(function (a) {
-        L.push('- `' + a.nodeId + '` ' + a.body);
+      var op = store.annotations.filter(function (a) { return a.status === 'open'; });
+      var dn = store.annotations.filter(function (a) { return a.status && a.status !== 'open' && a.status !== 'deleted'; });
+      op.forEach(function (a) {
+        L.push('- [待处理] `' + a.nodeId + '` ' + a.body);
       });
+      if (!op.length) L.push('- （无待处理标注）');
+      if (dn.length) {
+        L.push('');
+        L.push('已完成 ' + dn.length + ' 条，处理方法：');
+        dn.forEach(function (a) {
+          L.push('- ' + a.body + ' → ' + (a.resolution || '（未填）'));
+        });
+      }
     }
     return L.join('\n');
   }
@@ -511,14 +623,33 @@
   }
 
   function exportAnnot() {
-    var list = store.annotations.filter(function (a) { return a.status === 'open'; });
-    var L = ['# 原型修改指令（' + page.value.title + '）', ''];
-    list.forEach(function (a, i) {
-      L.push((i + 1) + '. 节点 `' + a.nodeId + '`：' + a.body);
+    var pageTitle = {};
+    (DATA.pages || []).forEach(function (p) { pageTitle[p.id] = p.title; });
+    var all = store.annotations.filter(function (a) { return a.status !== 'deleted'; });
+    var open = all.filter(function (a) { return a.status === 'open'; });
+    var done = all.filter(function (a) { return a.status !== 'open'; });
+    var L = ['# 原型修改指令', '',
+             '> 来源：' + DATA.meta.product + ' ' + (DATA.meta.version || '') + '　｜　待处理 ' + open.length + ' 条，已完成 ' + done.length + ' 条', ''];
+    L.push('## 待处理（' + open.length + '）', '');
+    open.forEach(function (a, i) {
+      var where = pageTitle[a.pageId] || ('（页面已下线：' + a.pageId + '）');
+      var tgt = a.target ? ('「' + (a.target.nodeLabel || a.nodeId) + '」') : ('`' + a.nodeId + '`');
+      L.push((i + 1) + '. **' + where + '** · ' + tgt +
+             (a.target && a.target.carrier && a.target.carrier !== 'page' ? '（弹层内）' : ''));
+      L.push('   - 要改：' + a.body);
+      L.push('   - 锚点：`' + a.nodeId + '`（' + a.id + '）');
     });
-    if (!list.length) L.push('（无待处理标注）');
-    download('修改指令-' + page.value.title + '.md', L.join('\n'), 'text/markdown;charset=utf-8');
-    toast('已导出修改指令');
+    if (!open.length) L.push('（无待处理标注）');
+    if (done.length) {
+      L.push('', '## 已完成（' + done.length + '）', '',
+             '> 保留它们是为了下一个人不用重新发现同一个问题。', '');
+      done.forEach(function (a, i) {
+        L.push((i + 1) + '. **' + (pageTitle[a.pageId] || a.pageId) + '** ' + a.body);
+        L.push('   - 处理方法：' + (a.resolution || '（当时没写，建议补一句）'));
+      });
+    }
+    download('修改指令-' + DATA.meta.product + '.md', L.join('\n'), 'text/markdown;charset=utf-8');
+    toast('已导出修改指令（含已完成记录）');
   }
 
   /* ---------------- 小部件 ---------------- */
@@ -653,28 +784,121 @@
             })
           ]);
         } else {
-          var list = store.annotations.filter(function (a) { return a.pageId === store.pageId; });
+          // 标注面板三段：待处理 / 已完成（带解决方法）/ 落点已失效。
+          // 这一段是"改完之后之前的标注去哪了"的答案：不删、不藏，按能不能定位分组。
+          var allScope = store.annotScope === 'all';
+          var pageIds = {};
+          (DATA.pages || []).forEach(function (x) { pageIds[x.id] = 1; });
+          var pool = store.annotations.filter(function (a) {
+            if (a.status === 'deleted') return false;
+            return allScope || a.pageId === store.pageId;
+          });
+          function isOrphan(a) { return !pageIds[a.pageId]; }
+          function pinMissing(a) {
+            if (isOrphan(a)) return true;
+            if (a.pageId !== store.pageId) return false;   // 别的页没渲染，谈不上失效
+            return store.missingPins.indexOf(a.id) >= 0;
+          }
+          var openList = pool.filter(function (a) { return a.status === 'open'; });
+          var doneList = pool.filter(function (a) { return a.status !== 'open'; });
+          var orphans = pool.filter(isOrphan);
+
+          function card(a, i) {
+            var missing = pinMissing(a);
+            var page = (DATA.pages || []).filter(function (x) { return x.id === a.pageId; })[0];
+            var where = (a.target && a.target.nodeLabel) || a.nodeId;
+            return h('div', {
+              class: ['annot-card', a.status === 'open' ? '' : 'is-resolved', missing ? 'is-missing' : ''],
+              key: a.id
+            }, [
+              h('div', { class: 'annot-card-top' }, [
+                h('div', { class: 'annot-idx' }, String(i + 1)),
+                h('span', { class: 'annot-node', title: a.nodeId }, where),
+                h('span', {
+                  style: { marginLeft: 'auto', fontSize: '10px', color: a.status === 'open' ? 'var(--warn-600)' : 'var(--ok-600)' }
+                }, a.status === 'open' ? '待处理' : '已完成')
+              ]),
+              allScope || missing
+                ? h('div', { class: 'annot-where' }, [
+                    (page ? page.title : '（该页面已不在本版原型里）'),
+                    a.target && a.target.carrier && a.target.carrier !== 'page' ? ' · 弹层内' : '',
+                    a.pageId !== store.pageId && page ? h('a', {
+                      style: { marginLeft: '6px' },
+                      onClick: function () { store.pageId = a.pageId; }
+                    }, '去这一页') : null
+                  ])
+                : null,
+              h('div', { class: 'annot-body' }, a.body),
+              missing ? h('div', { class: 'annot-stale' },
+                '落点已失效：这一版原型里找不到原来的元素（页面结构可能调过了）。意见保留在这里，改动前请人工确认。') : null,
+              a.status !== 'open' && a.resolution
+                ? h('div', { class: 'annot-resolution' }, [h('b', null, '解决方法　'), a.resolution])
+                : null,
+              h('div', { class: 'annot-actions' }, [
+                a.status === 'open'
+                  ? h('a', {
+                      onClick: function () {
+                        store.popover = {
+                          mode: 'resolve', id: a.id, nodeId: a.nodeId, text: '',
+                          anchor: a.anchor, x: Math.max(40, (window.innerWidth || 1200) / 2 - 150), y: 200
+                        };
+                      }
+                    }, '标记完成')
+                  : h('a', {
+                      onClick: function () {
+                        a.status = 'open';
+                        a.resolvedAt = undefined;
+                        persist(); refreshPins();
+                      }
+                    }, '重新打开'),
+                h('a', {
+                  onClick: function () {
+                    store.popover = {
+                      mode: 'edit', id: a.id, nodeId: a.nodeId, text: a.body, anchor: a.anchor,
+                      x: Math.max(40, (window.innerWidth || 1200) / 2 - 150), y: 200
+                    };
+                  }
+                }, '编辑'),
+                h('a', {
+                  onClick: function () {
+                    if (!window.confirm('删掉这条标注？删除后不再保留（建议标记完成，留个结论）。')) return;
+                    a.status = 'deleted'; persist(); refreshPins();
+                  }
+                }, '删除')
+              ])
+            ]);
+          }
+
           body = h('div', { class: 'prd-body' }, [
-            h('div', { class: 'prd-h1' }, '标注（' + list.length + '）'),
-            h('div', { class: 'prd-sub' }, '点画布右上「标注」，再点页面元素即可添加；导出后可直接作为下一轮修改指令'),
-            h('div', { class: 'annot-list' }, list.map(function (a, i) {
-              return h('div', { class: ['annot-card', a.status === 'resolved' ? 'is-resolved' : ''], key: a.id }, [
-                h('div', { class: 'annot-card-top' }, [
-                  h('div', { class: 'annot-idx' }, String(i + 1)),
-                  h('span', { class: 'annot-node' }, a.nodeId),
-                  h('span', { style: { marginLeft: 'auto', fontSize: '10px', color: a.status === 'open' ? 'var(--warn-600)' : 'var(--ok-600)' } }, a.status === 'open' ? '待处理' : '已解决')
-                ]),
-                h('div', { class: 'annot-body' }, a.body),
-                h('div', { class: 'annot-actions' }, [
-                  h('a', { onClick: function () { a.status = a.status === 'open' ? 'resolved' : 'open'; persist(); refreshPins(); } }, a.status === 'open' ? '标记已解决' : '重新打开'),
-                  h('a', { onClick: function () {
-                    store.popover = { mode: 'edit', id: a.id, nodeId: a.nodeId, x: 120, y: 120, text: a.body, anchor: a.anchor };
-                  } }, '编辑')
+            h('div', { class: 'prd-h1' }, '标注（待处理 ' + openList.length + ' / 已完成 ' + doneList.length + '）'),
+            h('div', { class: 'prd-sub' }, '点顶栏「标注」，再点页面元素即可添加——弹框/抽屉里的字段也能标。换一版原型后标注不会消失。'),
+            h('div', { class: 'annot-scope' }, [
+              h('button', { class: ['chip', !allScope ? 'is-on' : ''], onClick: function () { store.annotScope = 'page'; } }, '本页'),
+              h('button', { class: ['chip', allScope ? 'is-on' : ''], onClick: function () { store.annotScope = 'all'; } }, '全部页面')
+            ]),
+            orphans.length
+              ? h('div', { class: 'annot-alert' }, [
+                  '有 ' + orphans.length + ' 条标注指向已经不在本版原型里的页面。它们被保留在「全部页面」里，',
+                  '不会自动删除——要不要保留由你决定。'
                 ])
-              ]);
-            })),
-            h('div', { style: { marginTop: '10px' } }, [
-              h('button', { class: 'btn', onClick: exportAnnot }, '导出修改指令')
+              : null,
+            h('div', { class: 'annot-group-title' }, '待处理'),
+            h('div', { class: 'annot-list' }, openList.length
+              ? openList.map(card)
+              : h('div', { class: 'annot-empty' }, '没有待处理的标注')),
+            h('div', { class: 'annot-group-title' }, '已完成'),
+            h('div', { class: 'annot-list' }, doneList.length
+              ? doneList.map(card)
+              : h('div', { class: 'annot-empty' }, '还没有已完成的标注')),
+            h('div', { style: { marginTop: '10px', display: 'flex', gap: '8px' } }, [
+              h('button', { class: 'btn', onClick: exportAnnot }, '导出修改指令'),
+              h('button', {
+                class: 'btn', onClick: function () {
+                  if (!window.confirm('清空全部标注（含已完成）？此操作不可撤销。')) return;
+                  store.annotations = [];
+                  persist(); refreshPins(); toast('标注已清空');
+                }
+              }, '清空')
             ])
           ]);
         }
@@ -735,19 +959,35 @@
       return function () {
         var p = store.popover;
         if (!p) return null;
+        var isNew = p.mode === 'new';
+        var isResolve = p.mode === 'resolve';
+        var meta = isNew ? (p.target && p.target.nodeLabel) : p.nodeId;
+        if (isNew && p.target && p.target.carrier !== 'page') {
+          meta = (meta || '') + '（弹层内）';
+        }
+        var W = 268;
+        var vw = window.innerWidth || 1200;
+        var vh = window.innerHeight || 800;
+        var left = Math.min(Math.max(8, p.x + 14), vw - W - 12);
+        var top = Math.min(Math.max(48, p.y - 18), vh - 190);
         return h('div', {
-          class: 'annot-pop',
-          style: { left: Math.min(p.x, 600) + 'px', top: Math.max(8, p.y - 20) + 'px' }
+          class: ['annot-pop', isResolve ? 'is-resolve' : ''],
+          style: { left: left + 'px', top: top + 'px' }
         }, [
-          h('div', { class: 'annot-meta' }, [h('span', null, p.mode === 'new' ? '新标注' : '编辑标注'), h('code', null, p.nodeId)]),
+          h('div', { class: 'annot-meta' }, [
+            h('span', null, isNew ? '新标注' : (isResolve ? '标记完成' : '编辑标注')),
+            meta ? h('code', { title: p.nodeId }, meta) : null
+          ]),
+          isResolve ? h('div', { class: 'annot-hint' }, '写清怎么改的。下一轮的人只能看到这句话，看不到你当时的想法。') : null,
           h('textarea', {
-            placeholder: '要改什么？一句话说清，能落地的那种',
+            placeholder: isResolve ? '例：操作列拆成「查看 / 处置 / 归档」，审核移到抽屉里'
+              : '要改什么？一句话说清，能落地的那种',
             value: p.text,
             onInput: function (e) { p.text = e.target.value; }
           }),
           h('div', { class: 'annot-pop-actions' }, [
             h('button', { class: 'btn btn-sm', onClick: function () { store.popover = null; } }, '取消'),
-            h('button', { class: 'btn btn-sm btn-primary', onClick: saveAnnotation }, '保存')
+            h('button', { class: 'btn btn-sm btn-primary', onClick: saveAnnotation }, isNew ? '保存' : (isResolve ? '存为已完成' : '保存'))
           ])
         ]);
       };
@@ -794,7 +1034,12 @@
               value: v, placeholder: f.placeholder || '', onInput: onIn
             });
           }
-          return h('label', { class: ['ff', f.span === 2 ? 'is-wide' : ''], key: f.key }, [
+          return h('label', {
+            class: ['ff', f.span === 2 ? 'is-wide' : ''],
+            key: f.key,
+            'data-node-id': 'layer:' + L.capId + ':' + f.key,
+            'data-node-label': (L.title || '') + ' · ' + f.label
+          }, [
             h('span', { class: 'ff-label' }, [f.label, f.required ? h('i', { class: 'ff-req' }, '*') : null]),
             ctl,
             err ? h('span', { class: 'ff-err' }, err) : (f.hint ? h('span', { class: 'ff-hint' }, f.hint) : null)
@@ -805,11 +1050,23 @@
           class: 'layer-mask',
           onClick: function (e) { if (e.target.classList && e.target.classList.contains('layer-mask')) closeLayer(); }
         }, [
-          h('div', { class: ['layer', 'layer-' + L.kind], style: { width: L.width + 'px' } }, [
+          h('div', {
+            class: ['layer', 'layer-' + L.kind],
+            style: { width: L.width + 'px' },
+            onClick: function (e) { annotClick(e); }
+          }, [
             h('div', { class: 'layer-head' }, [
               h('div', null, [
-                h('div', { class: 'layer-title' }, L.title),
-                h('div', { class: 'layer-sub' }, [
+                h('div', {
+                  class: 'layer-title',
+                  'data-node-id': 'layer:' + L.capId + ':__title',
+                  'data-node-label': '弹层标题「' + L.title + '」'
+                }, L.title),
+                h('div', {
+                  class: 'layer-sub',
+                  'data-node-id': 'layer:' + L.capId + ':__sub',
+                  'data-node-label': '弹层副标题（命令/角色/状态迁移）'
+                }, [
                   (cap.name || ''),
                   '　角色：' + ((cap.actor || []).map(actorName).join('、') || '不限'),
                   cap.from && cap.from.length ? '　' + fromLabel + ' → ' + toLabel : ''
@@ -824,7 +1081,12 @@
             h('div', { class: 'layer-foot' }, [
               h('span', { class: 'layer-tip' }, 'Esc 关闭'),
               h('button', { class: 'btn', onClick: closeLayer }, '取消'),
-              h('button', { class: 'btn btn-primary', onClick: submitLayer }, L.submitLabel)
+              h('button', {
+                class: 'btn btn-primary',
+                'data-node-id': 'layer:' + L.capId + ':__submit',
+                'data-node-label': '弹层主按钮「' + L.submitLabel + '」',
+                onClick: submitLayer
+              }, L.submitLabel)
             ])
           ])
         ]);
@@ -838,13 +1100,7 @@
       var stageRef = Vue.ref ? Vue.ref(null) : { value: null };
 
       function onStageClick(e) {
-        if (store.annotMode) {
-          if (e.target.closest('.annot-pop') || e.target.closest('.annot-pin')) return;
-          var ael = e.target.closest('[data-node-id]');
-          if (!ael) { store.popover = null; return; }
-          addAnnotation(ael.getAttribute('data-node-id'), e);
-          return;
-        }
+        if (annotClick(e)) return;
         // 命令按钮/行内操作自己有 onClick，冒泡到这里不重复处理
         if (e.target.closest('button') || e.target.closest('a')) return;
         var el = e.target.closest('[data-node-id]');
@@ -870,7 +1126,7 @@
         refreshPins();
       });
 
-      Vue.watch && Vue.watch(function () { return [store.pageId, store.pageState, store.entityStatus, store.showPrd, store.prdWidth, store.annotations.length]; }, function () {
+      Vue.watch && Vue.watch(function () { return [store.pageId, store.pageState, store.entityStatus, store.showPrd, store.prdWidth, store.annotations.length, store.layer]; }, function () {
         refreshPins();
       });
 
@@ -962,25 +1218,30 @@
             h('div', { id: 'stage', class: 'canvas' + (pg.target === 'pda' ? ' is-pda' : ''), onClick: onStageClick }, [
               renderNode(pg.componentTree)
             ]),
-            store.annotMode || !store.audit ? h('div', { class: 'annot-layer' }, store.pins.map(function (pin) {
-              return h('div', {
-                key: pin.id,
-                class: ['annot-pin', pin.status === 'resolved' ? 'is-resolved' : ''],
-                style: { left: pin.x + 'px', top: pin.y + 'px' },
-                onClick: function (e) {
-                  e.stopPropagation();
-                  var a = store.annotations.filter(function (x) { return x.id === pin.id; })[0];
-                  store.showPrd = true;
-                  store.prdTab = 'annot';
-                  store.popover = { mode: 'edit', id: a.id, nodeId: a.nodeId, x: pin.x + 24, y: pin.y, text: a.body, anchor: a.anchor };
-                }
-              }, String(pin.idx));
-            })) : null,
             store.showToc ? h(TocPanel) : null,
-            store.showPrd && !store.audit ? h(PrdPanel) : null,
-            h(Popover)
+            store.showPrd && !store.audit ? h(PrdPanel) : null
           ]),
           h(LayerPanel),
+          // pin 层在弹层之后渲染、在视口层级：弹框开着时标注照样能钉、能点开
+          store.annotMode || !store.audit ? h('div', { class: 'annot-layer' }, store.pins.map(function (pin) {
+            return h('div', {
+              key: pin.id,
+              class: ['annot-pin', pin.status === 'resolved' ? 'is-resolved' : ''],
+              style: { left: pin.x + 'px', top: pin.y + 'px' },
+              title: '标注 ' + pin.idx + (pin.status === 'resolved' ? '（已完成）' : ''),
+              onClick: function (e) {
+                e.stopPropagation();
+                var a = store.annotations.filter(function (x) { return x.id === pin.id; })[0];
+                store.showPrd = true;
+                store.prdTab = 'annot';
+                store.popover = {
+                  mode: 'edit', id: a.id, nodeId: a.nodeId, text: a.body, anchor: a.anchor,
+                  x: Math.min(pin.x + 24, (window.innerWidth || 1200) - 292), y: pin.y
+                };
+              }
+            }, String(pin.idx));
+          })) : null,
+          h(Popover),
           store.toastMsg ? h('div', { class: 'toast-wrap' }, [h('div', { class: 'toast' }, store.toastMsg)]) : null
         ]);
       };

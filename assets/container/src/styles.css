@@ -306,6 +306,40 @@ button { font-family: inherit; }
   cursor: pointer;
 }
 .app-search:hover { background: rgba(255, 255, 255, 0.09); color: #cfdde1; }
+.app-search:focus-within { border-color: rgba(42, 163, 179, 0.55); background: rgba(255, 255, 255, 0.1); }
+.app-search input {
+  flex: 1; min-width: 0;
+  border: 0; outline: 0; background: transparent;
+  color: #e8f1f3; font-size: var(--fs-xs); font-family: inherit;
+}
+.app-search input::placeholder { color: #7d949b; }
+.app-search-clear {
+  flex: 0 0 auto; width: 14px; height: 14px; line-height: 13px; text-align: center;
+  border-radius: 50%; font-size: 11px; color: #8ea6ad; background: rgba(255, 255, 255, 0.08);
+}
+.app-search-clear:hover { color: #fff; background: rgba(255, 255, 255, 0.18); }
+
+/* 目录树：一级展开、二级收起、当前页所在分支强制展开。
+   缩进靠 padding-left 层层叠加，折叠箭头占位固定，所以父子标签始终左对齐成一条线。 */
+.nav-node { position: relative; }
+.nav-caret {
+  flex: 0 0 12px; width: 12px; text-align: center;
+  font-size: 11px; line-height: 1; color: #8ea6ad;
+  user-select: none;
+}
+.nav-caret.is-open { color: #cfdde1; }
+.nav-caret.is-leaf { visibility: hidden; }
+.nav-item:hover .nav-caret { color: #cfdde1; }
+.nav-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.nav-item.is-group { color: #cfdde1; font-weight: 500; }
+.nav-kids { position: relative; }
+.nav-kids::before {
+  content: ""; position: absolute; left: 15px; top: 0; bottom: 4px;
+  width: 1px; background: rgba(255, 255, 255, 0.09);
+}
+.nav-hit { height: auto; min-height: 32px; align-items: flex-start; flex-direction: column; gap: 1px; padding-top: 6px; padding-bottom: 6px; }
+.nav-hit-path { font-size: 10px; color: #7d949b; }
+.nav-hit-empty { padding: 10px 9px; font-size: var(--fs-xs); color: #7d949b; }
 
 .app-nav { flex: 1; overflow: auto; padding: 4px 8px 12px; }
 .nav-group { margin-top: 10px; }
@@ -747,7 +781,13 @@ button { font-family: inherit; }
 .big-btn-sub { text-align: center; font-size: 11px; color: var(--text-3); margin-top: 6px; }
 
 /* ---------------- 标注 ---------------- */
-.annot-layer { position: absolute; inset: 0; pointer-events: none; z-index: 20; }
+/* 标注层挂在视口上（不是画布上）：弹框/抽屉打开时也能往弹层里钉标注，
+   pin 才不会被遮罩压在下面。层级高于遮罩 90，低于弹层本体不受影响（pin 只有 22px）。 */
+.annot-layer {
+  position: fixed;
+  top: var(--h-topbar); left: 0; right: 0; bottom: 0;
+  pointer-events: none; z-index: 95;
+}
 .annot-pin {
   position: absolute;
   width: 22px; height: 22px;
@@ -766,14 +806,14 @@ button { font-family: inherit; }
 .annot-pin.is-active { outline: 2px solid var(--brand-400); outline-offset: 2px; }
 .annot-hot { outline: 2px dashed var(--brand-400); outline-offset: -2px; cursor: crosshair; }
 .annot-pop {
-  position: absolute;
+  position: fixed;
   width: 268px;
   background: #fff;
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow-3);
   padding: 10px;
-  z-index: 35;
+  z-index: 96;
   pointer-events: auto;
 }
 .annot-pop textarea {
@@ -791,14 +831,42 @@ button { font-family: inherit; }
   border: 1px solid var(--line); border-radius: var(--r-md);
   padding: 8px 10px; font-size: var(--fs-xs); background: #fff;
 }
-.annot-card.is-resolved { opacity: 0.62; }
+.annot-card.is-resolved { opacity: 0.7; }
+.annot-card.is-missing { border-style: dashed; border-color: var(--warn-500, #d6a13a); }
 .annot-card-top { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
 .annot-idx {
   width: 16px; height: 16px; border-radius: 50%; background: var(--brand-600); color: #fff;
   font-size: 10px; display: grid; place-items: center; flex: 0 0 16px;
 }
-.annot-node { font-size: 10px; color: var(--text-3); font-family: ui-monospace, Menlo, monospace; }
+.annot-card.is-resolved .annot-idx { background: var(--ok-600); }
+.annot-card.is-missing .annot-idx { background: var(--warn-600); }
+.annot-node { font-size: 10px; color: var(--text-3); font-family: ui-monospace, Menlo, monospace;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px; }
+.annot-where { font-size: 10px; color: var(--text-3); margin-bottom: 4px; }
+.annot-where a { color: var(--brand-600); cursor: pointer; }
 .annot-body { color: var(--text-2); line-height: 1.6; }
+.annot-stale {
+  margin-top: 6px; padding: 5px 7px; border-radius: 5px;
+  background: #fdf6e7; border: 1px solid #f0dcb4; color: #8a6412; line-height: 1.55;
+}
+.annot-resolution {
+  margin-top: 6px; padding: 5px 7px; border-radius: 5px;
+  background: #eef7f2; border: 1px solid #cfe6da; color: #1b5f45; line-height: 1.55;
+}
+.annot-resolution b { font-weight: 500; color: #16794f; }
+.annot-group-title {
+  margin: 12px 0 6px; font-size: 11px; color: var(--text-3);
+  letter-spacing: 0.5px; text-transform: none;
+}
+.annot-empty { font-size: 11px; color: var(--text-3); padding: 2px 0 4px; }
+.annot-scope { display: flex; gap: 6px; margin: 8px 0 2px; }
+.annot-alert {
+  margin: 8px 0 2px; padding: 6px 8px; border-radius: 5px;
+  background: #fdf6e7; border: 1px solid #f0dcb4; color: #8a6412;
+  font-size: 11px; line-height: 1.6;
+}
+.annot-hint { font-size: 11px; color: var(--text-3); margin-bottom: 6px; line-height: 1.55; }
+.annot-pop.is-resolve { border-color: #b9dcc9; box-shadow: 0 6px 20px rgba(27, 122, 87, 0.18); }
 .annot-actions { margin-top: 6px; display: flex; gap: 8px; }
 .annot-actions a { color: var(--brand-600); cursor: pointer; font-size: 11px; }
 .annot-actions a:hover { text-decoration: underline; }

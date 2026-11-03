@@ -1157,6 +1157,64 @@
         }
       }
     },
+    "navItem": {
+      "type": "object",
+      "description": "侧边导航的一节。功能少的项目只有一层；功能超过 12 个必须分组，超过 3 层说明信息架构没想清楚。",
+      "required": [
+        "key",
+        "label"
+      ],
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "同级内唯一，折叠状态按它记忆"
+        },
+        "label": {
+          "type": "string"
+        },
+        "page": {
+          "type": "string",
+          "description": "点它跳到哪一页；不填表示本原型未建模，点了给原因"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "待办数角标"
+        },
+        "on": {
+          "type": "boolean",
+          "description": "没有 page 时用它手工标当前项"
+        },
+        "collapsed": {
+          "type": "boolean",
+          "description": "默认是否折叠子项。当前页在这个分支里时一律展开，不受它影响"
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/navItem"
+          }
+        }
+      }
+    },
+    "navGroup": {
+      "type": "object",
+      "required": [
+        "title",
+        "items"
+      ],
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/navItem"
+          }
+        }
+      }
+    },
     "annotation": {
       "type": "object",
       "required": [
@@ -1239,6 +1297,48 @@
               "capability",
               "prd"
             ]
+          }
+        },
+        "resolvedAt": {
+          "type": "string",
+          "description": "标记已解决的时间"
+        },
+        "resolution": {
+          "type": "string",
+          "minLength": 2,
+          "description": "怎么改的。已解决（resolved/wontfix）必填——只写「改了」，下一轮没人知道当时改成了什么"
+        },
+        "target": {
+          "type": "object",
+          "description": "标注落点的快照。原型重新生成后 nodeId 可能不存在了，靠它把标注还原到「哪个页面的哪一块」，不让历史意见凭空消失",
+          "required": [
+            "pageTitle"
+          ],
+          "properties": {
+            "pageTitle": {
+              "type": "string"
+            },
+            "nodeLabel": {
+              "type": "string",
+              "description": "被标注元素的可读名，如「预防措施按钮」「当前状态列」"
+            },
+            "nodeText": {
+              "type": "string",
+              "description": "被标注元素当时的文本，用于人工辨认"
+            },
+            "carrier": {
+              "type": "string",
+              "enum": [
+                "page",
+                "dialog",
+                "drawer"
+              ],
+              "description": "标注落在页面上还是在弹框/抽屉里。落在弹层里的，弹层要不要开决定 pin 画不画"
+            },
+            "capId": {
+              "type": "string",
+              "description": "carrier 为 dialog/drawer 时，是哪个命令的弹层"
+            }
           }
         },
         "replies": {

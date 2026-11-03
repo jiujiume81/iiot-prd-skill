@@ -67,6 +67,14 @@ def entry_text(proto, entry, fallback):
     return fallback
 
 
+def _walk_nav(items):
+    """目录是树：所有用例都要能扫到二级、三级项。"""
+    for it in items or []:
+        yield it
+        for sub in _walk_nav(it.get("children")):
+            yield sub
+
+
 def build_cases(proto):
     pages = proto.get("pages") or []
     title_by_id = {p.get("id"): p.get("title") for p in pages}
@@ -117,7 +125,7 @@ def build_cases(proto):
     for p in pages:
         props = (p.get("componentTree") or {}).get("props") or {}
         for g in props.get("groups") or []:
-            for it in g.get("items") or []:
+            for it in _walk_nav(g.get("items")):
                 tgt = it.get("page")
                 label = it.get("label") or ""
                 if not tgt and it.get("page") is None:
@@ -135,6 +143,46 @@ def build_cases(proto):
                     "text": label,
                     "expectTitle": title_by_id.get(tgt),
                 })
+
+    # 3b. 目录树：分组能折叠、再展开，且展开时确实藏住了子项
+    tree_seen = set()
+    for p in pages:
+        props = (p.get("componentTree") or {}).get("props") or {}
+        for g in props.get("groups") or []:
+            for it in g.get("items") or []:
+                kids = it.get("children") or []
+                if not kids:
+                    continue
+                lab = it.get("label") or ""
+                # 子项必须是叶子且有 page，否则"藏住"没法从 DOM 判断
+                child = next((k for k in kids if k.get("label") and not (k.get("children") or [])), None)
+                if not child or lab in tree_seen:
+                    continue
+                tree_seen.add(lab)
+                cases.append({
+                    "kind": "navtree",
+                    "name": f"目录分组「{lab}」可折叠 / 展开",
+                    "page": p.get("id"),
+                    "text": lab,
+                    "child": child.get("label"),
+                })
+
+    # 3c. 标注能不能落在弹层上（评审最常见的动作：开着弹框顺手圈一个字段）
+    for c in (proto.get("capabilities") or []):
+        ui = c.get("ui") or {}
+        if ui.get("kind") not in ("dialog", "drawer") or not (ui.get("fields") or []):
+            continue
+        host = next((p.get("id") for p in pages
+                     if c.get("id") in ((p.get("contract") or {}).get("owns") or [])), None)
+        if not host:
+            continue
+        cases.append({
+            "kind": "annot",
+            "name": f"{title_by_id.get(host)} · 能在「{ui.get('title') or c.get('name')}」弹层里标注",
+            "page": host,
+            "text": entry_text(proto, ui.get("entry"), c.get("label") or c.get("name")),
+        })
+        break
 
     # 4. 行点击：列表页每页抽一次
     for p in pages:
@@ -211,15 +259,110 @@ PROBE = r"""
       window.RD.goto(c.page, '探针');
       await sleep(450);
       if (c.kind === 'nav') {
+        // 树形目录：先把折叠的分组都点开，否则子项不在 DOM 里，会被误判成"目录里没有"
+        Array.prototype.slice.call(document.querySelectorAll('.nav-item.is-group .nav-caret')).forEach(function (cr) {
+          if (txt(cr) === '▸') cr.click();
+        });
+        await sleep(200);
         var nav = Array.prototype.slice.call(document.querySelectorAll('.nav-item')).filter(function (n) {
           return txt(n).indexOf(c.text) === 0;
         })[0];
         if (!nav) { detail = '目录里没有这一项'; }
         else { nav.click(); await sleep(450); ok = title() === c.expectTitle; detail = title(); }
+      } else if (c.kind === 'navtree') {
+        function navLabels() {
+          return Array.prototype.slice.call(document.querySelectorAll('.app-nav .nav-label')).map(txt);
+        }
+        function groupOf(label) {
+          // 分组的 textContent 里含折叠箭头，不能整块比较，要拿 .nav-label 的文本
+          var labs = Array.prototype.slice.call(document.querySelectorAll('.nav-item.is-group .nav-label'));
+          var hit = labs.filter(function (e) { return txt(e) === label; })[0];
+          return hit ? hit.closest('.nav-item') : null;
+        }
+        var grp = groupOf(c.text);
+        if (!grp) { detail = '目录里没有分组「' + c.text + '」'; }
+        else {
+          var vis0 = navLabels().indexOf(c.child) >= 0;
+          var cr1 = grp.querySelector('.nav-caret');
+          if (!cr1) { detail = '分组左侧没有折叠箭头'; }
+          else {
+            cr1.click(); await sleep(280);
+            var vis1 = navLabels().indexOf(c.child) >= 0;
+            var grp2 = groupOf(c.text);
+            var cr2 = grp2 && grp2.querySelector('.nav-caret');
+            if (cr2) { cr2.click(); await sleep(280); }
+            var vis2 = navLabels().indexOf(c.child) >= 0;
+            ok = vis0 && !vis1 && vis2;
+            detail = '初始' + (vis0 ? '展开' : '收起') + ' / 点箭头后' + (vis1 ? '子项仍在（折叠没生效）' : '子项已藏') +
+                     ' / 再点' + (vis2 ? '已展开' : '没回来');
+          }
+        }
       } else if (c.kind === 'row') {
         var row = document.querySelector('.dt-row');
         if (!row) { detail = '列表没有数据行'; }
         else { row.click(); await sleep(500); ok = title() === c.expectTitle; detail = title(); }
+      } else if (c.kind === 'annot') {
+        // 评审里最常见的动作是「开着弹框顺手圈一个字段」。如果弹层里的元素没有锚点，
+        // 这条意见只能笼统写在整页上，落点说不清。
+        var abEl = findClickable(c.text);
+        if (!abEl) { detail = '找不到命令入口「' + c.text + '」'; }
+        else {
+          abEl.click();
+          var m2 = await waitFor(mask, 1500);
+          if (!m2) { detail = '弹层没打开（前置条件不满足）'; }
+          else {
+            var S = window.__RD_TEST__ && window.__RD_TEST__.store;
+            var n0 = S ? S.annotations.length : -1;
+            var abBtn = Array.prototype.slice.call(document.querySelectorAll('.shell-top .tool-btn')).filter(function (b) {
+              return txt(b).indexOf('标注') === 0;
+            })[0];
+            if (abBtn) abBtn.click();
+            await sleep(220);
+            var field = document.querySelector('.layer [data-node-id]');
+            if (!field) { detail = '弹层里没有可标注的元素（缺 data-node-id）'; }
+            else {
+              var fr = field.getBoundingClientRect();
+              field.dispatchEvent(new MouseEvent('click', {
+                bubbles: true,
+                clientX: fr.left + fr.width / 2,
+                clientY: fr.top + fr.height / 2
+              }));
+              await sleep(320);
+              var pop = document.querySelector('.annot-pop');
+              if (!pop) { detail = '点弹层里的字段没有弹出标注框'; }
+              else {
+                var ta = pop.querySelector('textarea');
+                ta.value = '探针：这个字段该拆开';
+                ta.dispatchEvent(new Event('input', { bubbles: true }));
+                await sleep(120);
+                var sv = Array.prototype.slice.call(pop.querySelectorAll('button')).filter(function (b) {
+                  return txt(b) === '保存';
+                })[0];
+                if (sv) sv.click();
+                await sleep(340);
+                var n1 = S ? S.annotations.length : -1;
+                var last = S && n1 ? S.annotations[n1 - 1] : {};
+                var carrier = (last && last.target && last.target.carrier) || '?';
+                var pins = Array.prototype.slice.call(document.querySelectorAll('.annot-pin'));
+                // 别用坐标猜"是不是在弹层上"：窗口宽不同，阈值就变了。
+                // 直接看 pin 落点是否落在 .layer 的矩形内，再核对标注记的载体。
+                var L0 = layer();
+                var lr = L0 ? L0.getBoundingClientRect() : { left: 0, right: 0, top: 0, bottom: 0 };
+                var onLayer = pins.some(function (p) {
+                  var x = parseFloat(p.style.left), y = parseFloat(p.style.top);
+                  return x >= lr.left - 6 && x <= lr.right + 6 && y >= lr.top - 6 && y <= lr.bottom + 6;
+                });
+                ok = (n1 === n0 + 1) && carrier !== 'page' && onLayer;
+                detail = '标注 ' + n0 + '→' + n1 + '，载体=' + carrier +
+                         '，pin 落在弹层矩形内：' + (onLayer ? '是' : '否');
+                if (S && n1 > n0) S.annotations.splice(n0, n1 - n0);   // 探针不留痕
+                if (abBtn) abBtn.click();
+                document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+                await sleep(220);
+              }
+            }
+          }
+        }
       } else {
         var el = findClickable(c.text);
         if (!el) { detail = '页面上找不到「' + c.text + '」（命令声明了但没落地）'; }

@@ -110,16 +110,39 @@
                   "label": "我的待办",
                   "count": 7,
                   "page": "pg-acc-mine"
-                },
-                {
-                  "key": "base",
-                  "label": "基础数据管理"
                 }
               ]
             },
             {
               "title": "质量管理",
               "items": [
+                {
+                  "key": "accident",
+                  "label": "事故报告",
+                  "collapsed": false,
+                  "children": [
+                    {
+                      "key": "acc-ledger",
+                      "label": "事故台账",
+                      "page": "pg-acc-ledger"
+                    },
+                    {
+                      "key": "acc-mine",
+                      "label": "我的措施任务",
+                      "page": "pg-acc-mine"
+                    },
+                    {
+                      "key": "acc-new",
+                      "label": "新建事故报告",
+                      "page": "pg-acc-new"
+                    }
+                  ]
+                },
+                {
+                  "key": "capa",
+                  "label": "纠正预防措施",
+                  "count": 9
+                },
                 {
                   "key": "ng",
                   "label": "不合格品处理"
@@ -131,16 +154,6 @@
                 {
                   "key": "change",
                   "label": "变更管理"
-                },
-                {
-                  "key": "accident",
-                  "label": "事故报告",
-                  "page": "pg-acc-ledger"
-                },
-                {
-                  "key": "capa",
-                  "label": "纠正预防措施",
-                  "count": 9
                 }
               ]
             },
@@ -158,6 +171,15 @@
                 {
                   "key": "oqc",
                   "label": "发货检验"
+                }
+              ]
+            },
+            {
+              "title": "基础数据",
+              "items": [
+                {
+                  "key": "base",
+                  "label": "基础数据管理"
                 }
               ]
             }
@@ -752,16 +774,39 @@
                   "label": "我的待办",
                   "count": 7,
                   "page": "pg-acc-mine"
-                },
-                {
-                  "key": "base",
-                  "label": "基础数据管理"
                 }
               ]
             },
             {
               "title": "质量管理",
               "items": [
+                {
+                  "key": "accident",
+                  "label": "事故报告",
+                  "collapsed": false,
+                  "children": [
+                    {
+                      "key": "acc-ledger",
+                      "label": "事故台账",
+                      "page": "pg-acc-ledger"
+                    },
+                    {
+                      "key": "acc-mine",
+                      "label": "我的措施任务",
+                      "page": "pg-acc-mine"
+                    },
+                    {
+                      "key": "acc-new",
+                      "label": "新建事故报告",
+                      "page": "pg-acc-new"
+                    }
+                  ]
+                },
+                {
+                  "key": "capa",
+                  "label": "纠正预防措施",
+                  "count": 9
+                },
                 {
                   "key": "ng",
                   "label": "不合格品处理"
@@ -773,16 +818,6 @@
                 {
                   "key": "change",
                   "label": "变更管理"
-                },
-                {
-                  "key": "accident",
-                  "label": "事故报告",
-                  "page": "pg-acc-ledger"
-                },
-                {
-                  "key": "capa",
-                  "label": "纠正预防措施",
-                  "count": 9
                 }
               ]
             },
@@ -800,6 +835,15 @@
                 {
                   "key": "oqc",
                   "label": "发货检验"
+                }
+              ]
+            },
+            {
+              "title": "基础数据",
+              "items": [
+                {
+                  "key": "base",
+                  "label": "基础数据管理"
                 }
               ]
             }
@@ -1307,16 +1351,39 @@
                   "label": "我的待办",
                   "count": 7,
                   "page": "pg-acc-mine"
-                },
-                {
-                  "key": "base",
-                  "label": "基础数据管理"
                 }
               ]
             },
             {
               "title": "质量管理",
               "items": [
+                {
+                  "key": "accident",
+                  "label": "事故报告",
+                  "collapsed": false,
+                  "children": [
+                    {
+                      "key": "acc-ledger",
+                      "label": "事故台账",
+                      "page": "pg-acc-ledger"
+                    },
+                    {
+                      "key": "acc-mine",
+                      "label": "我的措施任务",
+                      "page": "pg-acc-mine"
+                    },
+                    {
+                      "key": "acc-new",
+                      "label": "新建事故报告",
+                      "page": "pg-acc-new"
+                    }
+                  ]
+                },
+                {
+                  "key": "capa",
+                  "label": "纠正预防措施",
+                  "count": 9
+                },
                 {
                   "key": "ng",
                   "label": "不合格品处理"
@@ -1328,16 +1395,6 @@
                 {
                   "key": "change",
                   "label": "变更管理"
-                },
-                {
-                  "key": "accident",
-                  "label": "事故报告",
-                  "page": "pg-acc-ledger"
-                },
-                {
-                  "key": "capa",
-                  "label": "纠正预防措施",
-                  "count": 9
                 }
               ]
             },
@@ -1355,6 +1412,15 @@
                 {
                   "key": "oqc",
                   "label": "发货检验"
+                }
+              ]
+            },
+            {
+              "title": "基础数据",
+              "items": [
+                {
+                  "key": "base",
+                  "label": "基础数据管理"
                 }
               ]
             }
@@ -1849,16 +1915,39 @@
                   "label": "我的待办",
                   "count": 7,
                   "page": "pg-acc-mine"
-                },
-                {
-                  "key": "base",
-                  "label": "基础数据管理"
                 }
               ]
             },
             {
               "title": "质量管理",
               "items": [
+                {
+                  "key": "accident",
+                  "label": "事故报告",
+                  "collapsed": false,
+                  "children": [
+                    {
+                      "key": "acc-ledger",
+                      "label": "事故台账",
+                      "page": "pg-acc-ledger"
+                    },
+                    {
+                      "key": "acc-mine",
+                      "label": "我的措施任务",
+                      "page": "pg-acc-mine"
+                    },
+                    {
+                      "key": "acc-new",
+                      "label": "新建事故报告",
+                      "page": "pg-acc-new"
+                    }
+                  ]
+                },
+                {
+                  "key": "capa",
+                  "label": "纠正预防措施",
+                  "count": 9
+                },
                 {
                   "key": "ng",
                   "label": "不合格品处理"
@@ -1870,16 +1959,6 @@
                 {
                   "key": "change",
                   "label": "变更管理"
-                },
-                {
-                  "key": "accident",
-                  "label": "事故报告",
-                  "page": "pg-acc-ledger"
-                },
-                {
-                  "key": "capa",
-                  "label": "纠正预防措施",
-                  "count": 9
                 }
               ]
             },
@@ -1897,6 +1976,15 @@
                 {
                   "key": "oqc",
                   "label": "发货检验"
+                }
+              ]
+            },
+            {
+              "title": "基础数据",
+              "items": [
+                {
+                  "key": "base",
+                  "label": "基础数据管理"
                 }
               ]
             }

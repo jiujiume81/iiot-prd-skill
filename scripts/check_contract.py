@@ -38,6 +38,17 @@ def walk(node, out):
     return out
 
 
+def nav_reachable(it, pages, page_ids):
+    """目录项（含其子项）有没有任何一个能落到真实页面。"""
+    if it.get("page") in page_ids:
+        return True
+    if any(nav_reachable(c, pages, page_ids) for c in (it.get("children") or [])):
+        return True
+    lab = it.get("label") or ""
+    return any(x.get("layout") != "detail" and (x.get("title") == lab or x.get("navLabel") == lab)
+               for x in pages)
+
+
 def collect_capability_refs(nodes):
     refs = []
     for n in nodes:
@@ -303,22 +314,51 @@ def check_proto(proto, catalog):
                     add(E, "L2-60", f"页面 {pid} 的交互 {ix.get('id')} 绑定的节点 {base} 不在本页组件树内")
 
     # 目录是"能不能走到某一页"的承诺。目录写 A、页面做 B，评审时点过去就是空的。
+    # 目录是树：只扫第一层会漏掉二级叶子，功能一多就会误判「列表页没入口」。
     has_shell = any(
         n.get("type") == "AppShell"
         for p in pages for n in walk(p.get("componentTree") or {}, [])
     )
+
+    def walk_nav(items, depth=0, trails=()):
+        for it in items or []:
+            yield it, depth, trails
+            for sub in walk_nav(it.get("children"), depth + 1,
+                                trails + (it.get("label") or it.get("key") or "",)):
+                yield sub
+
     nav_targets = set()
     for p in pages:
         pts = ((p.get("componentTree") or {}).get("props") or {})
         for g in (pts.get("groups") or []):
-            for it in (g.get("items") or []):
+            seen_keys = {}
+            for it, depth, trails in walk_nav(g.get("items")):
                 lab = it.get("label") or ""
+                where = " / ".join(trails + (lab,))
+                # 折叠状态按 key 记，同层重名会让两个节点一起开合
+                k = it.get("key")
+                if k:
+                    if k in seen_keys and seen_keys[k] == depth:
+                        add(E, "L2-68", f"页面 {p.get('id')} 的目录里「{where}」和第 {depth + 1} 层的"
+                                        f"另一项用了同一个 key={k}：折叠状态按 key 记，两项会一起开合")
+                    seen_keys[k] = depth
+                # 三层以上不是导航，是文件夹浏览器；真要这么深，说明该拆模块了
+                if depth >= 3:
+                    add(E, "L2-67", f"页面 {p.get('id')} 的目录「{where}」已经到第 {depth + 1} 层："
+                                    "超过三层用户就不翻目录了，要么拆模块，要么合并同级")
+                kids = it.get("children") or []
                 pg_ref = it.get("page")
                 if pg_ref:
                     if pg_ref not in page_ids:
-                        add(E, "L2-61", f"页面 {p.get('id')} 的目录项「{lab}」指向不存在的页面 {pg_ref}")
+                        add(E, "L2-61", f"页面 {p.get('id')} 的目录项「{where}」指向不存在的页面 {pg_ref}")
                     else:
                         nav_targets.add(pg_ref)
+                    continue
+                if kids:
+                    # 分组本身不是目的地，要看它的孩子；孩子全是灰的，这组就是个空壳
+                    if not any(nav_reachable(x, pages, page_ids) for x in kids):
+                        add(E, "L2-69", f"页面 {p.get('id')} 的目录分组「{where}」展开后没有一项能到页面："
+                                        "点它只能折叠，展开全灰，用户会以为整个模块都坏了")
                     continue
                 # 没写 page 的，按标签去对页面名；对上了算能到达，对不上就是本原型没建模的模块
                 hit = next((x for x in pages
@@ -378,6 +418,32 @@ def check_proto(proto, catalog):
             if not (pr.get("items") or pr.get("fields")):
                 add(E, "L2-66", f"页面 {p.get('id')} 的表单 {n.get('id')} 没有 items/fields："
                                 "渲染出来是「暂无字段」的空表单")
+
+    # 标注是"下一轮改原型的输入"，不是评论区。三条底线：
+    #   1) 标了完成必须写怎么改的；2) 落点页面还得在；3) 落点元素（或弹层命令）还得在。
+    # 少了任何一条，标注就会变成"看起来记录了，实际没人能据此改"。
+    node_ids_by_page = {}
+    for p in pages:
+        node_ids_by_page[p.get("id")] = {n.get("id") for n in walk(p.get("componentTree") or {}, [])}
+    for a in anns:
+        aid = a.get("id")
+        if a.get("status") in ("resolved", "wontfix") and not str(a.get("resolution") or "").strip():
+            add(E, "L2-70", f"标注 {aid} 已经标为 {a.get('status')}，但没写 resolution（怎么改的）："
+                            "下一个接手的人只能重新发现同一个问题")
+        pid = a.get("pageId")
+        if pid not in page_ids:
+            add(E, "L2-71", f"标注 {aid} 指向不存在的页面 {pid}")
+            continue
+        nid = str(a.get("nodeId") or "")
+        if nid.startswith("layer:"):
+            parts = nid.split(":")
+            cid = parts[1] if len(parts) > 1 else ""
+            if cid not in cap_ids:
+                add(E, "L2-72", f"标注 {aid} 落在弹层 {cid} 上，但契约里没有这条命令")
+            continue
+        if nid not in node_ids_by_page[pid]:
+            add(E, "L2-72", f"标注 {aid} 的落点 {nid} 不在页面 {pid} 的组件树里："
+                            "引擎找不到元素就画不出 pin，这条意见等于丢了")
 
     # ---------- L2 D. 命令策略 ----------
     owns = {}

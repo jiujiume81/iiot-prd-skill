@@ -42,6 +42,68 @@
         var header = p.header || {};
         var collapsed = !!p.siderCollapsed;
         var groups = p.groups || [];
+        var st = (window.RD && window.RD.state) || {};
+        var curPage = st.pageId;
+        var navOpen = st.navOpen || {};
+        var q = String(st.navQuery == null ? '' : st.navQuery).trim().toLowerCase();
+
+        // 目录是树，不是一排平行项：功能一多，平铺的菜单就要靠记忆去找。
+        // 展开状态记在 store.navOpen 上（按 key），刷新与换页都保留用户手动开合的习惯。
+        function subtreeHasPage(it) {
+          if (it.page === curPage && curPage) return true;
+          return (it.children || []).some(subtreeHasPage);
+        }
+        function isOpen(it, depth) {
+          var v = navOpen[it.key];
+          if (v !== undefined) return !!v;
+          // 当前页所在分支强制展开，其余按深度收：一级展开，二级起收起
+          return subtreeHasPage(it) ? true : depth < 1;
+        }
+        function toggle(it) {
+          var kids = it.children || [];
+          if (!kids.length) return;
+          navOpen[it.key] = !isOpen(it, 0);
+        }
+        function row(it, depth) {
+          var kids = it.children || [];
+          var pg = navTarget(it);
+          var on = pg ? pg === curPage : !!it.on;
+          var open = kids.length ? isOpen(it, depth) : false;
+          return h('div', { class: 'nav-node', key: it.key }, [
+            h('div', {
+              class: ['nav-item', on ? 'is-on' : '', pg ? 'is-link' : (kids.length ? 'is-group' : 'is-void')],
+              style: { paddingLeft: (9 + depth * 14) + 'px' },
+              title: (pg || kids.length) ? null : '本原型未覆盖此模块',
+              onClick: function () {
+                if (pg) { window.RD.goto(pg, it.label); return; }
+                if (kids.length) { toggle(it); return; }
+                window.RD.toast('「' + it.label + '」不在本原型范围，本次只交付已建模的模块');
+              }
+            }, [
+              kids.length && !collapsed
+                ? h('span', {
+                    class: ['nav-caret', open ? 'is-open' : ''],
+                    onClick: function (e) { e.stopPropagation(); toggle(it); }
+                  }, open ? '▾' : '▸')
+                : h('span', { class: 'nav-caret is-leaf', style: { display: collapsed ? 'none' : null } }),
+              h('span', { class: 'nav-label' }, collapsed ? String(it.label || '').slice(0, 1) : it.label),
+              !collapsed && it.count ? h('span', { class: 'nav-count num' }, it.count) : null
+            ]),
+            kids.length && open ? h('div', { class: 'nav-kids' }, kids.map(function (k) { return row(k, depth + 1); })) : null
+          ]);
+        }
+
+        // 搜索是给"记不住在哪个分组里"用的：命中项直接给完整路径，点了就跳
+        function flat(items, path, out) {
+          out = out || [];
+          (items || []).forEach(function (it) {
+            var here = path.concat([it.label]);
+            if (String(it.label).toLowerCase().indexOf(q) >= 0) out.push({ it: it, path: path });
+            flat(it.children, here, out);
+          });
+          return out;
+        }
+        var hits = q ? flat([].concat.apply([], groups.map(function (g) { return g.items || []; })), []) : [];
 
         var siderChildren = [
           h('div', { class: 'app-sider-head' }, [
@@ -53,32 +115,37 @@
           ]),
           collapsed ? null : h('div', { class: 'app-search' }, [
             h('span', { style: { fontSize: '12px' } }, '⌕'),
-            h('span', null, p.search || '菜单搜索')
+            h('input', {
+              value: st.navQuery || '',
+              placeholder: p.search || '搜索菜单',
+              onInput: function (e) { st.navQuery = e.target.value; }
+            }),
+            q ? h('span', { class: 'app-search-clear', onClick: function () { st.navQuery = ''; } }, '×') : null
           ]),
-          h('div', { class: 'app-nav' }, groups.map(function (g) {
+          collapsed ? null : (q ? h('div', { class: 'app-nav' }, [
+            h('div', { class: 'nav-group-title', style: { paddingTop: '6px' } }, '匹配 ' + hits.length + ' 项'),
+            hits.length
+              ? hits.map(function (hit) {
+                  var pg = navTarget(hit.it);
+                  return h('div', {
+                    key: 'q-' + hit.it.key,
+                    class: ['nav-item', 'nav-hit', pg && pg === curPage ? 'is-on' : '', pg ? 'is-link' : 'is-void'],
+                    onClick: function () {
+                      if (pg) { window.RD.goto(pg, hit.it.label); st.navQuery = ''; return; }
+                      window.RD.toast('「' + hit.it.label + '」不在本原型范围');
+                    }
+                  }, [
+                    h('span', { class: 'nav-label' }, hit.it.label),
+                    hit.path.length ? h('span', { class: 'nav-hit-path' }, hit.path.join(' / ')) : null
+                  ]);
+                })
+              : h('div', { class: 'nav-hit-empty' }, '没有匹配的菜单')
+          ]) : h('div', { class: 'app-nav' }, groups.map(function (g) {
             return h('div', { class: 'nav-group', key: g.title }, [
-              collapsed ? null : h('div', { class: 'nav-group-title' }, g.title),
-              (g.items || []).map(function (it) {
-                // 导航项要能点：优先用 item.page 显式绑定，否则按标签去匹配页面标题。
-                // 匹配不上的是"本原型没做的模块"，点了给一句原因，不让它变成死菜单。
-                var pg = navTarget(it);
-                var on = pg ? (window.RD && window.RD.state.pageId === pg) : !!it.on;
-                return h('div', {
-                  key: it.key,
-                  class: ['nav-item', on ? 'is-on' : '', pg ? 'is-link' : 'is-void'],
-                  title: collapsed ? it.label : (pg ? null : '本原型未覆盖此模块'),
-                  onClick: function () {
-                    if (pg) { window.RD.goto(pg, it.label); }
-                    else { window.RD.toast('「' + it.label + '」不在本原型范围，本次只交付已建模的模块'); }
-                  }
-                }, [
-                  collapsed ? h('span', { style: { fontSize: '11px', opacity: '0.7' } }, (it.label || '').slice(0, 1)) : null,
-                  collapsed ? null : h('span', null, it.label),
-                  !collapsed && it.count ? h('span', { class: 'nav-count num' }, it.count) : null
-                ]);
-              })
+              h('div', { class: 'nav-group-title' }, g.title),
+              (g.items || []).map(function (it) { return row(it, 0); })
             ]);
-          }))
+          })))
         ];
 
         return h('div', { class: 'app' }, [
