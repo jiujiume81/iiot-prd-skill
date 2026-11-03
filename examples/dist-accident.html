@@ -2642,15 +2642,42 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
   var MOD_SIG = ((DATA.pages || [])[0] || {}).id
     ? String(DATA.pages[0].id).split('-').slice(0, 2).join('-') : 'misc';
   var KEY = 'iiot:' + DATA.meta.product + ':' + MOD_SIG;
-  var LEGACY_KEY = 'iiot:' + DATA.meta.product + ':' + DATA.meta.version;
+  // 老键里带版本号（iiot:产品:1.0.0），而每升一版就换一个桶。
+  // 只认「当前版本号」那一把是不够的：升到 1.1.0 之后它恰好是空桶，
+  // 真正有标注的是 1.0.0 那一把。所以按产品前缀扫全库，一次性全搬过来。
+  var KEY_PREFIX = 'iiot:' + DATA.meta.product + ':';
+
+  function bucketKeys() {
+    var out = [];
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (!k || k.indexOf(KEY_PREFIX) !== 0) continue;
+        if (k === KEY) out.unshift(k); else out.push(k); // 现用键优先，旧的补缺
+      }
+    } catch (e) { /* 隐私模式下读不到就当空 */ }
+    return out;
+  }
+
   var saved = {};
   try {
-    saved = JSON.parse(localStorage.getItem(KEY) || '{}');
-    if (!(saved.annotations || []).length) {
-      // 从上一版的分版本鍵搬一次：老用户打开新原型不该看到"一条标注都没有"
-      var old = JSON.parse(localStorage.getItem(LEGACY_KEY) || '{}');
-      if ((old.annotations || []).length) saved = old;
-    }
+    var acc = { annotations: [], navOpen: {}, prdEdits: {} };
+    var seenId = {};
+    bucketKeys().forEach(function (k) {
+      var b = {};
+      try { b = JSON.parse(localStorage.getItem(k) || '{}') || {}; } catch (e) { return; }
+      // 同一条标注可能在多个桶里，按 id 去重，先读到的（现用键）说了算
+      (b.annotations || []).forEach(function (a) {
+        if (a && a.id && !seenId[a.id]) { seenId[a.id] = 1; acc.annotations.push(a); }
+      });
+      ['navOpen', 'prdEdits'].forEach(function (f) {
+        for (var kk in (b[f] || {})) if (acc[f][kk] === undefined) acc[f][kk] = b[f][kk];
+      });
+      ['pageId', 'entityStatus'].forEach(function (f) {
+        if (acc[f] === undefined && b[f] !== undefined) acc[f] = b[f];
+      });
+    });
+    saved = acc;
   } catch (e) { saved = {}; }
 
   var capsById = {};
@@ -3020,11 +3047,18 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
         if (!el) { missing.push(a.id); return; }
         var r = el.getBoundingClientRect();
         if (!r.width && !r.height) { missing.push(a.id); return; }
+        // 老版本存下来的标注可能没有 anchor（或存成了字符串）。
+        // 这里不能直接取 a.anchor.x：一条脏数据会抛异常，把整页的 pin 全带没了，
+        // 表现就是"标注一条都看不见"，而数据其实还在。
+        var anc = a.anchor || {};
+        var ax = parseFloat(anc.x), ay = parseFloat(anc.y);
+        if (!isFinite(ax)) ax = 0.5;
+        if (!isFinite(ay)) ay = 0.5;
         out.push({
           id: a.id,
           idx: store.annotations.filter(function (x) { return x.pageId === cur; }).indexOf(a) + 1,
-          x: r.left + r.width * a.anchor.x,
-          y: r.top + r.height * a.anchor.y,
+          x: r.left + r.width * ax,
+          y: r.top + r.height * ay,
           status: a.status
         });
       });
@@ -3408,8 +3442,10 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
             })
           ]);
         } else {
-          // 标注面板三段：待处理 / 已完成（带解决方法）/ 落点已失效。
-          // 这一段是"改完之后之前的标注去哪了"的答案：不删、不藏，按能不能定位分组。
+          // 标注面板按状态分成两组：待处理 / 已完成（带解决方法）。
+          // 落点失效不单独成组——那会让"已完成"的意见退回"待处理"的错觉，
+          // 而是在卡片里加一条黄色提示，写清它原本指哪儿。
+          // 这一段是"改完之后之前的标注去哪了"的答案：不删、不藏。
           var allScope = store.annotScope === 'all';
           var pageIds = {};
           (DATA.pages || []).forEach(function (x) { pageIds[x.id] = 1; });
@@ -3828,7 +3864,10 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
             h('button', {
               class: 'tool-btn',
               onClick: function () {
-                localStorage.removeItem(KEY);
+                // 连旧版本号的桶一起清，否则下次打开又被"迁移"回来
+                bucketKeys().forEach(function (k) {
+                  try { localStorage.removeItem(k); } catch (e) { /* 忽略 */ }
+                });
                 store.annotations = JSON.parse(JSON.stringify(DATA.annotations || []));
                 store.prdEdits = {};
                 store.entityStatus = defaultStatus(page.value);

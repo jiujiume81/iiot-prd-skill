@@ -198,6 +198,16 @@ def build_cases(proto):
                     "expectTitle": tgt.get("title"),
                 })
                 break
+    # 5. 升版不丢标注：往"上一版"的桶里塞一条，新版本打开时必须还在。
+    # 这条守的是最容易复发的一处：存储键里带版本号，一升版就换个空桶，
+    # 上一轮评审的意见整批消失，而且没有任何报错，只有人肉发现。
+    cases.append({
+        "kind": "migrate",
+        "name": f"升到 {proto.get('meta', {}).get('version')} 后，旧版本桶里的标注还在",
+        "seedId": "an-migrate-guard",
+        "legacyKey": "iiot:%s:0.0.0-migrate" % (proto.get("meta", {}).get("product") or "proto"),
+        "page": (pages[0].get("id") if pages else None),
+    })
     return cases
 
 
@@ -256,6 +266,24 @@ PROBE = r"""
   async function run() {
     for (var i = 0; i < CASES.length; i++) {
       var c = CASES[i], ok = false, detail = '';
+      if (c.kind === 'migrate') {
+        // 种子是在 app 脚本之前写进 localStorage 的（见 main 里插在 <body> 后），
+        // 所以这里读到的是"迁移后的结果"，不是我们刚塞进去的那份。
+        var S0 = (window.__RD_TEST__ || {}).store || {};
+        var hit0 = (S0.annotations || []).filter(function (a) { return a.id === c.seedId; })[0];
+        if (window.__SEED_FAIL__) {
+          ok = false;
+          detail = '浏览器不给 file:// 开 localStorage，这条判据没跑起来（不是原型的错，换 --chrome 或起本地服务再试）';
+        } else if (hit0) {
+          ok = true;
+          detail = '旧桶 an-migrate-guard 已并入新版本，状态=' + hit0.status;
+        } else {
+          ok = false;
+          detail = '旧版本桶里的标注没被搬过来：存储键前缀只认当前版本号，一升版就是空桶，上一轮意见全丢';
+        }
+        OUT.push({ name: c.name, ok: ok, detail: detail });
+        continue;
+      }
       window.RD.goto(c.page, '探针');
       await sleep(450);
       if (c.kind === 'nav') {
@@ -339,19 +367,31 @@ PROBE = r"""
                   return txt(b) === '保存';
                 })[0];
                 if (sv) sv.click();
-                await sleep(340);
+                await sleep(200);
                 var n1 = S ? S.annotations.length : -1;
                 var last = S && n1 ? S.annotations[n1 - 1] : {};
                 var carrier = (last && last.target && last.target.carrier) || '?';
-                var pins = Array.prototype.slice.call(document.querySelectorAll('.annot-pin'));
                 // 别用坐标猜"是不是在弹层上"：窗口宽不同，阈值就变了。
                 // 直接看 pin 落点是否落在 .layer 的矩形内，再核对标注记的载体。
+                // 固定 sleep 会偶发假红（保存后 pin 要等一帧重算），所以重试到成立或超时。
                 var L0 = layer();
                 var lr = L0 ? L0.getBoundingClientRect() : { left: 0, right: 0, top: 0, bottom: 0 };
-                var onLayer = pins.some(function (p) {
-                  var x = parseFloat(p.style.left), y = parseFloat(p.style.top);
-                  return x >= lr.left - 6 && x <= lr.right + 6 && y >= lr.top - 6 && y <= lr.bottom + 6;
-                });
+                // pin 的 left/top 是相对 .annot-layer 的，而弹层矩形是视口坐标：
+                // 标注层自己有 top 偏移（顶栏高度），不补这个偏移就是拿两套坐标系比大小。
+                var AL0 = document.querySelector('.annot-layer');
+                var ar0 = AL0 ? AL0.getBoundingClientRect() : { left: 0, top: 0 };
+                function pinOnLayer() {
+                  return Array.prototype.slice.call(document.querySelectorAll('.annot-pin')).some(function (p) {
+                    var x = ar0.left + parseFloat(p.style.left);
+                    var y = ar0.top + parseFloat(p.style.top);
+                    return x >= lr.left - 6 && x <= lr.right + 6 && y >= lr.top - 6 && y <= lr.bottom + 6;
+                  });
+                }
+                var onLayer = pinOnLayer();
+                for (var t = 0; t < 8 && !onLayer; t++) {
+                  await sleep(150);
+                  onLayer = pinOnLayer();
+                }
                 ok = (n1 === n0 + 1) && carrier !== 'page' && onLayer;
                 detail = '标注 ' + n0 + '→' + n1 + '，载体=' + carrier +
                          '，pin 落在弹层矩形内：' + (onLayer ? '是' : '否');
@@ -369,6 +409,20 @@ PROBE = r"""
         else {
           el.click();
           var m = await waitFor(mask, 1500);
+          if (!m) {
+            // 期间列表重渲染会把节点换掉，点了个已经脱离文档的旧节点就等于没点。
+            // 重取一次再点，不把"渲染时序"记成"按钮坏了"。
+            var el2 = findClickable(c.text);
+            if (el2 && el2 !== el) {
+              await sleep(150);
+              el2.click();
+              m = await waitFor(mask, 1500);
+            }
+          }
+          if (!m) {
+            var el3 = findClickable(c.text);
+            if (el3) { await sleep(150); el3.click(); m = await waitFor(mask, 1500); }
+          }
           var L = layer();
           if (!m) {
             detail = '点了没有弹层（禁用态提示：' + (txt(document.querySelector('.toast')) || '无') + '）';
@@ -417,6 +471,38 @@ def main():
         return 0
 
     doc = open(args.html, encoding="utf-8").read()
+
+    # 升版守卫的种子必须在 app 脚本跑起来之前落到 localStorage，
+    # 所以插在 <body> 之后，而不是跟探针一起塞在 </body> 前。
+    mig = next((c for c in cases if c["kind"] == "migrate"), None)
+    if mig and mig.get("page"):
+        payload = {"annotations": [{
+            "id": mig["seedId"],
+            "pageId": mig["page"],
+            "nodeId": "n-root",
+            "status": "open",
+            "text": "升版守卫：这条来自上一版的存储桶",
+            "createdAt": "2026-01-01T00:00:00",
+            "target": {"pageTitle": "", "nodeLabel": "页面", "carrier": "page", "capId": None},
+        }]}
+        # 先清空这个产品的所有桶：上一次探针点过的状态会 persist 回来，
+        # 不清就会出现"同样的输入、这次红下次绿"的假信号。
+        prefix = "iiot:%s:" % (proto.get("meta", {}).get("product") or "proto")
+        seed = ("<script>try{"
+                "var __p=%s,__kill=[];"
+                "for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);"
+                "if(k&&k.indexOf(__p)===0)__kill.push(k);}"
+                "__kill.forEach(function(k){localStorage.removeItem(k);});"
+                "localStorage.setItem(%s, JSON.stringify(%s));"
+                "}catch(e){window.__SEED_FAIL__=1;}</script>"
+                % (json.dumps(prefix, ensure_ascii=False),
+                   json.dumps(mig["legacyKey"], ensure_ascii=False),
+                   json.dumps(payload, ensure_ascii=False)))
+        b = doc.find("<body")
+        if b >= 0:
+            i = doc.find(">", b) + 1
+            doc = doc[:i] + seed + doc[i:]
+
     inject = ("<script>window.__CASES__=" + json.dumps(cases, ensure_ascii=False) +
               ";</script><script>" + PROBE + "</script>")
     idx = doc.rfind("</body>")
