@@ -28,6 +28,35 @@
         "pg-iqc-report",
         "pg-iqc-sample-pda",
         "pg-iqc-stats"
+      ],
+      "pageGroups": [
+        {
+          "key": "exec",
+          "title": "检验执行",
+          "children": [
+            {
+              "key": "report",
+              "title": "来料检验报告",
+              "page": "pg-iqc-report"
+            },
+            {
+              "key": "pda",
+              "title": "取样任务",
+              "page": "pg-iqc-sample-pda"
+            }
+          ]
+        },
+        {
+          "key": "stat",
+          "title": "统计分析",
+          "children": [
+            {
+              "key": "stats",
+              "title": "来料检验统计",
+              "page": "pg-iqc-stats"
+            }
+          ]
+        }
       ]
     }
   ],

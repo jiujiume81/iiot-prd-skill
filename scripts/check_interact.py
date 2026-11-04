@@ -198,6 +198,28 @@ def build_cases(proto):
                     "expectTitle": tgt.get("title"),
                 })
                 break
+    # 3d. 页面目录（顶栏「目录」）也是树：分组能开能合，点叶子能换页。
+    # 平铺目录在页数一多时就退化成扫名字，这条守的是"分组真的折叠了"和"叶子真的能跳"。
+    for m in (proto.get("modules") or []):
+        grp = next((g for g in (m.get("pageGroups") or []) if (g.get("children") or [])), None)
+        if not grp:
+            continue
+        leaf = next((c for c in grp["children"] if c.get("page")), None)
+        if not leaf:
+            continue
+        start = next((x.get("id") for x in pages if x.get("id") != leaf.get("page")), None)
+        if not start:
+            continue
+        cases.append({
+            "kind": "toc",
+            "name": f"目录面板 · 分组「{grp.get('title')}」能开能合，点「{leaf.get('title')}」能跳页",
+            "page": start,
+            "group": grp.get("title"),
+            "leaf": leaf.get("title"),
+            "target": leaf.get("page"),
+        })
+        break
+
     # 5. 升版不丢标注：往"上一版"的桶里塞一条，新版本打开时必须还在。
     # 这条守的是最容易复发的一处：存储键里带版本号，一升版就换个空桶，
     # 上一轮评审的意见整批消失，而且没有任何报错，只有人肉发现。
@@ -329,6 +351,53 @@ PROBE = r"""
         var row = document.querySelector('.dt-row');
         if (!row) { detail = '列表没有数据行'; }
         else { row.click(); await sleep(500); ok = title() === c.expectTitle; detail = title(); }
+      } else if (c.kind === 'toc') {
+        var tocBtn = Array.prototype.slice.call(document.querySelectorAll('.tool-btn')).filter(function (b) {
+          return txt(b) === '目录';
+        })[0];
+        if (!tocBtn) { detail = '顶栏没有「目录」按钮'; }
+        else {
+          tocBtn.click();
+          var panel = await waitFor(function () { return document.querySelector('.overlay-left'); }, 1500);
+          if (!panel) { detail = '点了目录没有打开页面目录面板'; }
+          else {
+            function tocRows() { return Array.prototype.slice.call(document.querySelectorAll('.toc-item')); }
+            function rowByLabel(t) {
+              return tocRows().filter(function (r) {
+                var l = r.querySelector('.toc-label');
+                return l && txt(l) === t;
+              })[0];
+            }
+            var n0 = tocRows().length;
+            var grp = rowByLabel(c.group);
+            if (!grp) { detail = '面板里没有分组「' + c.group + '」（还是平铺的？）'; }
+            else {
+              grp.click();
+              await sleep(280);
+              var n1 = tocRows().length;
+              var grp2 = rowByLabel(c.group);
+              if (grp2) { grp2.click(); await sleep(280); }
+              var n2 = tocRows().length;
+              var leaf = rowByLabel(c.leaf);
+              if (!leaf) { detail = '展开后找不到叶子「' + c.leaf + '」'; }
+              else {
+                leaf.click();
+                await sleep(450);
+                var jumped = (window.RD.state || {}).pageId === c.target;
+                var shut = !document.querySelector('.overlay-left');
+                ok = (n1 < n0) && (n2 === n0) && jumped;
+                detail = '行数 ' + n0 + '→' + n1 + '→' + n2 +
+                         '，点叶子跳页：' + (jumped ? '是' : '否（还在 ' + ((window.RD.state || {}).pageId) + '）') +
+                         '，跳完面板已收起：' + (shut ? '是' : '否');
+                if (!shut) {
+                  var x = document.querySelector('.overlay-left .icon-btn');
+                  if (x) x.click();
+                  await sleep(200);
+                }
+              }
+            }
+          }
+        }
       } else if (c.kind === 'annot') {
         // 评审里最常见的动作是「开着弹框顺手圈一个字段」。如果弹层里的元素没有锚点，
         // 这条意见只能笼统写在整页上，落点说不清。

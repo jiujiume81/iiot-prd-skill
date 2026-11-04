@@ -46,7 +46,7 @@
       (b.annotations || []).forEach(function (a) {
         if (a && a.id && !seenId[a.id]) { seenId[a.id] = 1; acc.annotations.push(a); }
       });
-      ['navOpen', 'prdEdits'].forEach(function (f) {
+      ['navOpen', 'prdEdits', 'tocOpen'].forEach(function (f) {
         for (var kk in (b[f] || {})) if (acc[f][kk] === undefined) acc[f][kk] = b[f][kk];
       });
       ['pageId', 'entityStatus'].forEach(function (f) {
@@ -135,6 +135,8 @@
     // 目录树的开合状态与搜索词：功能一多，平铺菜单就靠记忆找了
     navOpen: saved.navOpen || {},
     navQuery: '',
+    // 页面目录的开合状态，按 模块id/分组key 记
+    tocOpen: saved.tocOpen || {},
     annotations: mergeAnnotations(DATA.annotations || [], saved.annotations || []),
     prdEdits: saved.prdEdits || {},
     pins: [],
@@ -158,6 +160,7 @@
         entityStatus: store.entityStatus,
         annotations: store.annotations,
         navOpen: store.navOpen,
+        tocOpen: store.tocOpen,
         prdEdits: store.prdEdits
       }));
     } catch (e) { /* 隐私模式下静默失败 */ }
@@ -962,26 +965,130 @@
     name: 'TocPanel',
     setup: function () {
       return function () {
+        // 页面目录也是树：一个模块底下十几个页面，平铺就退化成"扫一遍找名字"。
+        // 数据三级兜底，优先级从"人写的"到"推出来的"：
+        //   ① modules[].pageGroups —— 策划时按功能分好的组，最准
+        //   ② pages[].parentId    —— 契约里本来就有的层级，只是以前没人用
+        //   ③ 按页面用途分组       —— 什么都没有时，至少别给一坨平行项
+        var KIND = {
+          list: '列表', form: '表单', detail: '详情', dashboard: '看板',
+          wizard: '分步', 'pda-list': '列表', 'pda-step': '分步', 'pda-scan': '扫码'
+        };
+        function pageOf(id) {
+          return (DATA.pages || []).filter(function (x) { return x.id === id; })[0] || null;
+        }
+        function modulePages(m) {
+          return (m.pages || []).map(pageOf).filter(Boolean);
+        }
+        function fromParentId(m) {
+          var ps = modulePages(m), inMod = {};
+          ps.forEach(function (p) { inMod[p.id] = 1; });
+          var kids = {};
+          ps.forEach(function (p) {
+            var par = p.parentId && inMod[p.parentId] ? p.parentId : null;
+            if (par) (kids[par] = kids[par] || []).push(p);
+          });
+          function node(p) {
+            return {
+              key: 'p-' + p.id, title: p.title, page: p.id,
+              children: (kids[p.id] || []).map(node)
+            };
+          }
+          return ps.filter(function (p) { return !(p.parentId && inMod[p.parentId]); }).map(node);
+        }
+        function fromLayout(m) {
+          var order = ['list', 'pda-list', 'form', 'wizard', 'pda-step', 'pda-scan', 'detail', 'dashboard'];
+          var bucket = {};
+          modulePages(m).forEach(function (p) {
+            var k = p.layout || 'other';
+            (bucket[k] = bucket[k] || []).push(p);
+          });
+          return order.filter(function (k) { return bucket[k]; }).map(function (k) {
+            return {
+              key: 'k-' + k, title: (KIND[k] || k) + '页',
+              children: bucket[k].map(function (p) {
+                return { key: 'p-' + p.id, title: p.title, page: p.id, children: [] };
+              })
+            };
+          });
+        }
+        function treeOf(m) {
+          if ((m.pageGroups || []).length) return m.pageGroups;
+          var t = fromParentId(m);
+          if (t.length && t.some(function (n) { return (n.children || []).length; })) return t;
+          return fromLayout(m);
+        }
+        function pagesUnder(n) {
+          var n2 = n.page ? 1 : 0;
+          return n2 + (n.children || []).reduce(function (a, c) { return a + pagesUnder(c); }, 0);
+        }
+        function hasPage(n, pid) {
+          if (n.page === pid) return true;
+          return (n.children || []).some(function (c) { return hasPage(c, pid); });
+        }
+        function isOpen(m, n, depth) {
+          var v = store.tocOpen[m.id + '/' + n.key];
+          if (v !== undefined) return !!v;
+          if (hasPage(n, store.pageId)) return true;   // 当前页所在分支一律展开
+          if (n.collapsed !== undefined) return !n.collapsed;
+          return depth < 1;                            // 一级展开，二级起收起
+        }
+        function goto(pid) {
+          var t = pageOf(pid);
+          if (!t) return;
+          store.pageId = pid;
+          store.pageState = 'default';
+          store.entityStatus = defaultStatus(t);
+          // 面板是覆盖在页面上的：跳完不收起来，就把目标页面又挡住了
+          store.showToc = false;
+          persist();
+          refreshPins();
+        }
+        function row(m, n, depth) {
+          var kids = n.children || [];
+          var on = n.page && store.pageId === n.page;
+          var open = kids.length ? isOpen(m, n, depth) : false;
+          var cnt = kids.length ? pagesUnder(n) : 0;
+          return h('div', { class: 'toc-node', key: n.key }, [
+            h('div', {
+              class: ['toc-item', depth > 0 ? 'is-kid' : '', on ? 'is-on' : '',
+                      kids.length ? 'is-group' : '', n.page ? 'is-link' : ''],
+              style: depth ? { paddingLeft: (14 + depth * 14) + 'px' } : null,
+              onClick: function () {
+                if (kids.length) {
+                  store.tocOpen[m.id + '/' + n.key] = !open;
+                  if (!n.page) return;
+                }
+                if (n.page) goto(n.page);
+              }
+            }, [
+              kids.length
+                ? h('span', { class: 'toc-caret' }, open ? '▾' : '▸')
+                : h('span', { class: 'toc-dot' }, '·'),
+              h('span', { class: 'toc-label' }, n.title || (pageOf(n.page) || {}).title || ''),
+              kids.length ? h('span', { class: 'toc-count' }, cnt) : null,
+              n.page ? h('span', { class: 'toc-badge' },
+                String((pageOf(n.page) || {}).target || 'pc').toUpperCase()) : null
+            ])
+          ].concat(open ? [h('div', { class: 'toc-kids' },
+            kids.map(function (c) { return row(m, c, depth + 1); }))] : []));
+        }
+        var mods = DATA.modules || [];
+        var total = (DATA.pages || []).length;
         return h('aside', { class: 'overlay overlay-left' }, [
           h('div', { class: 'overlay-head' }, [
-            h('div', { class: 'overlay-title' }, '页面目录'),
+            h('div', { class: 'overlay-title' }, ['页面目录',
+              h('span', { class: 'toc-total' }, total + ' 页')]),
             h('button', { class: 'icon-btn', onClick: function () { store.showToc = false; } }, '×')
           ]),
-          h('div', { class: 'overlay-body' }, DATA.modules.map(function (m) {
+          h('div', { class: 'overlay-body' }, mods.map(function (m) {
+            var tree = treeOf(m);
             return h('div', { class: 'toc-module', key: m.id }, [
-              h('div', { class: 'toc-module-head' }, [h('span', null, m.code), h('span', null, m.name)]),
-              (m.pages || []).map(function (pid) {
-                var p = DATA.pages.filter(function (x) { return x.id === pid; })[0];
-                if (!p) return null;
-                return h('div', {
-                  key: pid,
-                  class: ['toc-item', store.pageId === pid ? 'is-on' : ''],
-                  onClick: function () { store.pageId = pid; store.pageState = 'default'; store.entityStatus = defaultStatus(DATA.pages.filter(function (x) { return x.id === pid; })[0]); persist(); refreshPins(); }
-                }, [
-                  h('span', null, p.title),
-                  h('span', { class: 'toc-badge' }, p.target.toUpperCase())
-                ]);
-              })
+              h('div', { class: 'toc-module-head' }, [
+                h('span', null, m.code), h('span', null, m.name),
+                h('span', { class: 'toc-count' }, modulePages(m).length)
+              ]),
+              tree.map(function (n) { return row(m, n, 0); })
             ]);
           }))
         ]);

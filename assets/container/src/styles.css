@@ -255,6 +255,49 @@ button { font-family: inherit; }
 }
 .toc-item.is-on .toc-badge { background: #fff; color: var(--brand-600); }
 
+/* 页面目录也是树：分组行只负责开合，叶子才是页面。
+   缩进靠 paddingLeft 内联给（层级由数据决定），这里只管字形与对齐。 */
+.toc-total {
+  margin-left: 8px; font-size: 10px; font-weight: 400;
+  color: var(--text-3); letter-spacing: 0;
+}
+.toc-node { position: relative; }
+.toc-item { font-size: var(--fs-sm); }
+.toc-item.is-kid { color: var(--text-2); }
+.toc-item.is-link { color: var(--text-1); }
+.toc-item.is-group { font-weight: 500; }
+.toc-item.is-group:hover { background: var(--line-2); }
+.toc-caret {
+  width: 14px; flex: none; font-size: 12px; line-height: 1;
+  color: var(--text-2); text-align: center;
+}
+.toc-item.is-group:hover .toc-caret,
+.toc-item.is-on .toc-caret { color: var(--brand-600); }
+.toc-dot {
+  width: 14px; flex: none; text-align: center;
+  color: #c2d2d7; font-size: 14px; line-height: 1;
+}
+.toc-item.is-on .toc-dot { color: var(--brand-400, #6fb9c9); }
+.toc-label {
+  flex: 1; min-width: 0; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+}
+.toc-count {
+  flex: none; margin-left: auto; padding: 0 5px;
+  font-size: 10px; font-weight: 400; line-height: 15px;
+  color: var(--text-3); background: var(--line-2); border-radius: 8px;
+}
+.toc-item .toc-badge { margin-left: 6px; }
+.toc-kids { position: relative; }
+/* 子级竖线：让"这行属于上一行"一眼能看出来，不靠数缩进 */
+/* 竖线用实色虚线：--line-3 这个令牌不存在，写了等于没写（声明整条失效），
+   之前那条线就一直没画出来。 */
+.toc-kids::before {
+  content: ''; position: absolute; left: 22px; top: 2px; bottom: 2px;
+  border-left: 1px dashed #d5e1e4; pointer-events: none;
+}
+.toc-kids .toc-kids::before { display: none; }
+
 /* ---------------- 原型：应用外壳 ---------------- */
 .app {
   display: flex;

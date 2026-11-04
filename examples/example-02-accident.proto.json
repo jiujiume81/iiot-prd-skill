@@ -28,6 +28,40 @@
         "pg-acc-mine",
         "pg-acc-detail",
         "pg-acc-new"
+      ],
+      "pageGroups": [
+        {
+          "key": "mgr",
+          "title": "管理视角",
+          "children": [
+            {
+              "key": "ledger",
+              "title": "事故报告台账",
+              "page": "pg-acc-ledger"
+            },
+            {
+              "key": "new",
+              "title": "新建事故报告",
+              "page": "pg-acc-new"
+            },
+            {
+              "key": "detail",
+              "title": "事故报告详情",
+              "page": "pg-acc-detail"
+            }
+          ]
+        },
+        {
+          "key": "exec",
+          "title": "执行视角",
+          "children": [
+            {
+              "key": "mine",
+              "title": "我的待办",
+              "page": "pg-acc-mine"
+            }
+          ]
+        }
       ]
     }
   ],

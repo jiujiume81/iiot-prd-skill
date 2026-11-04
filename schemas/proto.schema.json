@@ -266,6 +266,13 @@
           "items": {
             "type": "string"
           }
+        },
+        "pageGroups": {
+          "type": "array",
+          "description": "页面目录的分组树。不填则按 parentId 归并；都没有就按页面用途（列表/详情/表单）自动分组。",
+          "items": {
+            "$ref": "#/$defs/pageGroup"
+          }
         }
       }
     },
@@ -1624,6 +1631,37 @@
         },
         "decisionId": {
           "type": "string"
+        }
+      }
+    },
+    "pageGroup": {
+      "type": "object",
+      "description": "页面目录里的一组页。功能一多，平铺目录就要靠记忆找；按功能聚合，组可以套组。分组本身不是目的地，叶子必须给 page。",
+      "required": [
+        "key",
+        "title"
+      ],
+      "properties": {
+        "key": {
+          "type": "string",
+          "description": "同级内唯一，开合状态按它记"
+        },
+        "title": {
+          "type": "string"
+        },
+        "page": {
+          "type": "string",
+          "description": "点它跳到哪一页；分组一般不带，带了表示这一组的主入口"
+        },
+        "collapsed": {
+          "type": "boolean",
+          "description": "默认是否收起。当前页在这个分支里时一律展开"
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/pageGroup"
+          }
         }
       }
     }

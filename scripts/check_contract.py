@@ -38,6 +38,13 @@ def walk(node, out):
     return out
 
 
+def pg_reachable(it, mod_ids):
+    """页面目录的分组（含子组）里有没有任何一页属于本模块。"""
+    if it.get("page") in mod_ids:
+        return True
+    return any(pg_reachable(c, mod_ids) for c in (it.get("children") or []))
+
+
 def nav_reachable(it, pages, page_ids):
     """目录项（含其子项）有没有任何一个能落到真实页面。"""
     if it.get("page") in page_ids:
@@ -372,6 +379,62 @@ def check_proto(proto, catalog):
         if p.get("layout") in ("list", "pda-list") and p.get("id") not in nav_targets:
             add(E, "L2-61", f"列表页 {p.get('id')}「{p.get('title')}」在目录里没有入口："
                             "用户只能靠直达链接才到得了，实际使用中等于不存在")
+
+    # 页面目录（顶栏「目录」）的分组树。树比平铺更难自查：
+    # 一页漏在树外就彻底找不到；一页挂在两个组里，改一处漏一处。
+    mod_page_ids = {m.get("id"): set(m.get("pages") or []) for m in (proto.get("modules") or [])}
+    counted = {}
+
+    def walk_pg(items, depth, trails, m, seen, mod_ids):
+        for it in items:
+            t = it.get("title") or ""
+            where = " / ".join(trails + (t,))
+            k = it.get("key")
+            if k:
+                if k in seen and seen[k] == depth:
+                    add(E, "L2-73",
+                        f"模块 {m.get('id')} 的页面目录里「{where}」和第 {depth + 1} 层的另一组用了同一个 key={k}："
+                        "开合状态按 key 记，两组会一起开一起合")
+                seen[k] = depth
+            if depth >= 3:
+                add(E, "L2-73",
+                    f"模块 {m.get('id')} 的页面目录「{where}」已经到第 {depth + 1} 层："
+                    "超过三层就不是目录而是文件浏览器了，上面的组该合并")
+            pid = it.get("page")
+            if pid:
+                if pid not in mod_ids:
+                    add(E, "L2-74",
+                        f"模块 {m.get('id')} 的页面目录「{where}」挂的页面 {pid} 不属于本模块："
+                        "跨模块挂载会让同一页出现在两处，改一处漏一处")
+                elif pid in counted:
+                    add(E, "L2-74",
+                        f"页面 {pid} 在模块 {m.get('id')} 的页面目录里出现了两次"
+                        f"（另一次在「{counted[pid]}」）：用户不知道该从哪条进，改完也容易只改一处")
+                else:
+                    counted[pid] = where
+            kids = it.get("children") or []
+            if kids:
+                if not any(pg_reachable(x, mod_ids) for x in kids):
+                    add(E, "L2-74",
+                        f"模块 {m.get('id')} 的页面目录分组「{where}」展开后一页都没有："
+                        "点开是个空壳，不如把这个组去掉")
+                walk_pg(kids, depth + 1, trails + (t,), m, seen, mod_ids)
+            elif not pid:
+                add(E, "L2-74",
+                    f"模块 {m.get('id')} 的页面目录「{where}」既没挂页面也没有子组："
+                    "点上去没有任何反应")
+
+    for m in (proto.get("modules") or []):
+        groups = m.get("pageGroups") or []
+        if not groups:
+            continue
+        mod_ids = mod_page_ids.get(m.get("id")) or set()
+        walk_pg(groups, 0, (), m, {}, mod_ids)
+        for pid in sorted(mod_ids):
+            if pid not in counted:
+                add(E, "L2-74",
+                    f"页面 {pid} 没有出现在模块 {m.get('id')} 的页面目录里："
+                    "目录是唯一的页面清单，漏一页等于这页在导航里不存在")
 
     # 页头标题要跟页面名一致：写死一张单据号，换数据进来就张冠李戴
     for p in pages:
