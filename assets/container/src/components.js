@@ -307,7 +307,9 @@
             }
           }, [
             a.text,
-            dis ? h('span', { class: 'hint-dot', title: c.reason }, '!') : null
+            // 提示点用 CSS ::after 画「!」，不往按钮里塞文本节点：
+            // 塞了之后按钮的 textContent 变成「入库检验!」，按文字找按钮的脚本和读屏都会认错
+            dis ? h('span', { class: 'hint-dot', title: c.reason }) : null
           ]);
         });
         // 「已选 N 项 / 列设置」是表格专用尾巴，表单页的工具栏不该带出去

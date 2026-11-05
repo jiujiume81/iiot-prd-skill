@@ -127,6 +127,7 @@ def check_proto(proto, catalog):
 
     actor_ids = {a.get("id") for a in (proto.get("actors") or [])}
     page_ids = {p.get("id") for p in pages}
+    page_by_id = {p.get("id"): p for p in pages}
     cap_ids = {c.get("id") for c in caps}
     sm_ids = {s.get("id") for s in sms}
 
@@ -280,29 +281,6 @@ def check_proto(proto, catalog):
                 add(E, "L2-57", f"状态机 {sm.get('id')} 的状态「{st.get('label')}」没有出向迁移，"
                                 "单据会永久卡在这一步")
 
-    # 管理视角与执行视角：状态一多，一个列表装不下两种人
-    for m in modules:
-        mpages = [p for p in pages if p.get("id") in (m.get("pages") or [])]
-        lists = [p for p in mpages if p.get("layout") in ("list", "pda-list")]
-        for ent in {p.get("entity") for p in lists if p.get("entity")}:
-            sm = next((s for s in sms if s.get("entity") == ent), None)
-            if not sm:
-                continue
-            human = [s for s in (sm.get("states") or []) if not s.get("terminal")]
-            if len(human) < 4:
-                continue
-            same = [p for p in lists if p.get("entity") == ent]
-            if len(same) < 2:
-                add(E, "L2-58", f"模块 {m.get('id')} 的 {ent} 有 {len(human)} 个人工推进状态，"
-                                f"却只有 {len(same)} 个列表页：管理视角（看全量与下发/审批）与"
-                                "执行视角（只看我的待办）是两种任务，各需自己的列表")
-            else:
-                actors = [set((p.get("contract") or {}).get("actor") or []) for p in same]
-                if not any(actors[i] != actors[j]
-                           for i in range(len(actors)) for j in range(i + 1, len(actors))):
-                    add(E, "L2-58", f"模块 {m.get('id')} 的 {len(same)} 个 {ent} 列表页面向同一批角色 "
-                                    f"{sorted(actors[0])}：没有形成「管理 / 执行」两种视角")
-
     # 契约里声明的交互，引擎得真的实现，否则"能点"只存在于文档里
     IMPLEMENTED_DO = {"navigate", "openModal", "openDrawer", "setState", "submit", "toast", "reset"}
     for p in pages:
@@ -436,6 +414,264 @@ def check_proto(proto, catalog):
                     f"页面 {pid} 没有出现在模块 {m.get('id')} 的页面目录里："
                     "目录是唯一的页面清单，漏一页等于这页在导航里不存在")
 
+    # 状态不是页面：一张单据只能有一个主列表。
+    # 把流程阶段拆成页面，是这套 skill 最容易犯也最难自查的错——
+    # 每个页面单看都合理，合起来用户要在三页之间找同一张单，
+    # 同一条命令有两个入口，置灰原因、四眼校验、操作日志都得维护两份。
+    #
+    # 主/次是语义，不是计数：执行视图天然比管理视图按钮更多（我的待办要覆盖排查/分析/
+    # 措施开始/完成/验证 6 条，台账只有下发/审批/驳回/新增/导出 5 条）。
+    # 所以第一步是「取消推断、强制声明」，不是换个权重。
+    def owns_of(pg):
+        return set((pg.get("contract") or {}).get("owns") or [])
+
+    def entry_hosts(entry):
+        """ui.entry 落在哪些页面的组件树里。
+
+        返回集合而不是单页：nodeId 是页内作用域，两个列表页都有 n-table / n-toolbar，
+        按 entry 反查"那一页"必然查错，只能问"主列表在不在这些页里"。
+        """
+        hosts = set()
+        if not entry:
+            return hosts
+        if "__act_" in entry:
+            base, akey = entry.split("__act_", 1)
+        else:
+            base, akey = entry, None
+        for pg in pages:
+            nodes = walk(pg.get("componentTree") or {}, [])
+            if akey is None:
+                if any(n.get("id") == base for n in nodes):
+                    hosts.add(pg.get("id"))
+                continue
+            node = next((n for n in nodes if n.get("id") == base), None)
+            if not node:
+                continue
+            props = node.get("props") or {}
+            keys = [a.get("key") for a in (props.get("actions") or [])]
+            for col in props.get("columns") or []:
+                keys += [a.get("key") for a in (col.get("actions") or [])]
+            if akey in keys:
+                hosts.add(pg.get("id"))
+        return hosts
+
+    def cap_of(cid):
+        return cap_by_id.get(cid) or {}
+
+    # 只在同一 (entity, target) 内比较：PDA 执行页是另一个端，不是第二个列表
+    lists_by_et = {}
+    for p in pages:
+        if p.get("layout") in ("list", "pda-list") and p.get("entity"):
+            lists_by_et.setdefault((p.get("entity"), p.get("target")), []).append(p)
+
+    for (ent, tgt), grp in lists_by_et.items():
+        if len(grp) < 2:
+            continue        # 只有一个列表页：不判 listRole，否则 example-00 这类单页模块会被误伤
+        names = "、".join(f"{x.get('title')}({x.get('id')})" for x in grp)
+
+        # 第 1 步：不许推断。没写 listRole 直接报，逼着写契约的人自己说清主次
+        missing = [p for p in grp if p.get("listRole") not in ("primary", "filter")]
+        for p in missing:
+            add(E, "L2-80",
+                f"实体 {ent}（{tgt}）有 {len(grp)} 个列表页（{names}），但 {p.get('id')}「{p.get('title')}」没写 listRole："
+                "哪个是主列表、哪个是它的过滤视图，必须显式声明。"
+                "推断一定错——执行视图天然按钮更多，按数量认主次会把待办页认成主列表")
+        prim = [p for p in grp if p.get("listRole") == "primary"]
+        if len(prim) != 1:
+            if not missing:
+                add(E, "L2-80",
+                    f"实体 {ent}（{tgt}）有 {len(prim)} 个 listRole=primary 的列表页"
+                    f"（{'、'.join(x.get('id') for x in prim) or '无'}）：一张单据只能有一个主列表，"
+                    "0 个或 2 个都不许，其余列表页一律是它的过滤视图")
+            continue
+        P = prim[0]
+        p_owns = owns_of(P)
+        p_actors = set((P.get("contract") or {}).get("actor") or [])
+
+        # 管理视角与执行视角：是同一张表的两个筛选，面向两种人。
+        # 只判"两种视角是不是真的两种人"，不再判"几个状态就必须几个页面"——
+        # 那是"按阶段拆页"时代的规则，已被 L2-80/81 取代；
+        # 留着会把"一张台账走完全流程"（做对的样子）判死，两条判据互相打架。
+        filters = [f for f in grp if f.get("listRole") == "filter"]
+        if filters:
+            f_actors = [set((f.get("contract") or {}).get("actor") or []) for f in filters]
+            if p_actors and all(fa == p_actors for fa in f_actors):
+                add(E, "L2-58",
+                    f"实体 {ent}（{tgt}）的 {len(grp)} 个列表页（{names}）面向同一批角色 {sorted(p_actors)}："
+                    "过滤视图只是主列表换个筛选，两页的 actor 必须不同（一个管全量、一个只看我的），"
+                    "同一批人看到的两份拷贝不叫两个视角")
+
+        # 第 2 步：主列表必须装得下整条生命周期，不能把命令全挪走只剩个空壳
+        if not any(cap_of(cid).get("to") for cid in p_owns):
+            add(E, "L2-80",
+                f"主列表 {P.get('id')}「{P.get('title')}」的 contract.owns 里没有任何 to!=null 的命令："
+                "推进动作被挪到别的页面了，主列表只剩个壳，用户看得到单却推不动它")
+
+        # 第 3 步：过滤视图只能筛，不许自造
+        for f in grp:
+            if f.get("id") == P.get("id") or f.get("listRole") != "filter":
+                continue
+            f_owns = owns_of(f)
+            # 只比同一 entity 的命令：我的待办这类跨单据收件箱会同时收措施任务，
+            # 那些命令推进的是「措施单」，不是本张单据的生命周期
+            same = {cid for cid in f_owns if cap_of(cid).get("entity") == ent}
+            adv = sorted(cid for cid in same if cap_of(cid).get("to"))
+            if adv:
+                add(E, "L2-82",
+                    f"{f.get('id')}「{f.get('title')}」是 {ent} 的过滤视图，却定义了推进命令 {adv}："
+                    "过滤视图只能换筛选。这些动作应该只在主列表"
+                    f" {P.get('id')} 的工具栏/行内出现，靠单据状态决定亮灭，两处各放一份等于维护两套")
+            # 认领了主列表没有的命令 = 自造。过滤视图换的是筛选，不是动作集合
+            fake = sorted(cid for cid in same if cid not in p_owns)
+            if fake:
+                add(E, "L2-82",
+                    f"{f.get('id')}「{f.get('title')}」是 {ent} 的过滤视图，却认领了主列表 "
+                    f"{P.get('id')} 没有的命令 {fake}：过滤视图只能在主列表的命令里挑，"
+                    "不能自己发明一个只有'我的'才有的动作，那等于给同一张单据开第二个入口")
+
+        # 第 5 步：生命周期不许跨页
+        for c in caps:
+            if c.get("entity") != ent or c.get("target") not in (None, "", tgt):
+                continue
+            ui = c.get("ui") or {}
+            if not c.get("to") or ui.get("kind") not in ("inline", "dialog", "drawer"):
+                continue
+            hosts = entry_hosts(ui.get("entry"))
+            # 建单页（form/wizard/pda-step）上的提交是这张单据的"出生"，不是生命周期的一段：
+            # 它天然不在主列表上，不该被这条判据误伤
+            if hosts and all((page_by_id.get(h) or {}).get("layout") in ("form", "wizard", "pda-step")
+                             for h in hosts):
+                continue
+            probs = []
+            if c.get("id") not in p_owns:
+                probs.append("主列表的 contract.owns 里没有它")
+            if hosts and P.get("id") not in hosts:
+                probs.append(f"入口 {ui.get('entry')} 落在 {'、'.join(sorted(hosts))}，不在主列表的组件树里")
+            if probs:
+                add(E, "L2-81",
+                    f"命令 {c.get('id')}「{c.get('label') or c.get('name')}」会改 {ent} 的状态（→{c.get('to')}），"
+                    f"却{'；'.join(probs)}：生命周期不许跨页，主列表 {P.get('id')} 必须能一个人走完全程")
+
+    # 详情页是"看全貌"的地方，不是第二个操作入口。
+    # 这是 L2-54（详情页不许有可编辑表单）的补位：只堵组件不堵命令，
+    # 就会出现"详情页里放一个按钮直接改状态"——比表单更难查，因为按钮不在表单节点里。
+    for p in pages:
+        if p.get("layout") != "detail":
+            continue
+        for cid in sorted(owns_of(p)):
+            c = cap_of(cid)
+            if c.get("to"):
+                add(E, "L2-83",
+                    f"详情页 {p.get('id')}「{p.get('title')}」的 contract.owns 里认领了推进命令 {cid}"
+                    f"「{c.get('label') or c.get('name')}」（→{c.get('to')}）：详情页只读，"
+                    "改状态的动作只能挂在主列表的工具栏或行内，否则同一条命令有了第二个入口")
+
+    # 菜单只放"可以主动开始的任务"：表单页 / 详情页不是菜单项。
+    # 扫的是左侧业务菜单（AppShell.props.groups）——那是"我每天从哪开始"；
+    # 不是顶栏页面目录（modules[].pageGroups）——那是"这个模块有哪些页面"。
+    # 两棵树用途不同，L2-74 要求每页都在后者里，与这里不冲突。
+    # 刻意不按标题判定：startswith("新建") 换个名字（"开单""建单"）就绕过了，layout 才是语义。
+    menu_reported = set()
+    for p in pages:
+        tree = p.get("componentTree") or {}
+        if tree.get("type") != "AppShell":
+            continue
+        seen_menu = {}
+        for g in ((tree.get("props") or {}).get("groups") or []):
+            for it, depth, trails in walk_nav(g.get("items")):
+                pid = it.get("page")
+                if not pid:
+                    continue
+                where = " / ".join(trails + (it.get("label") or "",))
+                tp = page_by_id.get(pid) or {}
+                if tp.get("layout") in ("form", "wizard", "detail") and ("leaf", pid) not in menu_reported:
+                    menu_reported.add(("leaf", pid))
+                    add(E, "L2-84",
+                        f"左侧菜单「{where}」挂的 {pid}「{tp.get('title')}」是 {tp.get('layout')} 页："
+                        "表单页 / 详情页不是用户可以主动开始的任务，它们靠列表工具栏的「新增」或行点击进入。"
+                        "进了菜单，用户会以为建单要先找到这个页面，而且它和列表是两套入口")
+                if pid in seen_menu:
+                    # 每个页面的 AppShell 挂的是同一份菜单，同一条错只报一次
+                    if ("dup", pid) not in menu_reported:
+                        menu_reported.add(("dup", pid))
+                        add(E, "L2-84",
+                            f"左侧菜单里 {pid} 出现了两次（「{seen_menu[pid]}」和「{where}」）："
+                            "同一张表两个入口，改一处漏一处，用户也不知道该从哪条进")
+                else:
+                    seen_menu[pid] = where
+
+    # 命令落在哪要写清：placement 可缺省，所以只写"工具栏必须给 from"这条会被"不写"绕过。
+    # 弹层承载（dialog/drawer）一定落在某个位置（工具栏 / 行内 / 表单内），必须声明。
+    PLACEMENTS = ("toolbar", "row", "form", "none")
+    for c in caps:
+        cid = c.get("id")
+        ui = c.get("ui") or {}
+        pm = c.get("placement")
+        if pm is not None and pm not in PLACEMENTS:
+            add(E, "L2-85",
+                f"命令 {cid} 的 placement={pm} 非法（只认 {'/'.join(PLACEMENTS)}）："
+                "toolbar=列表工具栏、row=行内、form=表单内、none=无界面。"
+                "别用 inline 表示位置——那是 ui.kind 的取值，同名不同义，读契约的人十有八九会混")
+        # 缺 placement 只报 WARN：它不影响 L2-81（走 owns）、也只影响 L2-77（工具栏亮灭）。
+        # 实测 09:41 工程一口气报 13 条，全是这一条，13 条 ERROR 换 0 收益，只会训练人忽略报错。
+        if ui.get("kind") in ("dialog", "drawer") and not pm:
+            add(W, "L2-85",
+                f"命令 {cid}「{c.get('name')}」用 {ui.get('kind')} 承载，却没写 placement："
+                "它一定落在某个位置（工具栏 / 行内 / 表单内），写上才能核对按钮长在哪")
+
+    # 工具栏按钮的亮灭只能由单据状态决定：from 是唯一依据（app.js 就是拿 cap.from 判的）。
+    # 豁免「建单」：from=[] 且 to 是该实体状态机的 initial，它本来就该一直亮着——
+    # 不加这条，「工具栏新增 + 抽屉」这个正确范式会被判成"不知道什么时候点亮"。
+    sm_by_entity = {}
+    for sm in sms:
+        sm_by_entity.setdefault(sm.get("entity"), sm)
+    for c in caps:
+        cid = c.get("id")
+        if c.get("placement") != "toolbar" or not c.get("to"):
+            continue
+        if c.get("from"):
+            continue
+        sm = sm_by_entity.get(c.get("entity")) or {}
+        if c.get("to") == sm.get("initial"):
+            continue        # 建单命令：from 为空是它的定义，不是漏写
+        add(E, "L2-77",
+            f"命令 {cid}「{c.get('label') or c.get('name')}」挂在工具栏上且会改状态（→{c.get('to')}），"
+            f"却没写 from：按钮会一直亮，能重复建单 / 重复提交。"
+            f"工具栏按钮的可用性完全由单据状态决定；若它是建单命令，to 必须等于 {c.get('entity')} 状态机的 initial")
+
+    # 每个状态都要有人指向它：画得出来、走不进去
+    for sm in (proto.get("stateMachines") or []):
+        pointed = {t.get("to") for t in (sm.get("transitions") or [])}
+        for st in (sm.get("states") or []):
+            if st.get("key") == sm.get("initial") or st.get("key") in pointed:
+                continue
+            add(E, "L2-79",
+                f"状态机 {sm.get('id')} 的状态「{st.get('label') or st.get('key')}」既不是 initial，"
+                "也没有任何迁移指向它：状态条上画得出来，实际走不进去，用户永远到不了这一步")
+
+    # 复刻现有系统时，视觉取值必须有出处
+    meta = proto.get("meta") or {}
+    if meta.get("skin") == "replica":
+        stk = meta.get("skinTokens") or {}
+        miss = [k for k in ("viewport", "source", "tokens") if not stk.get(k)]
+        if miss:
+            add(E, "L2-78",
+                f"meta.skin=replica，但 skinTokens 缺 {miss}："
+                "复刻不是「看着像」，要给出视口、取值来源和每个令牌的实测值，否则下一版没人能核对有没有偏")
+        else:
+            vp = stk.get("viewport") or {}
+            if not vp.get("width") or not vp.get("height"):
+                add(E, "L2-78", "skinTokens.viewport 缺 width/height：截图比对要先知道是在多宽的窗口下取的值")
+            if stk.get("source") == "screenshot" and not vp.get("deviceScale"):
+                add(E, "L2-78",
+                    "skinTokens.source=screenshot，但 viewport 没写 deviceScale："
+                    "截图常被放大过（看着 1920 实际 1470×1.306），不写倍数会把 200px 的侧栏量成 261px，全线偏大")
+            for k, v in (stk.get("tokens") or {}).items():
+                if isinstance(v, dict) and not v.get("evidence"):
+                    add(E, "L2-78",
+                        f"skinTokens.tokens.{k} 没写 evidence（选择器或截图坐标）："
+                        "没有出处，下一版改版就没人知道这个值是哪来的")
+
     # 页头标题要跟页面名一致：写死一张单据号，换数据进来就张冠李戴
     for p in pages:
         hdr = (((p.get("componentTree") or {}).get("props") or {}).get("header") or {})
@@ -509,14 +745,20 @@ def check_proto(proto, catalog):
                             "引擎找不到元素就画不出 pin，这条意见等于丢了")
 
     # ---------- L2 D. 命令策略 ----------
+    # 一条命令只能有一个认领页（单一事实来源）。
+    # 过滤视图不 owns 推进命令：它渲染按钮靠组件树里的 capability 引用，和 owns 是两件事。
+    # 早先给过滤视图开过"可以复认一次"的口子，会逼着每条新命令改两个 owns 数组，
+    # 正是"改一处漏一处"；已撤回。
     owns = {}
     for p in pages:
         for cid in ((p.get("contract") or {}).get("owns") or []):
             if cid not in cap_ids:
                 add(E, "L2-20", f"页面 {p.get('id')} 的 contract.owns 引用了不存在的命令 {cid}")
             if cid in owns:
-                add(E, "L2-21", f"命令 {cid} 被 {owns[cid]} 与 {p.get('id')} 同时 owns（一条命令只能有一个主页面）")
-            owns[cid] = p.get("id")
+                add(E, "L2-21", f"命令 {cid} 被 {owns[cid]} 与 {p.get('id')} 同时 owns"
+                                "（一条命令只能有一个主页面；过滤视图靠组件树引用渲染按钮，不重复认领）")
+            else:
+                owns[cid] = p.get("id")
 
     for c in caps:
         cid = c.get("id")

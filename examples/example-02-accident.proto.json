@@ -31,14 +31,25 @@
       ],
       "pageGroups": [
         {
-          "key": "mgr",
-          "title": "管理视角",
+          "key": "lists",
+          "title": "台账与待办",
           "children": [
             {
-              "key": "ledger",
+              "key": "lgr",
               "title": "事故报告台账",
               "page": "pg-acc-ledger"
             },
+            {
+              "key": "mine",
+              "title": "我的待办",
+              "page": "pg-acc-mine"
+            }
+          ]
+        },
+        {
+          "key": "drill",
+          "title": "从列表进入",
+          "children": [
             {
               "key": "new",
               "title": "新建事故报告",
@@ -48,17 +59,6 @@
               "key": "detail",
               "title": "事故报告详情",
               "page": "pg-acc-detail"
-            }
-          ]
-        },
-        {
-          "key": "exec",
-          "title": "执行视角",
-          "children": [
-            {
-              "key": "mine",
-              "title": "我的待办",
-              "page": "pg-acc-mine"
             }
           ]
         }
@@ -83,11 +83,15 @@
           "u-plant"
         ],
         "owns": [
-          "cap-issue-measure",
-          "cap-approve",
-          "cap-reject",
           "cap-new",
-          "cap-export"
+          "cap-export",
+          "cap-patrol",
+          "cap-analyze",
+          "cap-issue-measure",
+          "cap-verify-pass",
+          "cap-verify-fail",
+          "cap-approve",
+          "cap-reject"
         ],
         "doneWhen": "本页无「待下发 / 待审批」停留超过 2 天的报告",
         "entryFrom": [
@@ -159,16 +163,6 @@
                       "key": "acc-ledger",
                       "label": "事故台账",
                       "page": "pg-acc-ledger"
-                    },
-                    {
-                      "key": "acc-mine",
-                      "label": "我的措施任务",
-                      "page": "pg-acc-mine"
-                    },
-                    {
-                      "key": "acc-new",
-                      "label": "新建事故报告",
-                      "page": "pg-acc-new"
                     }
                   ]
                 },
@@ -372,59 +366,59 @@
                     {
                       "key": "accNo",
                       "title": "事故编号",
-                      "width": 150,
+                      "width": 140,
                       "type": "link"
                     },
                     {
                       "key": "type",
                       "title": "事故类型",
-                      "width": 118
+                      "width": 100
                     },
                     {
                       "key": "dept",
                       "title": "发生部门",
-                      "width": 118
+                      "width": 100
                     },
                     {
                       "key": "level",
                       "title": "等级",
-                      "width": 80,
+                      "width": 84,
                       "type": "tag"
                     },
                     {
                       "key": "at",
                       "title": "发生时间",
-                      "width": 142
+                      "width": 130
                     },
                     {
                       "key": "reporter",
                       "title": "报告人",
-                      "width": 88
+                      "width": 70
                     },
                     {
                       "key": "status",
                       "title": "当前状态",
-                      "width": 124,
+                      "width": 108,
                       "type": "tag"
                     },
                     {
                       "key": "stay",
                       "title": "停留(天)",
-                      "width": 84,
+                      "width": 70,
                       "type": "num",
                       "align": "right"
                     },
                     {
                       "key": "measure",
                       "title": "措施",
-                      "width": 58,
+                      "width": 50,
                       "type": "num",
                       "align": "right"
                     },
                     {
                       "key": "op",
                       "title": "操作",
-                      "width": 178,
+                      "width": 310,
                       "type": "action",
                       "scope": "row",
                       "stateKey": "status",
@@ -434,9 +428,29 @@
                           "text": "查看"
                         },
                         {
+                          "key": "patrol",
+                          "text": "去排查",
+                          "capability": "cap-patrol"
+                        },
+                        {
+                          "key": "analyze",
+                          "text": "做分析",
+                          "capability": "cap-analyze"
+                        },
+                        {
                           "key": "issue",
                           "text": "下发措施",
                           "capability": "cap-issue-measure"
+                        },
+                        {
+                          "key": "verify",
+                          "text": "去验证",
+                          "capability": "cap-verify-pass"
+                        },
+                        {
+                          "key": "verify_fail",
+                          "text": "判无效",
+                          "capability": "cap-verify-fail"
                         },
                         {
                           "key": "approve",
@@ -725,7 +739,8 @@
             "heading": "验收要点"
           }
         ]
-      }
+      },
+      "listRole": "primary"
     },
     {
       "id": "pg-acc-mine",
@@ -745,10 +760,6 @@
           "u-owner"
         ],
         "owns": [
-          "cap-patrol",
-          "cap-analyze",
-          "cap-verify-pass",
-          "cap-verify-fail",
           "cap-start-measure",
           "cap-finish-measure"
         ],
@@ -823,16 +834,6 @@
                       "key": "acc-ledger",
                       "label": "事故台账",
                       "page": "pg-acc-ledger"
-                    },
-                    {
-                      "key": "acc-mine",
-                      "label": "我的措施任务",
-                      "page": "pg-acc-mine"
-                    },
-                    {
-                      "key": "acc-new",
-                      "label": "新建事故报告",
-                      "page": "pg-acc-new"
                     }
                   ]
                 },
@@ -1034,7 +1035,7 @@
                     {
                       "key": "op",
                       "title": "操作",
-                      "width": 190,
+                      "width": 330,
                       "type": "action",
                       "scope": "row",
                       "stateKey": "status",
@@ -1307,7 +1308,8 @@
             "heading": "验收要点"
           }
         ]
-      }
+      },
+      "listRole": "filter"
     },
     {
       "id": "pg-acc-detail",
@@ -1400,16 +1402,6 @@
                       "key": "acc-ledger",
                       "label": "事故台账",
                       "page": "pg-acc-ledger"
-                    },
-                    {
-                      "key": "acc-mine",
-                      "label": "我的措施任务",
-                      "page": "pg-acc-mine"
-                    },
-                    {
-                      "key": "acc-new",
-                      "label": "新建事故报告",
-                      "page": "pg-acc-new"
                     }
                   ]
                 },
@@ -1964,16 +1956,6 @@
                       "key": "acc-ledger",
                       "label": "事故台账",
                       "page": "pg-acc-ledger"
-                    },
-                    {
-                      "key": "acc-mine",
-                      "label": "我的措施任务",
-                      "page": "pg-acc-mine"
-                    },
-                    {
-                      "key": "acc-new",
-                      "label": "新建事故报告",
-                      "page": "pg-acc-new"
                     }
                   ]
                 },
@@ -2295,7 +2277,8 @@
         "entry": "n-toolbar__act_new",
         "pageId": "pg-acc-new",
         "title": "新建事故报告"
-      }
+      },
+      "placement": "toolbar"
     },
     {
       "id": "cap-patrol",
@@ -2373,7 +2356,8 @@
             ]
           }
         ]
-      }
+      },
+      "placement": "row"
     },
     {
       "id": "cap-analyze",
@@ -2456,7 +2440,8 @@
             "value": "点检标准只覆盖温度与张力，未覆盖辊面"
           }
         ]
-      }
+      },
+      "placement": "row"
     },
     {
       "id": "cap-issue-measure",
@@ -2528,7 +2513,8 @@
             "hint": "不写「整改到位」这种情况"
           }
         ]
-      }
+      },
+      "placement": "row"
     },
     {
       "id": "cap-verify-pass",
@@ -2584,7 +2570,8 @@
             "placeholder": "写数据或现场记录编号，不写「已确认」"
           }
         ]
-      }
+      },
+      "placement": "row"
     },
     {
       "id": "cap-verify-fail",
@@ -2619,7 +2606,8 @@
             "placeholder": "必须写清实测数据与验收标准的差距，否则退回无意义"
           }
         ]
-      }
+      },
+      "placement": "row"
     },
     {
       "id": "cap-approve",
@@ -2663,7 +2651,8 @@
             "value": "纳入"
           }
         ]
-      }
+      },
+      "placement": "row"
     },
     {
       "id": "cap-reject",
@@ -2698,7 +2687,8 @@
             "placeholder": "写清分析结论缺什么，不能只写「不同意」"
           }
         ]
-      }
+      },
+      "placement": "row"
     },
     {
       "id": "cap-start-measure",
@@ -2733,7 +2723,8 @@
             "hint": "写清哪天做什么，便于事后对进度"
           }
         ]
-      }
+      },
+      "placement": "row"
     },
     {
       "id": "cap-finish-measure",
@@ -2780,7 +2771,8 @@
             "span": 2
           }
         ]
-      }
+      },
+      "placement": "row"
     },
     {
       "id": "cap-export",
@@ -2799,7 +2791,8 @@
       "ui": {
         "kind": "inline",
         "entry": "n-toolbar__act_export"
-      }
+      },
+      "placement": "toolbar"
     },
     {
       "id": "cap-submit-report",
@@ -2820,7 +2813,8 @@
       "ui": {
         "kind": "inline",
         "entry": "n-toolbar-2__act_submit"
-      }
+      },
+      "placement": "form"
     }
   ],
   "stateMachines": [

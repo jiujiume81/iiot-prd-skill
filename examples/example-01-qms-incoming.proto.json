@@ -1501,7 +1501,8 @@
             "hint": "结论与标准不符时写明依据条款"
           }
         ]
-      }
+      },
+      "placement": "row"
     },
     {
       "id": "cap-export-report",

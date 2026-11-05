@@ -216,7 +216,8 @@
             "industrial-dark-sider",
             "antd-light",
             "pda-field"
-          ]
+          ],
+          "description": "皮肤名，取容器自带皮肤之一"
         },
         "tokens": {
           "type": "object",
@@ -336,6 +337,14 @@
         "entity": {
           "type": "string",
           "description": "主体实体，驱动「单据状态」切换与命令可用性"
+        },
+        "listRole": {
+          "type": "string",
+          "enum": [
+            "primary",
+            "filter"
+          ],
+          "description": "列表页的角色。primary=主列表（这张单据的唯一入口，整条生命周期都在它的工具栏/行内走完）；filter=主列表的过滤视图（同一张表换筛选，比如「我的待办」）。同一 entity + 同一 target 下有 ≥2 个 list 页时必填，且 primary 恰好一个。故意不设默认值：没写就必须报错，靠「谁按钮多谁是主」推断一定会把执行页认成主列表"
         },
         "subtitle": {
           "type": "string"
@@ -713,6 +722,16 @@
         "ui": {
           "$ref": "#/$defs/capUi",
           "description": "这条命令怎么被执行：入口在哪、打开什么承载、要填哪些字段。缺省等于把推进动作留给页面自由发挥，必然堆进详情页"
+        },
+        "placement": {
+          "type": "string",
+          "enum": [
+            "toolbar",
+            "row",
+            "form",
+            "none"
+          ],
+          "description": "命令落在哪：toolbar=列表工具栏（先选中行）、row=行内操作列、form=表单内提交、none=无界面（系统动作）。ui.kind 是 dialog/drawer 时必填；placement=toolbar 且 to 非空时必须给 from，否则按钮永远亮、能重复提交。别用 inline 表示位置——那是 ui.kind 的取值"
         }
       }
     },
@@ -870,7 +889,8 @@
                 ]
               },
               "terminal": {
-                "type": "boolean"
+                "type": "boolean",
+                "description": "没有出口的状态必须显式标 true。不标就等于「忘了写出口」，用户会把单子卡在这里"
               }
             }
           }
