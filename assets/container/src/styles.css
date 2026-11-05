@@ -626,6 +626,9 @@ button { font-family: inherit; }
 .dt-cell.is-act a { color: var(--brand-600); cursor: pointer; text-decoration: none; }
 .dt-cell.is-act a:hover { text-decoration: underline; }
 .dt-cell.is-act a.is-off { color: #b3c1c6; cursor: not-allowed; text-decoration: none; }
+/* 权限不足的按钮不画，格子留一句话。空白格在评审时会被读成"没做"或"渲染坏了" */
+.dt-none { color: var(--text-3); font-size: 12px; }
+.toolbar-none { color: var(--text-3); font-size: 12px; padding: 0 4px; }
 .link-more { color: var(--brand-600); cursor: pointer; }
 
 .tag {

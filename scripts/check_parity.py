@@ -223,6 +223,55 @@ def check(proto_path, html_path, chrome):
         if not c.get("label"):
             add(E, "C-13", f"命令 {c.get('id')} 没有 label，导出与状态流只能显示 id")
 
+    # ---- C-21 数据层：to 命令的 from，在 mock 数据里必须真有对应行 ----
+    # 承载用例（R-10）打不开有两种原因，这条只接"数据没铺到"那一半。
+    # 报在数据层，是因为修法在数据层——要么 from 写错了，要么数据没铺到；
+    # 引擎没错，别让 R-10 替它背这口锅（同一根因只在一个层级报红）。
+    # 造红提示：这条判的是"这个状态在数据里有没有行"，不是"状态名合不合理"。
+    # 我第一次拿 from=['closed'] 造红没红，因为台账里真有一行「已关闭」——
+    # 换 from=['done']（措施状态，事故台账里不存在）才红。造红失败时先怀疑造红，再怀疑判据。
+    label_of, states_of = {}, {}
+    for sm in sms:
+        states_of[sm.get("entity")] = {st.get("key") for st in (sm.get("states") or [])}
+        for st in sm.get("states") or []:
+            label_of[st.get("key")] = st.get("label")
+    for c in caps:
+        if not c.get("to") or not c.get("from"):
+            continue
+        hosts = []      # (page_id, 该列状态字段, 行数据)
+        for pg in pages:
+            for n in walk(pg.get("componentTree") or {}, []):
+                props = n.get("props") if isinstance(n.get("props"), dict) else {}
+                for col in (props.get("columns") if isinstance(props.get("columns"), list) else []):
+                    # 只有 scope==row 的列才按行判状态；没有 scope 的操作列吃单据状态，
+                    # 它的 from 跟 data[] 没有关系，拿去求交集会误报"数据没铺到"
+                    if not isinstance(col, dict) or col.get("type") != "action" or col.get("scope") != "row":
+                        continue
+                    if any(isinstance(a, dict) and a.get("capability") == c.get("id")
+                           for a in (col.get("actions") if isinstance(col.get("actions"), list) else [])):
+                        data = props.get("data")
+                        hosts.append((pg.get("id"), col.get("stateKey") or "status",
+                                      data if isinstance(data, list) else []))
+        if hosts:
+            # cap.from 是状态 key，data[].{stateKey} 存的是 label，两边都要认
+            want = set()
+            for k in c.get("from"):
+                want.add(k)
+                if label_of.get(k):
+                    want.add(label_of[k])
+            hit = any(isinstance(row, dict) and row.get(sk) in want
+                      for _, sk, data in hosts for row in data)
+            if not hit:
+                add(E, "C-21",
+                    f"命令 {c.get('id')} 的 from={c.get('from')} 在「{hosts[0][0]}」的表格数据里没有任何一行"
+                    f"（该列状态字段 {hosts[0][1]}）：要么 from 写错了，要么数据没铺到")
+        else:
+            # 表级/表单级命令没有 data，只能拿状态机全集判"这个状态名存不存在"
+            unknown = [k for k in c.get("from") if k not in states_of.get(c.get("entity"), set())]
+            if unknown:
+                add(E, "C-21",
+                    f"命令 {c.get('id')} 的 from={unknown} 不在 {c.get('entity')} 的状态机里：状态写错了")
+
     return tmpdir
 
 

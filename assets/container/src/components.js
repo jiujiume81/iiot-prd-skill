@@ -6,9 +6,16 @@
 (function () {
   var h = Vue.h;
 
+  // 当前操作人（角色 id）。空串 = 不限制。
+  // 第三个参数是权限判定的一半：不传就退化成"谁都能点"，四眼校验在容器里永远测不出来。
+  function curActor() {
+    var st = (window.RD && window.RD.state) || {};
+    return st.currentUser || '';
+  }
+
   function can(capId, rowState) {
     if (!capId) return { ok: true };
-    return window.RD.can(capId, rowState);
+    return window.RD.can(capId, rowState, curActor());
   }
 
   function statusTone(text) {
@@ -292,13 +299,18 @@
     setup: function (props) {
       return function () {
         var p = props.p || {};
-        var actions = (p.actions || []).map(function (a) {
+        var raw = p.actions || [];
+        var actions = raw.map(function (a) {
           // 批量动作先看"有没有勾选"，再看状态：没选就说没选，别拿单据状态糊弄
           var none = a.needSelection && !(p.selected > 0);
           var c = none ? { ok: false, reason: a.reasonIfNone || '先勾选要处理的记录' } : can(a.capability);
+          // 权限不足的按钮不画：画出来再置灰，等于告诉执行人"这里有个你不能碰的东西"，
+          // 评审时会一直被问"为什么我不能点"。状态不对才置灰。
+          if (c.denied === 'role') return null;
           var dis = (a.capability || a.needSelection) && !c.ok;
           return h('button', {
             key: a.key,
+            'data-cap': a.capability || null,
             class: ['btn', a.variant === 'primary' ? 'btn-primary' : (a.variant === 'ghost' ? 'btn-ghost' : ''), dis ? 'is-disabled' : ''],
             title: dis ? c.reason : null,
             onClick: function () {
@@ -311,7 +323,11 @@
             // 塞了之后按钮的 textContent 变成「入库检验!」，按文字找按钮的脚本和读屏都会认错
             dis ? h('span', { class: 'hint-dot', title: c.reason }) : null
           ]);
-        });
+        }).filter(Boolean);
+        // 全被权限滤光时留一句话，别留一条空工具栏——空白的工具栏和"没做"看起来一样
+        if (raw.length && !actions.length) {
+          actions = [h('span', { class: 'toolbar-none' }, '当前角色在本页没有可用操作')];
+        }
         // 「已选 N 项 / 列设置」是表格专用尾巴，表单页的工具栏不该带出去
         var tableChrome = p.selected != null ? h('div', { class: 'toolbar-right' }, [
           h('span', { class: 'sel-info' }, ['已选 ', h('b', null, String(p.selected || 0)), ' 项']),
@@ -331,13 +347,16 @@
       return h('div', { class: 'dt-cell' }, [h('span', { class: ['tag', 'is-dot', statusTone(txt)] }, txt)]);
     }
     if (col.type === 'action') {
-      var links = (col.actions || []).map(function (a) {
+      var rawLinks = col.actions || [];
+      var links = rawLinks.map(function (a) {
         // 行级动作看本行状态；表级动作（col.stateKey 为空的补「详情」这类无 capability）不看状态
         var rowState = col.scope === 'row' ? row[col.stateKey || 'status'] : null;
         var c = can(a.capability, rowState);
+        if (c.denied === 'role') return null;   // 没权限就不画，理由见 ToolBar 里那段
         var dis = a.capability && !c.ok;
         return h('a', {
           key: a.key,
+          'data-cap': a.capability || null,
           class: dis ? 'is-off' : '',
           title: dis ? c.reason : null,
           onClick: function () {
@@ -345,7 +364,12 @@
             window.RD.action(a.key, a.text, row, a.capability);
           }
         }, a.text);
-      });
+      }).filter(Boolean);
+      // 一行的动作全被权限滤光时，格子里不能是空的：
+      // 空白既像"没做完"，也像"渲染挂了"，脚本和人都读不出结论
+      if (rawLinks.length && !links.length) {
+        return h('div', { class: 'dt-cell is-act' }, [h('span', { class: 'dt-none' }, '无可用操作')]);
+      }
       return h('div', { class: 'dt-cell is-act' }, links);
     }
     return h('div', { class: 'dt-cell', title: row[col.key] }, row[col.key] == null ? '-' : String(row[col.key]));
@@ -497,12 +521,15 @@
       return function () {
         var p = props.p || {};
         // 区块级动作：排查、原因、措施各自有保存按钮，不能全塞进页面工具条
-        var acts = (p.actions || []).map(function (a) {
+        var rawActs = p.actions || [];
+        var acts = rawActs.map(function (a) {
           // blocked：业务前置没满足（比如还有措施没判定）。它不是权限问题，理由要写在按钮上
           var c = a.blocked ? { ok: false, reason: a.blocked } : can(a.capability);
+          if (c.denied === 'role') return null;
           var dis = (a.capability || a.blocked) && !c.ok;
           return h('button', {
             key: a.key,
+            'data-cap': a.capability || null,
             class: ['btn', 'btn-sm', a.variant === 'primary' ? 'btn-primary' : (a.variant === 'ghost' ? 'btn-ghost' : ''), dis ? 'is-disabled' : ''],
             title: dis ? c.reason : null,
             onClick: function () {
@@ -510,7 +537,7 @@
               window.RD.action(a.key, a.text, null, a.capability);
             }
           }, a.text);
-        });
+        }).filter(Boolean);
         var head = (p.title || p.extra || p.sub || acts.length) ? h('header', { class: 'sec-head' }, [
           h('h3', { class: 'sec-title' }, p.title || ''),
           p.sub ? h('span', { class: 'sec-sub' }, p.sub) : null,
@@ -990,9 +1017,16 @@
       return function () {
         var p = props.p || {};
         var c = can(p.capability);
+        if (c.denied === 'role') {
+          // 大按钮整块是这个角色的唯一入口，藏掉之后留一句，别让页面只剩一张空卡
+          return h('div', { class: 'big-action' }, [
+            h('div', { class: 'big-btn-sub' }, '当前角色不能执行这一步')
+          ]);
+        }
         var dis = p.capability && !c.ok;
         return h('div', { class: 'big-action' }, [
           h('button', {
+            'data-cap': p.capability || null,
             class: ['big-btn', dis ? 'is-disabled' : ''],
             onClick: function () {
               if (dis) { window.RD.toast(c.reason); return; }

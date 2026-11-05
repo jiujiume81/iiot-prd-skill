@@ -728,10 +728,9 @@
           "enum": [
             "toolbar",
             "row",
-            "form",
-            "none"
+            "form"
           ],
-          "description": "命令落在哪：toolbar=列表工具栏（先选中行）、row=行内操作列、form=表单内提交、none=无界面（系统动作）。ui.kind 是 dialog/drawer 时必填；placement=toolbar 且 to 非空时必须给 from，否则按钮永远亮、能重复提交。别用 inline 表示位置——那是 ui.kind 的取值"
+          "description": "命令落在哪：toolbar=列表工具栏（先选中行）、row=行内操作列、form=表单内提交。ui.kind 是 dialog/drawer 时必填；placement=toolbar 且 to 非空时必须给 from，否则按钮永远亮、能重复提交。别用 inline 表示位置——那是 ui.kind 的取值。没有按钮的动作不是命令，是状态机的系统迁移：写 stateMachines[].transitions[].system=true + trigger=system-*，不要造一条没有入口的 capability"
         }
       }
     },

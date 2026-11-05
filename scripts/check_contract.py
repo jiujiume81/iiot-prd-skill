@@ -72,6 +72,18 @@ def collect_capability_refs(nodes):
     return refs
 
 
+def rendered_caps(pg):
+    """本页组件树里实际渲染的 capId 集合。
+
+    `capability` 有三种写法，漏一种就等于没看见那个按钮：
+      ① 单按钮节点的 props.capability（PDA 的 BigAction 就是这样挂的）
+      ② 工具栏 / 卡片的 props.actions[].capability
+      ③ 表格列的 columns[].actions[].capability
+    """
+    nodes = walk(pg.get("componentTree") or {}, [])
+    return {cid for _, cid in collect_capability_refs(nodes)}
+
+
 def check_proto(proto, catalog):
     types = catalog["types"]
     cat_of = {k: v.get("category", "common") for k, v in types.items()}
@@ -494,12 +506,23 @@ def check_proto(proto, catalog):
         # 留着会把"一张台账走完全流程"（做对的样子）判死，两条判据互相打架。
         filters = [f for f in grp if f.get("listRole") == "filter"]
         if filters:
-            f_actors = [set((f.get("contract") or {}).get("actor") or []) for f in filters]
-            if p_actors and all(fa == p_actors for fa in f_actors):
+            # actor 必填：空集合和任何集合都"不相等"，只判相同会把"没写"当"已判过"放行。
+            # schema 里 page.contract.actor 是必填，但 check_contract 不读 schema，
+            # 这里是唯一真正兜住它的地方。
+            blank = [p.get("id") for p in [P] + filters
+                     if not ((p.get("contract") or {}).get("actor") or [])]
+            if blank:
                 add(E, "L2-58",
-                    f"实体 {ent}（{tgt}）的 {len(grp)} 个列表页（{names}）面向同一批角色 {sorted(p_actors)}："
-                    "过滤视图只是主列表换个筛选，两页的 actor 必须不同（一个管全量、一个只看我的），"
-                    "同一批人看到的两份拷贝不叫两个视角")
+                    f"实体 {ent}（{tgt}）的列表页 {blank} 没写 contract.actor："
+                    "主列表和过滤视图各自面向谁，必须明说——空着就没法判'两个视角是不是两种人'，"
+                    "也没法核对按钮该给谁看")
+            else:
+                f_actors = [set((f.get("contract") or {}).get("actor") or []) for f in filters]
+                if all(fa == p_actors for fa in f_actors):
+                    add(E, "L2-58",
+                        f"实体 {ent}（{tgt}）的 {len(grp)} 个列表页（{names}）面向同一批角色 {sorted(p_actors)}："
+                        "过滤视图只是主列表换个筛选，两页的 actor 必须不同（一个管全量、一个只看我的），"
+                        "同一批人看到的两份拷贝不叫两个视角")
 
         # 第 2 步：主列表必须装得下整条生命周期，不能把命令全挪走只剩个空壳
         if not any(cap_of(cid).get("to") for cid in p_owns):
@@ -521,15 +544,16 @@ def check_proto(proto, catalog):
                     f"{f.get('id')}「{f.get('title')}」是 {ent} 的过滤视图，却定义了推进命令 {adv}："
                     "过滤视图只能换筛选。这些动作应该只在主列表"
                     f" {P.get('id')} 的工具栏/行内出现，靠单据状态决定亮灭，两处各放一份等于维护两套")
-            # 认领了主列表没有的命令 = 自造。过滤视图换的是筛选，不是动作集合
-            fake = sorted(cid for cid in same if cid not in p_owns)
-            if fake:
-                add(E, "L2-82",
-                    f"{f.get('id')}「{f.get('title')}」是 {ent} 的过滤视图，却认领了主列表 "
-                    f"{P.get('id')} 没有的命令 {fake}：过滤视图只能在主列表的命令里挑，"
-                    "不能自己发明一个只有'我的'才有的动作，那等于给同一张单据开第二个入口")
+            # 不再判"filter owns 必须 ⊆ primary owns"：owns 的含义已收窄为「这条命令归哪一页负责」，
+            # 全局唯一（L2-21 保证）。过滤视图认领一条纯查询命令，是它自己的责任归属，
+            # 不是"自造"——按钮画在哪由组件树决定（L2-90 保证画了就得有人管）。
 
         # 第 5 步：生命周期不许跨页
+        # 只认 contract.owns，不看 ui.entry 落在哪一页：entry 是单值，表达不了
+        # "同一个按钮在两页都渲染"；nodeId 又是页内作用域（台账页与待办页共用
+        # n-root/n-page/n-toolbar/n-table/n-tabs/n-filter/n-footer 七个 id）。
+        # 拿它判"按钮在哪一页"，只会逼着人改 entry 字符串去骗判据——
+        # measure 就是这么被扭成"验证页当主列表"的。
         for c in caps:
             if c.get("entity") != ent or c.get("target") not in (None, "", tgt):
                 continue
@@ -542,15 +566,11 @@ def check_proto(proto, catalog):
             if hosts and all((page_by_id.get(h) or {}).get("layout") in ("form", "wizard", "pda-step")
                              for h in hosts):
                 continue
-            probs = []
             if c.get("id") not in p_owns:
-                probs.append("主列表的 contract.owns 里没有它")
-            if hosts and P.get("id") not in hosts:
-                probs.append(f"入口 {ui.get('entry')} 落在 {'、'.join(sorted(hosts))}，不在主列表的组件树里")
-            if probs:
                 add(E, "L2-81",
                     f"命令 {c.get('id')}「{c.get('label') or c.get('name')}」会改 {ent} 的状态（→{c.get('to')}），"
-                    f"却{'；'.join(probs)}：生命周期不许跨页，主列表 {P.get('id')} 必须能一个人走完全程")
+                    f"却不在主列表 {P.get('id')} 的 contract.owns 里："
+                    "生命周期不许跨页，主列表必须能一个人走完全程")
 
     # 详情页是"看全貌"的地方，不是第二个操作入口。
     # 这是 L2-54（详情页不许有可编辑表单）的补位：只堵组件不堵命令，
@@ -565,6 +585,38 @@ def check_proto(proto, catalog):
                     f"详情页 {p.get('id')}「{p.get('title')}」的 contract.owns 里认领了推进命令 {cid}"
                     f"「{c.get('label') or c.get('name')}」（→{c.get('to')}）：详情页只读，"
                     "改状态的动作只能挂在主列表的工具栏或行内，否则同一条命令有了第二个入口")
+
+    # 模块里出现的实体，至少要有一个页面认领它的某条命令。
+    # 抓的是"页面画出来了、命令没人认领"这种根因：两页都没写 listRole 时，
+    # 按钮照样在组件树里、契约里却没有任何一处说"这个实体的动作归哪页管"，
+    # 后面 L2-80/81/82 全靠 owns，owns 一空就全部失效。
+    for m in modules:
+        mpages = [page_by_id[x] for x in (m.get("pages") or []) if x in page_by_id]
+        for ent in sorted({p.get("entity") for p in mpages if p.get("entity")}):
+            claimed = [p.get("id") for p in pages
+                       if any(cap_of(cid).get("entity") == ent for cid in owns_of(p))]
+            if not claimed:
+                add(E, "L2-89",
+                    f"模块 {m.get('id')} 里有 {ent} 的页面，但没有任何页面的 contract.owns "
+                    f"认领一条 {ent} 的命令：这个实体的动作现在是「画在组件树上、契约里没人管」——"
+                    "L2-80/81/82 全部依赖 owns，owns 一空，判据就全哑了")
+
+    # 页面名里的「和 / 与 / 及」是拆页的征兆：「处置与闭环」= 两个阶段被做成一个页面。
+    # 只查 title，不查 contract.task：task 是描述性长文本，正常写法就含「与」
+    #（"责任部门建单与发布、质量部确认…"），一查必响，等于每个工具栏范式页面都报警。
+    # 只报 WARN，不替人下结论：「来料检验与判定」这类名是合法的。
+    for p in pages:
+        if p.get("layout") not in ("list", "pda-list"):
+            continue
+        val = p.get("title") or ""
+        m = re.search(r"和|与|及", val)
+        if not m:
+            continue
+        lo = max(0, m.start() - 8)
+        add(W, "L2-86",
+            f"页面 {p.get('id')} 的标题含并列词「{m.group(0)}」：「…{val[lo:m.start() + 9]}…」。"
+            "先确认是不是把两个流程阶段拆成了两个页面——单据的状态该做成行上的字段和按钮的亮灭条件，"
+            "不是换一个页面")
 
     # 菜单只放"可以主动开始的任务"：表单页 / 详情页不是菜单项。
     # 扫的是左侧业务菜单（AppShell.props.groups）——那是"我每天从哪开始"；
@@ -600,9 +652,80 @@ def check_proto(proto, catalog):
                 else:
                     seen_menu[pid] = where
 
+    # 组件树里画出来的按钮，契约里必须有人管。
+    # owns 只回答"这条命令归哪一页负责"（全局唯一），"这页显示什么"由组件树决定；
+    # 两者之间没有判据，就会出现"按钮画了、契约里没人管"——过滤视图 owns 清空后
+    # 正好能钻这个洞：按钮还在、状态机还在，但没有一处声明它归谁。
+    cap_owner = {}
+    for p in pages:
+        for cid in owns_of(p):
+            cap_owner.setdefault(cid, p.get("id"))
+    rend = {p.get("id"): rendered_caps(p) for p in pages}
+    pact = {p.get("id"): set((p.get("contract") or {}).get("actor") or []) for p in pages}
+    ref_reported = set()
+    for p in pages:
+        refs = collect_capability_refs(walk(p.get("componentTree") or {}, []))
+        for nid, cid in refs:
+            if not cid or (p.get("id"), cid) in ref_reported:
+                continue
+            ref_reported.add((p.get("id"), cid))
+            if cid not in cap_ids:
+                add(E, "L2-90",
+                    f"页面 {p.get('id')} 的节点 {nid} 挂了一个不存在的命令 {cid}："
+                    "按钮画得出来，点了不会发生任何事")
+            elif cid not in cap_owner:
+                add(E, "L2-90",
+                    f"页面 {p.get('id')} 的节点 {nid} 渲染了命令 {cid}"
+                    f"「{(cap_by_id.get(cid) or {}).get('label') or cid}」，但没有任何页面的 contract.owns 认领它："
+                    "按钮是画上了，可契约里没人管它的状态、权限和置灰原因")
+
+    # L2-91 幽灵命令：契约说归谁管，界面上根本没这个按钮。
+    # 没有豁免：没有按钮的动作不该写成命令，它是状态机的系统迁移（transitions[].system）。
+    for c in caps:
+        cid = c.get("id")
+        if cid not in cap_owner:
+            continue
+        if not any(cid in s for s in rend.values()):
+            add(E, "L2-91",
+                f"命令 {cid}「{c.get('label') or c.get('name')}」被 {cap_owner[cid]} 认领，"
+                "但没有任何页面的组件树渲染它：契约里写着归它管，界面上找不到这个按钮")
+
+    # L2-92 无人可执行：会改状态的命令，渲染它的页面没有一个角色的 actor 与它相交。
+    # 两边任一为空不判（空集合和谁都不相交，会把"没写"当成"没人能做"，那是 L2-58 的事）。
+    for c in caps:
+        cid = c.get("id")
+        if not c.get("to"):
+            continue
+        cap_actors = set(c.get("actor") or [])
+        hosts = [pid for pid, s in rend.items() if cid in s]
+        if not hosts or not cap_actors:
+            continue
+        if not any(pact.get(pid, set()) & cap_actors for pid in hosts):
+            add(E, "L2-92",
+                f"命令 {cid}「{c.get('label') or c.get('name')}」（→{c.get('to')}）只出现在 "
+                f"{'、'.join(sorted(hosts))} 上，而这些页面的 contract.actor 与它的 actor "
+                f"{sorted(cap_actors)} 没有一个相交：整条流程里没有任何角色点得到这个按钮")
+
+    # L2-93 越权渲染：某页画了自己角色不该碰的推进命令。
+    # 只报 WARN——"一张列表管全流程、把别人的按钮也画出来当流程提示"是合法设计，要人看一眼。
+    for p in pages:
+        pid = p.get("id")
+        my_actors = pact.get(pid) or set()
+        if not my_actors:
+            continue
+        for cid in sorted(rend.get(pid) or []):
+            c = cap_by_id.get(cid) or {}
+            cap_actors = set(c.get("actor") or [])
+            if not c.get("to") or not cap_actors or (my_actors & cap_actors):
+                continue
+            add(W, "L2-93",
+                f"页面 {pid}「{p.get('title')}」渲染了推进命令 {cid}「{c.get('label') or cid}」"
+                f"（→{c.get('to')}，actor={sorted(cap_actors)}），与本页 contract.actor "
+                f"{sorted(my_actors)} 不相交：要么本页 actor 写漏了，要么这个按钮不该画在这页")
+
     # 命令落在哪要写清：placement 可缺省，所以只写"工具栏必须给 from"这条会被"不写"绕过。
     # 弹层承载（dialog/drawer）一定落在某个位置（工具栏 / 行内 / 表单内），必须声明。
-    PLACEMENTS = ("toolbar", "row", "form", "none")
+    PLACEMENTS = ("toolbar", "row", "form")
     for c in caps:
         cid = c.get("id")
         ui = c.get("ui") or {}
@@ -610,8 +733,9 @@ def check_proto(proto, catalog):
         if pm is not None and pm not in PLACEMENTS:
             add(E, "L2-85",
                 f"命令 {cid} 的 placement={pm} 非法（只认 {'/'.join(PLACEMENTS)}）："
-                "toolbar=列表工具栏、row=行内、form=表单内、none=无界面。"
-                "别用 inline 表示位置——那是 ui.kind 的取值，同名不同义，读契约的人十有八九会混")
+                "toolbar=列表工具栏、row=行内、form=表单内。"
+                "别用 inline 表示位置——那是 ui.kind 的取值，同名不同义，读契约的人十有八九会混。"
+                "没有按钮的动作不写命令：它是状态机的系统迁移，写 transitions[].system=true + trigger=system-*")
         # 缺 placement 只报 WARN：它不影响 L2-81（走 owns）、也只影响 L2-77（工具栏亮灭）。
         # 实测 09:41 工程一口气报 13 条，全是这一条，13 条 ERROR 换 0 收益，只会训练人忽略报错。
         if ui.get("kind") in ("dialog", "drawer") and not pm:
@@ -619,7 +743,10 @@ def check_proto(proto, catalog):
                 f"命令 {cid}「{c.get('name')}」用 {ui.get('kind')} 承载，却没写 placement："
                 "它一定落在某个位置（工具栏 / 行内 / 表单内），写上才能核对按钮长在哪")
 
-    # 工具栏按钮的亮灭只能由单据状态决定：from 是唯一依据（app.js 就是拿 cap.from 判的）。
+    # 列表上的按钮，亮灭只能由单据状态决定：from 是唯一依据（app.js 就是拿 cap.from 判的）。
+    # 前置条件刻意不限定 placement=toolbar：写 row、或者干脆不写 placement，都绕不过去。
+    # 没有"无界面命令"这个例外——没有按钮的动作不是命令，是状态机的系统迁移
+    # （transitions[].system=true），它根本不该出现在 capabilities 里。
     # 豁免「建单」：from=[] 且 to 是该实体状态机的 initial，它本来就该一直亮着——
     # 不加这条，「工具栏新增 + 抽屉」这个正确范式会被判成"不知道什么时候点亮"。
     sm_by_entity = {}
@@ -627,17 +754,34 @@ def check_proto(proto, catalog):
         sm_by_entity.setdefault(sm.get("entity"), sm)
     for c in caps:
         cid = c.get("id")
-        if c.get("placement") != "toolbar" or not c.get("to"):
+        if not c.get("to"):
             continue
         if c.get("from"):
             continue
         sm = sm_by_entity.get(c.get("entity")) or {}
         if c.get("to") == sm.get("initial"):
             continue        # 建单命令：from 为空是它的定义，不是漏写
+        where = "工具栏" if c.get("placement") == "toolbar" else "列表上（工具栏 / 行内）"
         add(E, "L2-77",
-            f"命令 {cid}「{c.get('label') or c.get('name')}」挂在工具栏上且会改状态（→{c.get('to')}），"
+            f"命令 {cid}「{c.get('label') or c.get('name')}」挂在{where}且会改状态（→{c.get('to')}），"
             f"却没写 from：按钮会一直亮，能重复建单 / 重复提交。"
-            f"工具栏按钮的可用性完全由单据状态决定；若它是建单命令，to 必须等于 {c.get('entity')} 状态机的 initial")
+            f"按钮的可用性完全由单据状态决定；若它是建单命令，to 必须等于 {c.get('entity')} 状态机的 initial")
+
+    # L2-94 自环：to 落在 from 里，等于"说自己会改状态，改完还是同一个状态"。
+    # 三条理由，第一条最硬：
+    #   ① 它制造 R 层测不了的东西。自环推进完状态不变，R-09 的正对照（推进后应等于 to）
+    #      无从判断，只能跳过——判据不该给自己造一个永久盲区；
+    #   ② 状态图上画出指向自己的箭头，读图的人会以为这一步能重来；
+    #   ③ 不改状态的动作用 to=null 表达，契约里已经有这个写法，不需要第二种。
+    for c in caps:
+        cid = c.get("id")
+        if not c.get("to"):
+            continue
+        if c.get("to") in (c.get("from") or []):
+            add(E, "L2-94",
+                f"命令 {cid}「{c.get('label') or c.get('name')}」的 to={c.get('to')} 出现在 from 里："
+                f"这条命令声称会改状态，可改完还是同一个状态。不改状态的动作用 to=null；"
+                f"建单用 from=[] 且 to 等于状态机的 initial")
 
     # 每个状态都要有人指向它：画得出来、走不进去
     for sm in (proto.get("stateMachines") or []):
@@ -649,28 +793,10 @@ def check_proto(proto, catalog):
                 f"状态机 {sm.get('id')} 的状态「{st.get('label') or st.get('key')}」既不是 initial，"
                 "也没有任何迁移指向它：状态条上画得出来，实际走不进去，用户永远到不了这一步")
 
-    # 复刻现有系统时，视觉取值必须有出处
-    meta = proto.get("meta") or {}
-    if meta.get("skin") == "replica":
-        stk = meta.get("skinTokens") or {}
-        miss = [k for k in ("viewport", "source", "tokens") if not stk.get(k)]
-        if miss:
-            add(E, "L2-78",
-                f"meta.skin=replica，但 skinTokens 缺 {miss}："
-                "复刻不是「看着像」，要给出视口、取值来源和每个令牌的实测值，否则下一版没人能核对有没有偏")
-        else:
-            vp = stk.get("viewport") or {}
-            if not vp.get("width") or not vp.get("height"):
-                add(E, "L2-78", "skinTokens.viewport 缺 width/height：截图比对要先知道是在多宽的窗口下取的值")
-            if stk.get("source") == "screenshot" and not vp.get("deviceScale"):
-                add(E, "L2-78",
-                    "skinTokens.source=screenshot，但 viewport 没写 deviceScale："
-                    "截图常被放大过（看着 1920 实际 1470×1.306），不写倍数会把 200px 的侧栏量成 261px，全线偏大")
-            for k, v in (stk.get("tokens") or {}).items():
-                if isinstance(v, dict) and not v.get("evidence"):
-                    add(E, "L2-78",
-                        f"skinTokens.tokens.{k} 没写 evidence（选择器或截图坐标）："
-                        "没有出处，下一版改版就没人知道这个值是哪来的")
+    # TODO(P0-2d): L2-78（复刻视觉取值必须有出处）已随 meta.skinTokens 撤回一并删除，
+    # 不在这里留实现——留着就是读一个 schema 里已不存在的字段，永不触发的死判据。
+    # 重写规格见 specs/2026-11-05-skill-improve.md §9.4，落地为 L2-87（出处 + 令牌名白名单）
+    # / L2-88（raw÷deviceScale 算术校验）/ C-15（渲染实测），三条一起才算"复刻"。
 
     # 页头标题要跟页面名一致：写死一张单据号，换数据进来就张冠李戴
     for p in pages:

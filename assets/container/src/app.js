@@ -49,7 +49,7 @@
       ['navOpen', 'prdEdits', 'tocOpen'].forEach(function (f) {
         for (var kk in (b[f] || {})) if (acc[f][kk] === undefined) acc[f][kk] = b[f][kk];
       });
-      ['pageId', 'entityStatus'].forEach(function (f) {
+      ['pageId', 'entityStatus', 'currentUser'].forEach(function (f) {
         if (acc[f] === undefined && b[f] !== undefined) acc[f] = b[f];
       });
     });
@@ -96,16 +96,37 @@
 
   var hashPage = (location.hash.match(/page=([A-Za-z0-9_-]+)/) || [])[1];
   var hashStatus = (location.hash.match(/status=([A-Za-z0-9_-]+)/) || [])[1];
+  // 本页组件树里实际渲染的命令（工具栏 + 行内），按出现顺序去重。
+  // 不读 contract.owns：owns 只回答"这条命令归哪一页负责"，过滤视图的 owns 可能是空的，
+  // 按它推默认态就会落到 initial，整页按钮全灰。渲染了什么，才是这一页能做什么。
+  function renderedCaps(pg) {
+    var out = [], seen = {};
+    (function walk(n) {
+      if (!n || typeof n !== 'object') return;
+      var props = (n.props && typeof n.props === 'object') ? n.props : {};
+      var refs = [];
+      (props.actions || []).forEach(function (a) { if (a && a.capability) refs.push(a.capability); });
+      var cols = Array.isArray(props.columns) ? props.columns : [];
+      cols.forEach(function (col) {
+        if (col && col.actions) {
+          (col.actions || []).forEach(function (a) { if (a && a.capability) refs.push(a.capability); });
+        }
+      });
+      refs.forEach(function (cid) { if (!seen[cid]) { seen[cid] = 1; out.push(cid); } });
+      (n.children || []).forEach(walk);
+    })(pg && pg.componentTree);
+    return out;
+  }
   // 打开页面时落在「这一页有动作可做」的状态上，而不是状态机的 initial：
   // 否则评审第一眼看到的是一屏灰按钮，还得先去顶栏找状态切换。
-  // 判定顺序 = contract.owns 的命令顺序 × 每个命令的 from 顺序，第一个命中状态机 states 的即为默认态。
+  // 判定顺序 = 本页渲染的命令顺序 × 每个命令的 from 顺序，第一个命中状态机 states 的即为默认态。
   function defaultStatus(pg) {
     var sm = pg && smByEntity[pg.entity];
     if (!sm) return 'new';
     var keys = (sm.states || []).map(function (s) { return s.key; });
-    var owns = (pg.contract || {}).owns || [];
-    for (var i = 0; i < owns.length; i++) {
-      var cap = capsById[owns[i]];
+    var caps = renderedCaps(pg);
+    for (var i = 0; i < caps.length; i++) {
+      var cap = capsById[caps[i]];
       var from = (cap && cap.from) || [];
       for (var j = 0; j < from.length; j++) {
         if (keys.indexOf(from[j]) >= 0) return from[j];
@@ -121,6 +142,10 @@
     pageId: initialPageId,
     pageState: hashState || 'default',
     entityStatus: hashStatus || saved.entityStatus || defaultStatus(initialPage),
+    // 当前操作人（角色 id）。空串 = 不限制，所有角色都能看见全部按钮。
+    // 默认不限制是刻意的：原型是给一群人评审的，一进来就按某个岗位过滤，
+    // 别人会以为"这个按钮没做"。要看四眼校验，顶栏切到具体角色即可。
+    currentUser: saved.currentUser || '',
     filters: {},
     pdaQty: 0,
     selectedRow: null,
@@ -158,6 +183,7 @@
       localStorage.setItem(KEY, JSON.stringify({
         pageId: store.pageId,
         entityStatus: store.entityStatus,
+        currentUser: store.currentUser,
         annotations: store.annotations,
         navOpen: store.navOpen,
         tocOpen: store.tocOpen,
@@ -271,9 +297,28 @@
   window.RD = {
     state: store,
     data: DATA,
-    can: function (capId, rowState) {
+    /* 这个角色能不能点这条命令。
+     * 第三参 actor 决定「权限」这半边，rowState 决定「状态」这半边，两件事不能混：
+     *   权限不足 → 按钮根本不该出现（R-06）
+     *   状态不对 → 按钮在、但是灰的，点一下给理由
+     * actor 不传（undefined）时按"未声明角色 → 全部可见"处理：
+     * 插件式调用方、老脚本、导出钩子都只传两个参数，硬要第三参会让整页按钮凭空消失。
+     * 内部一律三参调用（components.js 的 can() 负责补当前角色）。
+     */
+    can: function (capId, rowState, actor) {
       var cap = capsById[capId];
       if (!cap) return { ok: true };
+      // 第三参缺省（undefined / null）与顶栏选「全部角色（不限）」传的空串，走同一条分支：
+      // 都是"不限制角色"。这个合流是刻意的——否则就是两个语义相同的开关，
+      // 一个在界面上明写、一个在代码里静默放行，后者没人看得见。
+      var who = (actor === undefined || actor === null) ? '' : String(actor);
+      var allowed = cap.actor || [];
+      if (who && allowed.length && allowed.indexOf(who) < 0) {
+        return {
+          ok: false, denied: 'role',
+          reason: '当前角色「' + actorName(who) + '」不能做这个操作（仅 ' + allowed.map(actorName).join('、') + ' 可用）'
+        };
+      }
       // 行级按钮（措施单/验证行）按自身状态判定，不跟随主单状态
       var curKey = store.entityStatus;
       var curLabel = null;
@@ -288,7 +333,7 @@
       if ((cap.from || []).length && (cap.from || []).indexOf(curKey) < 0) {
         var sm = smByEntity[cap.entity] || { states: [] };
         var cur = curLabel || ((sm.states || []).filter(function (x) { return x.key === curKey; })[0] || {}).label || curKey;
-        return { ok: false, reason: (cap.reason || '当前状态不可用') + '（当前为「' + cur + '」）' };
+        return { ok: false, denied: 'state', reason: (cap.reason || '当前状态不可用') + '（当前为「' + cur + '」）' };
       }
       return { ok: true };
     },
@@ -300,6 +345,16 @@
     // 命令声明了 ui 承载的，先按契约开层；填完在层里提交，而不是点一下就跳过填报。
     action: function (key, text, row, capId) {
       var cap = capId ? capsById[capId] : null;
+      // 角色和状态都要在引擎里拦一道：按钮藏着是界面的事，
+      // 键盘/脚本/插件绕过界面直接调 action 时，状态机不能跟着破。
+      // 行级命令按这一行的状态判（措施单的状态与主单是两回事），单据级才看 store.entityStatus。
+      // 这不是"安全"——原型没有后端——是保真：可达集被脚本扩大以后，
+      // 导出的状态图就不再描述这台原型真实能走的路。
+      if (cap) {
+        var rowStatus = row ? (row.status || row.state) : null;
+        var perm = window.RD.can(capId, rowStatus, store.currentUser || '');
+        if (!perm.ok) { toast(perm.reason); return; }
+      }
       if (cap && cap.ui) {
         var kind = cap.ui.kind;
         if (kind === 'dialog' || kind === 'drawer') { openLayer(capId, row || null, kind); return; }
@@ -1297,6 +1352,22 @@
               class: ['tool-btn', store.showToc ? 'is-on' : ''],
               onClick: function () { store.showToc = !store.showToc; }
             }, '目录'),
+            // 角色开关：不加这个，"执行人看不到验证按钮"这类四眼校验在容器里只能靠嘴说。
+            // 第一项是"不限"，默认就是它——原型给一群人看，一进来就按岗位过滤会被当成按钮没做。
+            (DATA.actors || []).length ? h('div', { class: 'chip-group' }, [
+              h('span', { class: 'chip-group-label' }, '当前角色'),
+              h('select', {
+                class: 'chip',
+                'data-role-switch': '1',
+                style: { border: '0', background: 'transparent', paddingRight: '4px' },
+                value: store.currentUser,
+                onChange: function (e) { store.currentUser = e.target.value; persist(); }
+              }, [h('option', { value: '', selected: !store.currentUser }, '全部角色（不限）')].concat(
+                (DATA.actors || []).map(function (a) {
+                  return h('option', { key: a.id, value: a.id, selected: a.id === store.currentUser }, actorName(a.id));
+                })
+              ))
+            ]) : null,
             store.audit ? null : h('div', { class: 'chip-group' }, [h('span', { class: 'chip-group-label' }, '页面态')].concat(stateChips.map(function (c) {
               return h('button', {
                 key: c.key,
@@ -1308,6 +1379,7 @@
               h('span', { class: 'chip-group-label' }, '单据状态'),
               h('select', {
                 class: 'chip',
+                'data-status-switch': '1',
                 style: { border: '0', background: 'transparent', paddingRight: '4px' },
                 value: store.entityStatus,
                 onChange: function (e) { store.entityStatus = e.target.value; persist(); }
@@ -1353,6 +1425,7 @@
                 });
                 store.annotations = JSON.parse(JSON.stringify(DATA.annotations || []));
                 store.prdEdits = {};
+                store.currentUser = '';
                 store.entityStatus = defaultStatus(page.value);
                 store.pageState = 'default';
                 toast('已重置为 AI 生成版本');

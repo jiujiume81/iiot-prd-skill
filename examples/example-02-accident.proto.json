@@ -79,7 +79,10 @@
       "contract": {
         "task": "质量经理按状态推进事故报告：下发措施、审批关闭，并掌握全厂事故进度",
         "actor": [
+          "u-safety",
+          "u-qe",
           "u-qm",
+          "u-owner",
           "u-plant"
         ],
         "owns": [
@@ -2172,7 +2175,7 @@
           "on": "n-toolbar-2__act_draft",
           "do": "toast",
           "params": {
-            "text": "已暂存为草稿，72 小时内未提交将清理"
+            "text": "已暂存，未提交不生成单据"
           }
         }
       ],
@@ -2802,11 +2805,9 @@
         "u-safety"
       ],
       "entity": "accident",
-      "from": [
-        "reported"
-      ],
+      "from": [],
       "policy": "disabled",
-      "reason": "已提交的报告不能再提交；修改走「退回后重新分析」",
+      "reason": "提交后即进入「待排查」；重复提交以幂等拦下并提示已提交",
       "to": "reported",
       "stage": null,
       "target": "pc",

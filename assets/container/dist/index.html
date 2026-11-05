@@ -633,6 +633,9 @@ button { font-family: inherit; }
 .dt-cell.is-act a { color: var(--brand-600); cursor: pointer; text-decoration: none; }
 .dt-cell.is-act a:hover { text-decoration: underline; }
 .dt-cell.is-act a.is-off { color: #b3c1c6; cursor: not-allowed; text-decoration: none; }
+/* 权限不足的按钮不画，格子留一句话。空白格在评审时会被读成"没做"或"渲染坏了" */
+.dt-none { color: var(--text-3); font-size: 12px; }
+.toolbar-none { color: var(--text-3); font-size: 12px; padding: 0 4px; }
 .link-more { color: var(--brand-600); cursor: pointer; }
 
 .tag {
@@ -1557,9 +1560,16 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
 (function () {
   var h = Vue.h;
 
+  // 当前操作人（角色 id）。空串 = 不限制。
+  // 第三个参数是权限判定的一半：不传就退化成"谁都能点"，四眼校验在容器里永远测不出来。
+  function curActor() {
+    var st = (window.RD && window.RD.state) || {};
+    return st.currentUser || '';
+  }
+
   function can(capId, rowState) {
     if (!capId) return { ok: true };
-    return window.RD.can(capId, rowState);
+    return window.RD.can(capId, rowState, curActor());
   }
 
   function statusTone(text) {
@@ -1843,13 +1853,18 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
     setup: function (props) {
       return function () {
         var p = props.p || {};
-        var actions = (p.actions || []).map(function (a) {
+        var raw = p.actions || [];
+        var actions = raw.map(function (a) {
           // 批量动作先看"有没有勾选"，再看状态：没选就说没选，别拿单据状态糊弄
           var none = a.needSelection && !(p.selected > 0);
           var c = none ? { ok: false, reason: a.reasonIfNone || '先勾选要处理的记录' } : can(a.capability);
+          // 权限不足的按钮不画：画出来再置灰，等于告诉执行人"这里有个你不能碰的东西"，
+          // 评审时会一直被问"为什么我不能点"。状态不对才置灰。
+          if (c.denied === 'role') return null;
           var dis = (a.capability || a.needSelection) && !c.ok;
           return h('button', {
             key: a.key,
+            'data-cap': a.capability || null,
             class: ['btn', a.variant === 'primary' ? 'btn-primary' : (a.variant === 'ghost' ? 'btn-ghost' : ''), dis ? 'is-disabled' : ''],
             title: dis ? c.reason : null,
             onClick: function () {
@@ -1862,7 +1877,11 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
             // 塞了之后按钮的 textContent 变成「入库检验!」，按文字找按钮的脚本和读屏都会认错
             dis ? h('span', { class: 'hint-dot', title: c.reason }) : null
           ]);
-        });
+        }).filter(Boolean);
+        // 全被权限滤光时留一句话，别留一条空工具栏——空白的工具栏和"没做"看起来一样
+        if (raw.length && !actions.length) {
+          actions = [h('span', { class: 'toolbar-none' }, '当前角色在本页没有可用操作')];
+        }
         // 「已选 N 项 / 列设置」是表格专用尾巴，表单页的工具栏不该带出去
         var tableChrome = p.selected != null ? h('div', { class: 'toolbar-right' }, [
           h('span', { class: 'sel-info' }, ['已选 ', h('b', null, String(p.selected || 0)), ' 项']),
@@ -1882,13 +1901,16 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
       return h('div', { class: 'dt-cell' }, [h('span', { class: ['tag', 'is-dot', statusTone(txt)] }, txt)]);
     }
     if (col.type === 'action') {
-      var links = (col.actions || []).map(function (a) {
+      var rawLinks = col.actions || [];
+      var links = rawLinks.map(function (a) {
         // 行级动作看本行状态；表级动作（col.stateKey 为空的补「详情」这类无 capability）不看状态
         var rowState = col.scope === 'row' ? row[col.stateKey || 'status'] : null;
         var c = can(a.capability, rowState);
+        if (c.denied === 'role') return null;   // 没权限就不画，理由见 ToolBar 里那段
         var dis = a.capability && !c.ok;
         return h('a', {
           key: a.key,
+          'data-cap': a.capability || null,
           class: dis ? 'is-off' : '',
           title: dis ? c.reason : null,
           onClick: function () {
@@ -1896,7 +1918,12 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
             window.RD.action(a.key, a.text, row, a.capability);
           }
         }, a.text);
-      });
+      }).filter(Boolean);
+      // 一行的动作全被权限滤光时，格子里不能是空的：
+      // 空白既像"没做完"，也像"渲染挂了"，脚本和人都读不出结论
+      if (rawLinks.length && !links.length) {
+        return h('div', { class: 'dt-cell is-act' }, [h('span', { class: 'dt-none' }, '无可用操作')]);
+      }
       return h('div', { class: 'dt-cell is-act' }, links);
     }
     return h('div', { class: 'dt-cell', title: row[col.key] }, row[col.key] == null ? '-' : String(row[col.key]));
@@ -2048,12 +2075,15 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
       return function () {
         var p = props.p || {};
         // 区块级动作：排查、原因、措施各自有保存按钮，不能全塞进页面工具条
-        var acts = (p.actions || []).map(function (a) {
+        var rawActs = p.actions || [];
+        var acts = rawActs.map(function (a) {
           // blocked：业务前置没满足（比如还有措施没判定）。它不是权限问题，理由要写在按钮上
           var c = a.blocked ? { ok: false, reason: a.blocked } : can(a.capability);
+          if (c.denied === 'role') return null;
           var dis = (a.capability || a.blocked) && !c.ok;
           return h('button', {
             key: a.key,
+            'data-cap': a.capability || null,
             class: ['btn', 'btn-sm', a.variant === 'primary' ? 'btn-primary' : (a.variant === 'ghost' ? 'btn-ghost' : ''), dis ? 'is-disabled' : ''],
             title: dis ? c.reason : null,
             onClick: function () {
@@ -2061,7 +2091,7 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
               window.RD.action(a.key, a.text, null, a.capability);
             }
           }, a.text);
-        });
+        }).filter(Boolean);
         var head = (p.title || p.extra || p.sub || acts.length) ? h('header', { class: 'sec-head' }, [
           h('h3', { class: 'sec-title' }, p.title || ''),
           p.sub ? h('span', { class: 'sec-sub' }, p.sub) : null,
@@ -2541,9 +2571,16 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
       return function () {
         var p = props.p || {};
         var c = can(p.capability);
+        if (c.denied === 'role') {
+          // 大按钮整块是这个角色的唯一入口，藏掉之后留一句，别让页面只剩一张空卡
+          return h('div', { class: 'big-action' }, [
+            h('div', { class: 'big-btn-sub' }, '当前角色不能执行这一步')
+          ]);
+        }
         var dis = p.capability && !c.ok;
         return h('div', { class: 'big-action' }, [
           h('button', {
+            'data-cap': p.capability || null,
             class: ['big-btn', dis ? 'is-disabled' : ''],
             onClick: function () {
               if (dis) { window.RD.toast(c.reason); return; }
@@ -2719,7 +2756,7 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
       ['navOpen', 'prdEdits', 'tocOpen'].forEach(function (f) {
         for (var kk in (b[f] || {})) if (acc[f][kk] === undefined) acc[f][kk] = b[f][kk];
       });
-      ['pageId', 'entityStatus'].forEach(function (f) {
+      ['pageId', 'entityStatus', 'currentUser'].forEach(function (f) {
         if (acc[f] === undefined && b[f] !== undefined) acc[f] = b[f];
       });
     });
@@ -2766,16 +2803,37 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
 
   var hashPage = (location.hash.match(/page=([A-Za-z0-9_-]+)/) || [])[1];
   var hashStatus = (location.hash.match(/status=([A-Za-z0-9_-]+)/) || [])[1];
+  // 本页组件树里实际渲染的命令（工具栏 + 行内），按出现顺序去重。
+  // 不读 contract.owns：owns 只回答"这条命令归哪一页负责"，过滤视图的 owns 可能是空的，
+  // 按它推默认态就会落到 initial，整页按钮全灰。渲染了什么，才是这一页能做什么。
+  function renderedCaps(pg) {
+    var out = [], seen = {};
+    (function walk(n) {
+      if (!n || typeof n !== 'object') return;
+      var props = (n.props && typeof n.props === 'object') ? n.props : {};
+      var refs = [];
+      (props.actions || []).forEach(function (a) { if (a && a.capability) refs.push(a.capability); });
+      var cols = Array.isArray(props.columns) ? props.columns : [];
+      cols.forEach(function (col) {
+        if (col && col.actions) {
+          (col.actions || []).forEach(function (a) { if (a && a.capability) refs.push(a.capability); });
+        }
+      });
+      refs.forEach(function (cid) { if (!seen[cid]) { seen[cid] = 1; out.push(cid); } });
+      (n.children || []).forEach(walk);
+    })(pg && pg.componentTree);
+    return out;
+  }
   // 打开页面时落在「这一页有动作可做」的状态上，而不是状态机的 initial：
   // 否则评审第一眼看到的是一屏灰按钮，还得先去顶栏找状态切换。
-  // 判定顺序 = contract.owns 的命令顺序 × 每个命令的 from 顺序，第一个命中状态机 states 的即为默认态。
+  // 判定顺序 = 本页渲染的命令顺序 × 每个命令的 from 顺序，第一个命中状态机 states 的即为默认态。
   function defaultStatus(pg) {
     var sm = pg && smByEntity[pg.entity];
     if (!sm) return 'new';
     var keys = (sm.states || []).map(function (s) { return s.key; });
-    var owns = (pg.contract || {}).owns || [];
-    for (var i = 0; i < owns.length; i++) {
-      var cap = capsById[owns[i]];
+    var caps = renderedCaps(pg);
+    for (var i = 0; i < caps.length; i++) {
+      var cap = capsById[caps[i]];
       var from = (cap && cap.from) || [];
       for (var j = 0; j < from.length; j++) {
         if (keys.indexOf(from[j]) >= 0) return from[j];
@@ -2791,6 +2849,10 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
     pageId: initialPageId,
     pageState: hashState || 'default',
     entityStatus: hashStatus || saved.entityStatus || defaultStatus(initialPage),
+    // 当前操作人（角色 id）。空串 = 不限制，所有角色都能看见全部按钮。
+    // 默认不限制是刻意的：原型是给一群人评审的，一进来就按某个岗位过滤，
+    // 别人会以为"这个按钮没做"。要看四眼校验，顶栏切到具体角色即可。
+    currentUser: saved.currentUser || '',
     filters: {},
     pdaQty: 0,
     selectedRow: null,
@@ -2828,6 +2890,7 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
       localStorage.setItem(KEY, JSON.stringify({
         pageId: store.pageId,
         entityStatus: store.entityStatus,
+        currentUser: store.currentUser,
         annotations: store.annotations,
         navOpen: store.navOpen,
         tocOpen: store.tocOpen,
@@ -2941,9 +3004,28 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
   window.RD = {
     state: store,
     data: DATA,
-    can: function (capId, rowState) {
+    /* 这个角色能不能点这条命令。
+     * 第三参 actor 决定「权限」这半边，rowState 决定「状态」这半边，两件事不能混：
+     *   权限不足 → 按钮根本不该出现（R-06）
+     *   状态不对 → 按钮在、但是灰的，点一下给理由
+     * actor 不传（undefined）时按"未声明角色 → 全部可见"处理：
+     * 插件式调用方、老脚本、导出钩子都只传两个参数，硬要第三参会让整页按钮凭空消失。
+     * 内部一律三参调用（components.js 的 can() 负责补当前角色）。
+     */
+    can: function (capId, rowState, actor) {
       var cap = capsById[capId];
       if (!cap) return { ok: true };
+      // 第三参缺省（undefined / null）与顶栏选「全部角色（不限）」传的空串，走同一条分支：
+      // 都是"不限制角色"。这个合流是刻意的——否则就是两个语义相同的开关，
+      // 一个在界面上明写、一个在代码里静默放行，后者没人看得见。
+      var who = (actor === undefined || actor === null) ? '' : String(actor);
+      var allowed = cap.actor || [];
+      if (who && allowed.length && allowed.indexOf(who) < 0) {
+        return {
+          ok: false, denied: 'role',
+          reason: '当前角色「' + actorName(who) + '」不能做这个操作（仅 ' + allowed.map(actorName).join('、') + ' 可用）'
+        };
+      }
       // 行级按钮（措施单/验证行）按自身状态判定，不跟随主单状态
       var curKey = store.entityStatus;
       var curLabel = null;
@@ -2958,7 +3040,7 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
       if ((cap.from || []).length && (cap.from || []).indexOf(curKey) < 0) {
         var sm = smByEntity[cap.entity] || { states: [] };
         var cur = curLabel || ((sm.states || []).filter(function (x) { return x.key === curKey; })[0] || {}).label || curKey;
-        return { ok: false, reason: (cap.reason || '当前状态不可用') + '（当前为「' + cur + '」）' };
+        return { ok: false, denied: 'state', reason: (cap.reason || '当前状态不可用') + '（当前为「' + cur + '」）' };
       }
       return { ok: true };
     },
@@ -2970,6 +3052,16 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
     // 命令声明了 ui 承载的，先按契约开层；填完在层里提交，而不是点一下就跳过填报。
     action: function (key, text, row, capId) {
       var cap = capId ? capsById[capId] : null;
+      // 角色和状态都要在引擎里拦一道：按钮藏着是界面的事，
+      // 键盘/脚本/插件绕过界面直接调 action 时，状态机不能跟着破。
+      // 行级命令按这一行的状态判（措施单的状态与主单是两回事），单据级才看 store.entityStatus。
+      // 这不是"安全"——原型没有后端——是保真：可达集被脚本扩大以后，
+      // 导出的状态图就不再描述这台原型真实能走的路。
+      if (cap) {
+        var rowStatus = row ? (row.status || row.state) : null;
+        var perm = window.RD.can(capId, rowStatus, store.currentUser || '');
+        if (!perm.ok) { toast(perm.reason); return; }
+      }
       if (cap && cap.ui) {
         var kind = cap.ui.kind;
         if (kind === 'dialog' || kind === 'drawer') { openLayer(capId, row || null, kind); return; }
@@ -3967,6 +4059,22 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
               class: ['tool-btn', store.showToc ? 'is-on' : ''],
               onClick: function () { store.showToc = !store.showToc; }
             }, '目录'),
+            // 角色开关：不加这个，"执行人看不到验证按钮"这类四眼校验在容器里只能靠嘴说。
+            // 第一项是"不限"，默认就是它——原型给一群人看，一进来就按岗位过滤会被当成按钮没做。
+            (DATA.actors || []).length ? h('div', { class: 'chip-group' }, [
+              h('span', { class: 'chip-group-label' }, '当前角色'),
+              h('select', {
+                class: 'chip',
+                'data-role-switch': '1',
+                style: { border: '0', background: 'transparent', paddingRight: '4px' },
+                value: store.currentUser,
+                onChange: function (e) { store.currentUser = e.target.value; persist(); }
+              }, [h('option', { value: '', selected: !store.currentUser }, '全部角色（不限）')].concat(
+                (DATA.actors || []).map(function (a) {
+                  return h('option', { key: a.id, value: a.id, selected: a.id === store.currentUser }, actorName(a.id));
+                })
+              ))
+            ]) : null,
             store.audit ? null : h('div', { class: 'chip-group' }, [h('span', { class: 'chip-group-label' }, '页面态')].concat(stateChips.map(function (c) {
               return h('button', {
                 key: c.key,
@@ -3978,6 +4086,7 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
               h('span', { class: 'chip-group-label' }, '单据状态'),
               h('select', {
                 class: 'chip',
+                'data-status-switch': '1',
                 style: { border: '0', background: 'transparent', paddingRight: '4px' },
                 value: store.entityStatus,
                 onChange: function (e) { store.entityStatus = e.target.value; persist(); }
@@ -4023,6 +4132,7 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
                 });
                 store.annotations = JSON.parse(JSON.stringify(DATA.annotations || []));
                 store.prdEdits = {};
+                store.currentUser = '';
                 store.entityStatus = defaultStatus(page.value);
                 store.pageState = 'default';
                 toast('已重置为 AI 生成版本');

@@ -1,0 +1,227 @@
+{
+  "schemaVersion": "1.0",
+  "meta": {
+    "product": "新锂想质量管理系统",
+    "version": "0.1.0",
+    "domain": "qms",
+    "targets": ["pc"],
+    "designWidth": { "pc": 1440 },
+    "baseResolution": "1920x1080",
+    "currentPageId": "pg-dev-board",
+    "skin": "industrial-dark-sider"
+  },
+  "actors": [
+    { "id": "u-a", "name": "录入员" },
+    { "id": "u-b", "name": "复核员" },
+    { "id": "u-c", "name": "观察员" }
+  ],
+  "modules": [
+    {
+      "id": "m-dev",
+      "code": "DEV",
+      "name": "偏差管理",
+      "order": 1,
+      "owner": "质量部",
+      "icon": "inbox",
+      "pages": ["pg-dev-board"]
+    }
+  ],
+  "pages": [
+    {
+      "id": "pg-dev-board",
+      "moduleId": "m-dev",
+      "target": "pc",
+      "route": "/dev/board",
+      "title": "偏差登记表",
+      "parentId": null,
+      "layout": "list",
+      "entity": "deviation",
+      "listRole": "primary",
+      "subtitle": "录入员提交评审，复核员归档，观察员只看不动 · 观察员那一行只剩「无可用操作」",
+      "contract": {
+        "task": "录入员提交评审，复核员归档，观察员只看不动；观察员看任何一行都只剩「无可用操作」",
+        "actor": ["u-a", "u-b", "u-c"],
+        "owns": ["cap-dev-submit", "cap-dev-archive"],
+        "doneWhen": "本页没有一条偏差停在「待评审 / 已评审」",
+        "entryFrom": ["左侧目录 · 偏差管理 / 偏差登记表"],
+        "submitBoundary": "单条偏差的一次提交或一次归档"
+      },
+      "states": [
+        { "id": "s-default", "kind": "default", "desc": "默认态：两条不同状态的偏差" },
+        { "id": "s-loading", "kind": "loading", "desc": "首屏骨架屏 + 表格 loading" },
+        { "id": "s-empty", "kind": "empty", "desc": "没有偏差时的引导态" },
+        { "id": "s-zero", "kind": "zero-result", "desc": "有条件但查不到，提示放宽条件" },
+        { "id": "s-error", "kind": "error", "desc": "接口失败，可重试并保留查询条件" }
+      ],
+      "componentTree": {
+        "id": "n-root",
+        "type": "PageShell",
+        "props": { "fullWidth": true },
+        "children": [
+          {
+            "id": "n-table",
+            "type": "DataTable",
+            "props": {
+              "size": "xs",
+              "tableLayout": "fixed",
+              "rowKey": "no",
+              "columns": [
+                { "key": "no", "title": "偏差编号", "width": 140, "type": "link" },
+                { "key": "content", "title": "偏差描述", "width": 360 },
+                { "key": "status", "title": "状态", "width": 100, "type": "tag" },
+                {
+                  "key": "op",
+                  "title": "操作",
+                  "type": "action",
+                  "width": 180,
+                  "scope": "row",
+                  "stateKey": "status",
+                  "actions": [
+                    { "key": "submit", "text": "提交评审", "capability": "cap-dev-submit" },
+                    { "key": "archive", "text": "归档", "capability": "cap-dev-archive" }
+                  ]
+                }
+              ],
+              "data": [
+                { "no": "DEV-001", "content": "投料前未复核物料批号", "status": "待评审" },
+                { "no": "DEV-002", "content": "烧结曲线偏离工艺卡 8℃", "status": "已评审" }
+              ],
+              "empty": { "kind": "empty", "title": "还没有偏差登记", "desc": "发现偏差时先登记，再走评审与归档。" }
+            }
+          }
+        ]
+      },
+      "interactions": [],
+      "prd": {
+        "sections": [
+          {
+            "type": "goal",
+            "heading": "页面目标",
+            "body": "这是一份**判据用的最小样例**，不是业务原型：它唯一要证明的事情是「一行的操作按钮被角色过滤光之后，格子会显示「无可用操作」而不是留白」。"
+          },
+          {
+            "type": "availability",
+            "heading": "动作可用性",
+            "body": "提交评审只属于录入员、只在「待评审」可用；归档只属于复核员、只在「已评审」可用；观察员两个都不属于。所以前两个角色看每一行都还剩一个动作（要么能点、要么灰着给理由），观察员看**每一行都一个不剩**——那时格子里必须是「无可用操作」，不能是空白。"
+          },
+          {
+            "type": "acceptance",
+            "heading": "验收",
+            "body": "切到「观察员」，任意一行的操作格都显示「无可用操作」；切到「录入员」，「归档」不在 DOM 里；切到「复核员」，「提交评审」不在 DOM 里。"
+          }
+        ]
+      }
+    }
+  ],
+  "capabilities": [
+    {
+      "id": "cap-dev-submit",
+      "name": "提交评审",
+      "label": "提交评审",
+      "actor": ["u-a"],
+      "entity": "deviation",
+      "from": ["draft"],
+      "policy": "disabled",
+      "reason": "仅「待评审」可提交",
+      "to": "reviewed",
+      "stage": "submit",
+      "target": "pc",
+      "ui": { "kind": "inline", "entry": "n-table__act_submit" },
+      "placement": "row"
+    },
+    {
+      "id": "cap-dev-archive",
+      "name": "归档",
+      "label": "归档",
+      "actor": ["u-b"],
+      "entity": "deviation",
+      "from": ["reviewed"],
+      "policy": "disabled",
+      "reason": "仅「已评审」可归档",
+      "to": "archived",
+      "stage": "verify",
+      "target": "pc",
+      "ui": { "kind": "inline", "entry": "n-table__act_archive" },
+      "placement": "row"
+    }
+  ],
+  "stateMachines": [
+    {
+      "id": "sm-deviation",
+      "entity": "deviation",
+      "label": "偏差生命周期",
+      "initial": "draft",
+      "states": [
+        { "key": "draft", "label": "待评审", "tone": "warning" },
+        { "key": "reviewed", "label": "已评审", "tone": "processing" },
+        { "key": "archived", "label": "已归档", "tone": "success", "terminal": true }
+      ],
+      "transitions": [
+        { "from": "draft", "to": "reviewed", "trigger": "cap-dev-submit", "actor": "u-a" },
+        { "from": "reviewed", "to": "archived", "trigger": "cap-dev-archive", "actor": "u-b" }
+      ]
+    }
+  ],
+  "dataModel": {
+    "entities": [
+      {
+        "id": "deviation",
+        "name": "Deviation",
+        "label": "偏差",
+        "fields": [
+          { "name": "no", "label": "偏差编号", "type": "string", "pk": true, "required": true },
+          { "name": "content", "label": "偏差描述", "type": "string", "required": true },
+          { "name": "status", "label": "状态", "type": "enum", "enum": ["draft", "reviewed", "archived"], "required": true }
+        ]
+      }
+    ],
+    "relations": [],
+    "derived": []
+  },
+  "requirements": [
+    {
+      "id": "REQ-001",
+      "title": "三个角色的动作互不可见",
+      "actor": "录入员 / 复核员 / 观察员",
+      "trigger": "任一角色打开偏差登记表时",
+      "rule": "提交评审只属于录入员、只在待评审可用；归档只属于复核员、只在已评审可用；观察员两个都不属于。一行一个动作都不剩时格子显示「无可用操作」",
+      "stateMachine": "sm-deviation：draft → reviewed（cap-dev-submit）→ archived（cap-dev-archive）",
+      "expectation": "切换角色后，不属于该角色的动作不在 DOM 中；某行一个动作都不剩时格子有文案而非空白",
+      "acceptance": [
+        { "given": "当前角色为观察员", "when": "查看任意一行", "then": "操作格显示「无可用操作」", "kind": "happy" },
+        { "given": "当前角色为复核员", "when": "查看「待评审」的行", "then": "看不到「提交评审」", "kind": "illegal" }
+      ],
+      "priority": "P2",
+      "targets": ["pc"],
+      "pageIds": ["pg-dev-board"],
+      "source": "stated",
+      "status": "confirmed"
+    }
+  ],
+  "components": [
+    {
+      "id": "c-1",
+      "name": "偏差登记表",
+      "type": "DataTable",
+      "category": "pc-data",
+      "states": ["default", "empty"],
+      "props": { "size": "xs", "tableLayout": "fixed" },
+      "usage": "判据 fixture：只用来验证「操作列被权限滤光」的空态"
+    }
+  ],
+  "annotations": [],
+  "openQuestions": [],
+  "decisions": [
+    {
+      "id": "D-001",
+      "stage": "schema",
+      "kind": "tradeoff",
+      "decision": "这是判据 fixture，不是业务样例：页面数、字段数都压到能触发目标分支的最小值",
+      "rationale": "「操作列全空」这条分支在五份业务契约里都恰好触发不到：每个页面的每个 actor 都至少能干一件事，所以按钮永远滤不光。那是数据凑巧，不是结构保证——没有这份 fixture，就没人知道那个兜底还在不在",
+      "active": true
+    }
+  ],
+  "guards": [],
+  "fieldRegistry": [],
+  "slices": []
+}
