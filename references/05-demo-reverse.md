@@ -189,7 +189,7 @@ for sm in d['stateMachines']:
 | status 字面量 | `stateMachines[].states` | 显示名要重新起，不要照抄英文 key |
 | 动作名 | `capabilities[].id` | `cap-` 前缀 + 动词 |
 | 列表列定义 | `DataTable.props.columns` | 列宽要按新设计宽重排，不能照抄 |
-| 接口字段 | `fieldRegistry[]` | 必须指到真实节点，否则 L2-41 红 |
+| 接口字段 | `fieldCatalog[].source`（kind=api） | 必须声明 `ds` 与 `field`，接口类还要 note；否则 L2-98 红 |
 
 ## 6 逆向的边界：什么不能逆
 

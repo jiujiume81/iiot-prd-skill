@@ -203,6 +203,162 @@
    * 推进型动作不写在页面里，写在契约的 capabilities[].ui 上：
    * 入口节点 + 承载形式 + 字段清单。这里只负责按契约把层打开、校验、提交、关闭。
    */
+  // 弹层字段属于哪一页的字典：认 cap.owns，不按节点 id 反查（n-table 多页复用）
+  function ownsPageOf(capId) {
+    var hit = (DATA.pages || []).filter(function (p) {
+      return ((p.contract || {}).owns || []).indexOf(capId) >= 0;
+    })[0];
+    return hit ? hit.id : store.pageId;
+  }
+
+  /* ---------------- 字段字典（面板合成，不写进 prd.sections） ----------------
+   * 面板正文按 pageId:index 存，插进数组中间会让用户改过的正文整体错位一行，
+   * 所以字典小节是渲染时追加在最后一节之后，只读。
+   * 顺序 = 本页渲染位的组件树先序（PRD 章节 id 也按这个生成）。
+   */
+  function walkTree(n, out) {
+    out.push(n);
+    (n.children || []).forEach(function (c) { walkTree(c, out); });
+    return out;
+  }
+
+  function siteOf(nodeId, raw, kind, label, capId) {
+    var key = raw.key;
+    var ro = raw.type === 'readonly' || !!raw.readonly;
+    var scope = (kind === 'form' || kind === 'dialog')
+      ? (ro ? 'out' : 'in')
+      : (kind === 'filter' ? (raw.field ? 'filter-field' : 'filter-cond') : 'out');
+    return {
+      nodeId: nodeId, capId: capId, siteId: capId || nodeId, kind: kind, key: key,
+      biz: raw.field || key, label: label || key || '（无 key）',
+      scope: scope, raw: raw
+    };
+  }
+
+  function fieldSites(pageId) {
+    var pg = (DATA.pages || []).filter(function (p) { return p.id === pageId; })[0];
+    var out = [];
+    if (!pg) return out;
+    walkTree(pg.componentTree || {}, []).forEach(function (nd) {
+      var pr = nd.props || {}, t = nd.type;
+      if (t === 'FilterBar') {
+        (pr.fields || []).forEach(function (f) { out.push(siteOf(nd.id, f, 'filter', f.label)); });
+      } else if (t === 'FormGrid') {
+        (pr.fields || pr.items || []).forEach(function (f) { out.push(siteOf(nd.id, f, 'form', f.label)); });
+      } else if (t === 'DataTable') {
+        (pr.columns || []).forEach(function (c) {
+          if (c.type === 'action' || c.type === 'index') return;
+          out.push(siteOf(nd.id, c, 'column', c.title));
+        });
+      } else if (t === 'DescList') {
+        (pr.items || []).forEach(function (it) { out.push(siteOf(nd.id, it, 'desc', it.label)); });
+      }
+    });
+    (DATA.capabilities || []).forEach(function (c) {
+      if (ownsPageOf(c.id) !== pageId) return;
+      ((c.ui || {}).fields || []).forEach(function (f) { out.push(siteOf(null, f, 'dialog', f.label, c.id)); });
+    });
+    return out;
+  }
+
+  function dsOf(id) {
+    return (DATA.dataSources || []).filter(function (d) { return d.id === id; })[0];
+  }
+
+  function sourceText(src) {
+    if (!src) return '未声明';
+    var ds = dsOf(src.ds);
+    if (!ds) return (src.ds || '?') + '（未声明的数据源）';
+    var k = { entity: '实体', dict: '字典', calc: '计算', api: '接口', system: '系统' }[ds.kind] || ds.kind;
+    var where = src.field ? (ds.ref + '.' + src.field) : (src.rule || ds.ref);
+    return k + ' · ' + where + (src.fallback ? '；兜底：' + src.fallback : '');
+  }
+
+  function targetText(t) {
+    return t ? (t.entity + '.' + t.field) : '不落库（纯展示/计算/筛选）';
+  }
+
+  function scopeText(s) {
+    return { 'in': '录入', 'out': '展示', 'filter-field': '字段筛选', 'filter-cond': '条件筛选' }[s.scope] || s.scope;
+  }
+
+  function localLabel(s) {
+    return { 'in': '校验规则', 'out': '空值显示', 'filter-field': '筛选口径', 'filter-cond': '筛选口径' }[s.scope] || '本处口径';
+  }
+
+  function localValue(s) {
+    var v = ((s.raw.rules || {}).text) || ((s.raw.display || {}).empty) || s.raw.filterNote;
+    if (v) return v;
+    return s.scope === 'filter-field' ? '按该字段值筛选' : '未声明';
+  }
+
+  // 点字段标签 → 打开 PRD 面板并定位到该渲染位的块。
+  // 优先级由 fieldClick 保证：标注模式 > 输入控件 > 字段标签 > 其余。
+  function jumpToField(pid, site, key) {
+    var target = (DATA.pages || []).filter(function (p) { return p.id === pid; })[0];
+    if (!target) return;
+    if (store.pageId !== pid) {
+      store.pageId = pid;
+      store.pageState = 'default';
+      store.entityStatus = defaultStatus(target);
+      refreshPins();
+    }
+    var id = 'field-' + pid + '-' + site + '-' + key;
+    store.showPrd = true;
+    store.prdTab = 'page';
+    // 高亮用「标记 + 一次性淡出动画」而不是定时清标记：
+    // headless 的虚拟时钟会把 1.6s 定时器瞬间推完，定时清标记会让 R-11 永远读不到高亮
+    store.prdFocus = id;
+    persist();
+    setTimeout(function () {
+      var el = document.getElementById(id);
+      if (el && el.scrollIntoView) el.scrollIntoView({ block: 'center' });
+    }, 0);
+  }
+
+  function fieldClick(e) {
+    if (store.annotMode) return false;                       // 标注优先，已在 annotClick 里处理
+    var t = e.target;
+    if (!t.closest) return false;
+    // 输入控件内的点击是填表，不是查字典
+    if (t.closest('input, textarea, select, .input, .form-ro, .ff-ro')) return false;
+    // 只认标签区：表格只认表头（点单元格要留给选中行）
+    var lab = t.closest('.dt-head [data-field], .field-label, .form-label, .desc-k, .ff-label');
+    if (!lab) return false;
+    var host = lab.closest('[data-field]');
+    if (!host) return false;
+    var key = host.getAttribute('data-field');
+    var site = host.getAttribute('data-site') || '';
+    var pid = host.getAttribute('data-page') || store.pageId;
+    if (!key) return false;
+    jumpToField(pid, site, key);
+    return true;
+  }
+
+  function dictBlock(pageId, s, i) {
+    // 三段：页 + 容器 + key。同页同 key 出现在筛选/列/弹层时，只带 key 会撞
+    var id = 'field-' + pageId + '-' + (s.siteId || 'no-site') + '-' + (s.key || ('x' + i));
+    var cat = (DATA.fieldCatalog || []).filter(function (f) { return f.key === s.biz; })[0];
+    var local = localValue(s);
+    return h('div', {
+      class: ['prd-field', store.prdFocus === id ? 'is-flash' : ''],
+      id: id,
+      key: id
+    }, [
+      h('div', { class: 'prd-field-h' }, [
+        h('span', { class: 'prd-field-k' }, s.label),
+        h('span', { class: 'prd-field-type' }, scopeText(s) + ' · ' + (s.siteId || '-') + ' · ' + s.key)
+      ]),
+      h('div', { class: 'prd-field-row' }, [h('b', null, localLabel(s)), h('span', null, local)]),
+      h('div', { class: 'prd-field-row' }, [h('b', null, '业务字段'), h('span', null,
+        cat ? (cat.label + '（' + cat.key + '）') : ('未绑定：' + (s.biz || '?')))]),
+      h('div', { class: 'prd-field-row' }, [h('b', null, '来源'), h('span', null,
+        cat ? sourceText(cat.source) : '—')]),
+      h('div', { class: 'prd-field-row' }, [h('b', null, '去向'), h('span', null,
+        cat ? targetText(cat.target) : '—')])
+    ]);
+  }
+
   function openLayer(capId, row, kindOverride) {
     var cap = capsById[capId];
     if (!cap) { toast('命令不存在：' + capId); return; }
@@ -436,7 +592,8 @@
     if (!node) return null;
     var known = window.RD_COMPONENTS[node.type];
     var C = known || window.RD_COMPONENTS.Fallback;
-    var props = { p: node.props || {}, 'data-node-id': node.id };
+    // site 传给组件：字段级 data-site 要用容器节点 id（与 check 里的 siteId 同一口径）
+    var props = { p: node.props || {}, site: node.id, 'data-node-id': node.id };
     if (!known) props.type = node.type;
     var kids = (node.children || []).map(renderNode).filter(Boolean);
     if (kids.length) return h(C, props, { default: function () { return kids; } });
@@ -661,6 +818,35 @@
         });
       }
     }
+    // 字段字典：与面板同源（fieldSites + fieldCatalog），顺序 = 组件树先序
+    var fss = fieldSites(page.value.id);
+    if (fss.length) {
+      L.push('');
+      L.push('## 6 字段字典');
+      L.push('');
+      L.push('| 位置 | 文案 | 形态 | 业务字段 | 来源 | 去向 | 本处口径 |');
+      L.push('|---|---|---|---|---|---|---|');
+      fss.forEach(function (s) {
+        var cat = (DATA.fieldCatalog || []).filter(function (f) { return f.key === s.biz; })[0];
+        var local = localValue(s);
+        L.push('| ' + s.kind + ' | ' + (s.label || s.key) + ' | ' + scopeText(s) + ' | '
+          + (cat ? cat.label + '（' + cat.key + '）' : '未绑定') + ' | '
+          + (cat ? sourceText(cat.source) : '—') + ' | '
+          + (cat ? targetText(cat.target) : '—') + ' | ' + local + ' |');
+      });
+      L.push('');
+      fss.forEach(function (s, i) {
+        var cat = (DATA.fieldCatalog || []).filter(function (f) { return f.key === s.biz; })[0];
+        L.push('### field-' + page.value.id + '-' + (s.key || ('x' + i)) + ' ' + (s.label || s.key));
+        L.push('');
+        L.push('- 形态：' + scopeText(s));
+        L.push('- ' + localLabel(s) + '：' + localValue(s));
+        L.push('- 业务字段：' + (cat ? cat.label + '（' + cat.key + '）' : '未绑定'));
+        L.push('- 来源：' + (cat ? sourceText(cat.source) : '—'));
+        L.push('- 去向：' + (cat ? targetText(cat.target) : '—'));
+        L.push('');
+      });
+    }
     return L.join('\n');
   }
 
@@ -827,7 +1013,16 @@
                   innerText: edited || s.body || ''
                 })
               ]);
-            })
+            }),
+            // 字段字典：合成在最后一节之后，只读。没有渲染位的页面不生成空小节
+            (function () {
+              var ss = fieldSites(pg.id);
+              if (!ss.length) return null;
+              return h('div', { class: 'prd-sec' }, [
+                h('div', { class: 'prd-sec-h' }, ['字段字典', h('span', null, 'fields')]),
+                h('div', { class: 'prd-dict' }, ss.map(function (s, i) { return dictBlock(pg.id, s, i); }))
+              ]);
+            })()
           ]);
         } else if (store.prdTab === 'global') {
           var sm = smByEntity[pg.entity] || { states: [] };
@@ -1001,7 +1196,7 @@
           h('div', { class: 'overlay-grip', onMousedown: startDrag, title: '拖动调宽' }),
           h('div', { class: 'overlay-head' }, [
             h('div', { class: 'overlay-title' }, 'PRD'),
-            h('button', { class: 'icon-btn', onClick: function () { store.showPrd = false; } }, '×')
+            h('button', { class: 'icon-btn', onClick: function () { store.showPrd = false; store.prdFocus = ''; } }, '×')
           ]),
           h('div', { class: 'prd-tabs' }, tabs.map(function (t) {
             return h('button', {
@@ -1235,6 +1430,9 @@
           return h('label', {
             class: ['ff', f.span === 2 ? 'is-wide' : ''],
             key: f.key,
+            'data-field': f.key || null,
+            'data-site': L.capId,
+            'data-page': ownsPageOf(L.capId),
             'data-node-id': 'layer:' + L.capId + ':' + f.key,
             'data-node-label': (L.title || '') + ' · ' + f.label
           }, [
@@ -1251,7 +1449,7 @@
           h('div', {
             class: ['layer', 'layer-' + L.kind],
             style: { width: L.width + 'px' },
-            onClick: function (e) { annotClick(e); }
+            onClick: function (e) { if (!annotClick(e)) fieldClick(e); }
           }, [
             h('div', { class: 'layer-head' }, [
               h('div', null, [
@@ -1301,6 +1499,8 @@
         if (annotClick(e)) return;
         // 命令按钮/行内操作自己有 onClick，冒泡到这里不重复处理
         if (e.target.closest('button') || e.target.closest('a')) return;
+        // 字段标签：打开 PRD 并定位；输入控件内的点击不拦（R-12）
+        if (fieldClick(e)) return;
         var el = e.target.closest('[data-node-id]');
         if (!el) return;
         var nid = el.getAttribute('data-node-id');
@@ -1313,7 +1513,7 @@
           if (store.layer) { closeLayer(); return; }
           if (store.popover) { store.popover = null; return; }
           if (store.showToc) { store.showToc = false; return; }
-          if (store.showPrd) { store.showPrd = false; }
+          if (store.showPrd) { store.showPrd = false; store.prdFocus = ''; }
         }
       }
 

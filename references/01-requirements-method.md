@@ -130,10 +130,12 @@
 | 状态变化 `from → to` | `stateMachines[].transitions` | 端点必须在 `states` 内；系统流转标 `system:true` |
 | 异常表每一行 | `requirements[].acceptance[kind=illegal]` | 每条需求至少 1 条非法路径 |
 | 源文档"必须/不得/仅当" | `guards[]` | 每条 guard 要么落到命令，要么写 `fallback` |
-| 源文档点名的业务字段 | `fieldRegistry[]` | 必须指向真实节点，且该节点渲染文本里看得到 |
+| 源文档点名的业务字段 | `fieldCatalog[]` + 渲染位 `field` | 一个字段一条主档；每个渲染位都要绑定（L2-96），孤儿主档报 L2-97 |
 | 业务方原话里的疑问 | `openQuestions[]` | P0 问题必须 `resolved` 或 `assumed` |
 
 跑 `python3 scripts/check_contract.py <产品>.proto.json`，出 ERROR 就说明前六步有东西没落地。**这一步不做，前六步就只是六篇作文。**
+
+**顺序**：先定字段主档（`fieldCatalog[]`，一条业务字段一条），再画组件树——组件树用 `field` 引用主档。反过来做（先画、后补主档）必然出现"画了一个主档里没有的框"，`L2-96` 会一条条抓出来，但那时人要回头改组件树，改一处还得回头核三处引用。
 
 ---
 

@@ -145,6 +145,8 @@ if ((cap.from || []).length && cap.from.indexOf(curKey) < 0)
 | 当前页 → PNG | SVG `foreignObject` 包 DOM → canvas | **需浏览器实测**，跨域字体和图片会失败 |
 | 打印 / 存 PDF | `@media print` 隐藏壳，只留原型 | 稳 |
 
+字段字典章节由 `build_prd` 生成，容器面板与 `#export=md` 共用同一套块 id（`field-{pageId}-{siteId}-{key}`）。手改 PRD 交付前先跑 `check_parity --prd`，C-22 会指出少/多哪一块。
+
 PNG 那条要留意：`foreignObject` 方案在 Chrome 上通常可行，但页面里有外部字体或图片时会被 tainted canvas 拦住。第一版交互时验证一次，不稳就把 PNG 降级为"打印存 PDF"。
 
 ## 9 直达参数
@@ -441,6 +443,21 @@ R-08 守的是"默认值静默漂移"。默认值只要从「不限」改成第�
 > 踩过的坑一：`rendered_caps()` 一开始只认 `props.actions[].capability` 和 `columns[].actions[].capability`，漏了单按钮节点的 `props.capability`（PDA 的 BigAction 就是这么挂的）。结果 PDA 页上那条命令对判据完全隐形，`L2-90`/`L2-91` 都看不见它。三种写法必须一起扫。
 >
 > 踩过的坑二：R 层原来按文字找按钮。台账行内有「审核」、顶栏也有「审核」，DOM 顺序上顶栏在前，探针一直在点顶栏那个，报出来的失败是"点了没弹层"。改成按 `data-cap` 找之后才暴露出真正的问题：那条命令的 `from` 是 `reported`，而页面默认落在 `sampled`，按钮本来就是灰的。**找错元素比找不到元素更危险**——它会给出一个看起来很具体的错误结论。
+
+### 11.14 校验前先重建：默认 `--html` 是"上一次构建"的产物
+
+`check_parity.py` / `check_interact.py` 的默认 `--html` 指向 `assets/container/dist/index.html`，
+那是**上一次 `build.py` 写进去的页面**，不一定是你当前手上这份契约的产物。
+
+改了契约或组件后直接跑，会一次冒出十几条 `C-03 / C-05 / C-07 / C-09`：页头写着别的页面名、
+路由不在 MD 里、契约 10 列容器 11 列——看着像判据坏了，其实是**拿 A 产品的 DOM 比 B 产品的契约**。
+这种红绿都没有意义，而且最容易得出"判据太严"的错误结论。
+
+规则：
+
+1. 改完契约/容器，先用**当前契约**重建产物：`python3 assets/container/src/build.py --proto <abs proto> --out <abs html>`；
+2. `--html` 显式指向刚建的那份；交付版、用户工程的产物路径不同，不能靠默认值；
+3. 只跑 `check_contract` 不需要产物，改 schema/判据时它先绿，再谈 C/R 层。
 
 ## 12 已知限制
 

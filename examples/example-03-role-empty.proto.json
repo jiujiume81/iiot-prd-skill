@@ -4,16 +4,29 @@
     "product": "新锂想质量管理系统",
     "version": "0.1.0",
     "domain": "qms",
-    "targets": ["pc"],
-    "designWidth": { "pc": 1440 },
+    "targets": [
+      "pc"
+    ],
+    "designWidth": {
+      "pc": 1440
+    },
     "baseResolution": "1920x1080",
     "currentPageId": "pg-dev-board",
     "skin": "industrial-dark-sider"
   },
   "actors": [
-    { "id": "u-a", "name": "录入员" },
-    { "id": "u-b", "name": "复核员" },
-    { "id": "u-c", "name": "观察员" }
+    {
+      "id": "u-a",
+      "name": "录入员"
+    },
+    {
+      "id": "u-b",
+      "name": "复核员"
+    },
+    {
+      "id": "u-c",
+      "name": "观察员"
+    }
   ],
   "modules": [
     {
@@ -23,7 +36,9 @@
       "order": 1,
       "owner": "质量部",
       "icon": "inbox",
-      "pages": ["pg-dev-board"]
+      "pages": [
+        "pg-dev-board"
+      ]
     }
   ],
   "pages": [
@@ -40,23 +55,54 @@
       "subtitle": "录入员提交评审，复核员归档，观察员只看不动 · 观察员那一行只剩「无可用操作」",
       "contract": {
         "task": "录入员提交评审，复核员归档，观察员只看不动；观察员看任何一行都只剩「无可用操作」",
-        "actor": ["u-a", "u-b", "u-c"],
-        "owns": ["cap-dev-submit", "cap-dev-archive"],
+        "actor": [
+          "u-a",
+          "u-b",
+          "u-c"
+        ],
+        "owns": [
+          "cap-dev-submit",
+          "cap-dev-archive"
+        ],
         "doneWhen": "本页没有一条偏差停在「待评审 / 已评审」",
-        "entryFrom": ["左侧目录 · 偏差管理 / 偏差登记表"],
+        "entryFrom": [
+          "左侧目录 · 偏差管理 / 偏差登记表"
+        ],
         "submitBoundary": "单条偏差的一次提交或一次归档"
       },
       "states": [
-        { "id": "s-default", "kind": "default", "desc": "默认态：两条不同状态的偏差" },
-        { "id": "s-loading", "kind": "loading", "desc": "首屏骨架屏 + 表格 loading" },
-        { "id": "s-empty", "kind": "empty", "desc": "没有偏差时的引导态" },
-        { "id": "s-zero", "kind": "zero-result", "desc": "有条件但查不到，提示放宽条件" },
-        { "id": "s-error", "kind": "error", "desc": "接口失败，可重试并保留查询条件" }
+        {
+          "id": "s-default",
+          "kind": "default",
+          "desc": "默认态：两条不同状态的偏差"
+        },
+        {
+          "id": "s-loading",
+          "kind": "loading",
+          "desc": "首屏骨架屏 + 表格 loading"
+        },
+        {
+          "id": "s-empty",
+          "kind": "empty",
+          "desc": "没有偏差时的引导态"
+        },
+        {
+          "id": "s-zero",
+          "kind": "zero-result",
+          "desc": "有条件但查不到，提示放宽条件"
+        },
+        {
+          "id": "s-error",
+          "kind": "error",
+          "desc": "接口失败，可重试并保留查询条件"
+        }
       ],
       "componentTree": {
         "id": "n-root",
         "type": "PageShell",
-        "props": { "fullWidth": true },
+        "props": {
+          "fullWidth": true
+        },
         "children": [
           {
             "id": "n-table",
@@ -66,9 +112,32 @@
               "tableLayout": "fixed",
               "rowKey": "no",
               "columns": [
-                { "key": "no", "title": "偏差编号", "width": 140, "type": "link" },
-                { "key": "content", "title": "偏差描述", "width": 360 },
-                { "key": "status", "title": "状态", "width": 100, "type": "tag" },
+                {
+                  "key": "no",
+                  "title": "偏差编号",
+                  "width": 140,
+                  "type": "link",
+                  "display": {
+                    "empty": "—"
+                  }
+                },
+                {
+                  "key": "content",
+                  "title": "偏差描述",
+                  "width": 360,
+                  "display": {
+                    "empty": "—"
+                  }
+                },
+                {
+                  "key": "status",
+                  "title": "状态",
+                  "width": 100,
+                  "type": "tag",
+                  "display": {
+                    "empty": "—"
+                  }
+                },
                 {
                   "key": "op",
                   "title": "操作",
@@ -77,16 +146,36 @@
                   "scope": "row",
                   "stateKey": "status",
                   "actions": [
-                    { "key": "submit", "text": "提交评审", "capability": "cap-dev-submit" },
-                    { "key": "archive", "text": "归档", "capability": "cap-dev-archive" }
+                    {
+                      "key": "submit",
+                      "text": "提交评审",
+                      "capability": "cap-dev-submit"
+                    },
+                    {
+                      "key": "archive",
+                      "text": "归档",
+                      "capability": "cap-dev-archive"
+                    }
                   ]
                 }
               ],
               "data": [
-                { "no": "DEV-001", "content": "投料前未复核物料批号", "status": "待评审" },
-                { "no": "DEV-002", "content": "烧结曲线偏离工艺卡 8℃", "status": "已评审" }
+                {
+                  "no": "DEV-001",
+                  "content": "投料前未复核物料批号",
+                  "status": "待评审"
+                },
+                {
+                  "no": "DEV-002",
+                  "content": "烧结曲线偏离工艺卡 8℃",
+                  "status": "已评审"
+                }
               ],
-              "empty": { "kind": "empty", "title": "还没有偏差登记", "desc": "发现偏差时先登记，再走评审与归档。" }
+              "empty": {
+                "kind": "empty",
+                "title": "还没有偏差登记",
+                "desc": "发现偏差时先登记，再走评审与归档。"
+              }
             }
           }
         ]
@@ -118,30 +207,44 @@
       "id": "cap-dev-submit",
       "name": "提交评审",
       "label": "提交评审",
-      "actor": ["u-a"],
+      "actor": [
+        "u-a"
+      ],
       "entity": "deviation",
-      "from": ["draft"],
+      "from": [
+        "draft"
+      ],
       "policy": "disabled",
       "reason": "仅「待评审」可提交",
       "to": "reviewed",
       "stage": "submit",
       "target": "pc",
-      "ui": { "kind": "inline", "entry": "n-table__act_submit" },
+      "ui": {
+        "kind": "inline",
+        "entry": "n-table__act_submit"
+      },
       "placement": "row"
     },
     {
       "id": "cap-dev-archive",
       "name": "归档",
       "label": "归档",
-      "actor": ["u-b"],
+      "actor": [
+        "u-b"
+      ],
       "entity": "deviation",
-      "from": ["reviewed"],
+      "from": [
+        "reviewed"
+      ],
       "policy": "disabled",
       "reason": "仅「已评审」可归档",
       "to": "archived",
       "stage": "verify",
       "target": "pc",
-      "ui": { "kind": "inline", "entry": "n-table__act_archive" },
+      "ui": {
+        "kind": "inline",
+        "entry": "n-table__act_archive"
+      },
       "placement": "row"
     }
   ],
@@ -152,13 +255,36 @@
       "label": "偏差生命周期",
       "initial": "draft",
       "states": [
-        { "key": "draft", "label": "待评审", "tone": "warning" },
-        { "key": "reviewed", "label": "已评审", "tone": "processing" },
-        { "key": "archived", "label": "已归档", "tone": "success", "terminal": true }
+        {
+          "key": "draft",
+          "label": "待评审",
+          "tone": "warning"
+        },
+        {
+          "key": "reviewed",
+          "label": "已评审",
+          "tone": "processing"
+        },
+        {
+          "key": "archived",
+          "label": "已归档",
+          "tone": "success",
+          "terminal": true
+        }
       ],
       "transitions": [
-        { "from": "draft", "to": "reviewed", "trigger": "cap-dev-submit", "actor": "u-a" },
-        { "from": "reviewed", "to": "archived", "trigger": "cap-dev-archive", "actor": "u-b" }
+        {
+          "from": "draft",
+          "to": "reviewed",
+          "trigger": "cap-dev-submit",
+          "actor": "u-a"
+        },
+        {
+          "from": "reviewed",
+          "to": "archived",
+          "trigger": "cap-dev-archive",
+          "actor": "u-b"
+        }
       ]
     }
   ],
@@ -169,9 +295,30 @@
         "name": "Deviation",
         "label": "偏差",
         "fields": [
-          { "name": "no", "label": "偏差编号", "type": "string", "pk": true, "required": true },
-          { "name": "content", "label": "偏差描述", "type": "string", "required": true },
-          { "name": "status", "label": "状态", "type": "enum", "enum": ["draft", "reviewed", "archived"], "required": true }
+          {
+            "name": "no",
+            "label": "偏差编号",
+            "type": "string",
+            "pk": true,
+            "required": true
+          },
+          {
+            "name": "content",
+            "label": "偏差描述",
+            "type": "string",
+            "required": true
+          },
+          {
+            "name": "status",
+            "label": "状态",
+            "type": "enum",
+            "enum": [
+              "draft",
+              "reviewed",
+              "archived"
+            ],
+            "required": true
+          }
         ]
       }
     ],
@@ -188,12 +335,26 @@
       "stateMachine": "sm-deviation：draft → reviewed（cap-dev-submit）→ archived（cap-dev-archive）",
       "expectation": "切换角色后，不属于该角色的动作不在 DOM 中；某行一个动作都不剩时格子有文案而非空白",
       "acceptance": [
-        { "given": "当前角色为观察员", "when": "查看任意一行", "then": "操作格显示「无可用操作」", "kind": "happy" },
-        { "given": "当前角色为复核员", "when": "查看「待评审」的行", "then": "看不到「提交评审」", "kind": "illegal" }
+        {
+          "given": "当前角色为观察员",
+          "when": "查看任意一行",
+          "then": "操作格显示「无可用操作」",
+          "kind": "happy"
+        },
+        {
+          "given": "当前角色为复核员",
+          "when": "查看「待评审」的行",
+          "then": "看不到「提交评审」",
+          "kind": "illegal"
+        }
       ],
       "priority": "P2",
-      "targets": ["pc"],
-      "pageIds": ["pg-dev-board"],
+      "targets": [
+        "pc"
+      ],
+      "pageIds": [
+        "pg-dev-board"
+      ],
       "source": "stated",
       "status": "confirmed"
     }
@@ -204,8 +365,14 @@
       "name": "偏差登记表",
       "type": "DataTable",
       "category": "pc-data",
-      "states": ["default", "empty"],
-      "props": { "size": "xs", "tableLayout": "fixed" },
+      "states": [
+        "default",
+        "empty"
+      ],
+      "props": {
+        "size": "xs",
+        "tableLayout": "fixed"
+      },
       "usage": "判据 fixture：只用来验证「操作列被权限滤光」的空态"
     }
   ],
@@ -222,6 +389,44 @@
     }
   ],
   "guards": [],
-  "fieldRegistry": [],
+  "fieldCatalog": [
+    {
+      "key": "no",
+      "label": "偏差编号",
+      "source": {
+        "ds": "ds-deviation",
+        "field": "no"
+      }
+    },
+    {
+      "key": "content",
+      "label": "偏差描述",
+      "source": {
+        "ds": "ds-deviation",
+        "field": "content"
+      }
+    },
+    {
+      "key": "status",
+      "label": "状态",
+      "source": {
+        "ds": "ds-dev-status",
+        "field": "status"
+      }
+    }
+  ],
+  "dataSources": [
+    {
+      "id": "ds-deviation",
+      "kind": "entity",
+      "ref": "deviation",
+      "note": "偏差主表"
+    },
+    {
+      "id": "ds-dev-status",
+      "kind": "dict",
+      "ref": "deviation.status"
+    }
+  ],
   "slices": []
 }

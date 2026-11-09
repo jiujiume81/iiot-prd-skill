@@ -106,12 +106,14 @@
                 {
                   "key": "batchNo",
                   "label": "到货单号",
-                  "type": "input"
+                  "type": "input",
+                  "field": "batchNo"
                 },
                 {
                   "key": "taskNo",
                   "label": "任务单号",
-                  "type": "input"
+                  "type": "input",
+                  "field": "taskNo"
                 }
               ]
             }
@@ -155,44 +157,69 @@
                 {
                   "key": "batchNo",
                   "title": "到货单号",
-                  "width": 168
+                  "width": 168,
+                  "display": {
+                    "empty": "—"
+                  }
                 },
                 {
                   "key": "taskNo",
                   "title": "任务单号",
-                  "width": 176
+                  "width": 176,
+                  "display": {
+                    "empty": "—"
+                  }
                 },
                 {
                   "key": "material",
                   "title": "物资名称",
-                  "width": 200
+                  "width": 200,
+                  "display": {
+                    "empty": "—"
+                  }
                 },
                 {
                   "key": "spec",
                   "title": "规格型号",
-                  "width": 120
+                  "width": 120,
+                  "display": {
+                    "empty": "—"
+                  }
                 },
                 {
                   "key": "qty",
                   "title": "数量",
                   "width": 72,
-                  "align": "right"
+                  "align": "right",
+                  "display": {
+                    "empty": "—"
+                  }
                 },
                 {
                   "key": "supplier",
                   "title": "供应商名称",
-                  "width": 240
+                  "width": 240,
+                  "display": {
+                    "empty": "—"
+                  }
                 },
                 {
                   "key": "batch",
                   "title": "供应商批次号",
-                  "width": 144
+                  "width": 144,
+                  "display": {
+                    "empty": "—"
+                  },
+                  "field": "supplierBatch"
                 },
                 {
                   "key": "status",
                   "title": "报告状态",
                   "type": "tag",
-                  "width": 100
+                  "width": 100,
+                  "display": {
+                    "empty": "—"
+                  }
                 },
                 {
                   "key": "act",
@@ -632,7 +659,12 @@
             "label": "审核意见",
             "type": "textarea",
             "span": 2,
-            "hint": "结论与标准不符时写明依据条款"
+            "hint": "结论与标准不符时写明依据条款",
+            "rules": {
+              "text": "必填，不少于 10 字；结论与检验标准不符时必须写明条款编号与实测值",
+              "message": "请写明审核结论与依据条款"
+            },
+            "field": "reviewOpinion"
           }
         ]
       },
@@ -770,6 +802,26 @@
             "label": "质检标准模板",
             "type": "ref",
             "fk": "stdTemplate"
+          },
+          {
+            "name": "spec",
+            "label": "规格型号",
+            "type": "string"
+          },
+          {
+            "name": "supplier",
+            "label": "供应商名称",
+            "type": "string"
+          },
+          {
+            "name": "supplierBatch",
+            "label": "供应商批次号",
+            "type": "string"
+          },
+          {
+            "name": "reviewOpinion",
+            "label": "审核意见",
+            "type": "string"
           }
         ]
       },
@@ -959,18 +1011,118 @@
       "kind": "block",
       "statement": "发起检验前必须先编质检标准模板",
       "sourceRef": "蓝图v2 §4.2",
-      "capabilityId": "cap-submit-sample"
+      "capabilityId": "cap-submit-sample",
+      "message": "该物资还没有质检标准模板，请先编制模板，再发起检验。"
     }
   ],
-  "fieldRegistry": [
+  "fieldCatalog": [
     {
-      "name": "到货单号",
-      "sourceRef": "截图列头",
-      "type": "string",
-      "pageId": "pg-iqc-report",
-      "block": "n-table",
-      "required": true,
-      "scope": "in"
+      "key": "batchNo",
+      "label": "到货单号",
+      "source": {
+        "ds": "ds-wms",
+        "field": "arrivalNo",
+        "fallback": "WMS 取不到时按扫描枪录入的单号落库"
+      },
+      "note": "WMS 到货单主键，本系统只读"
+    },
+    {
+      "key": "taskNo",
+      "label": "任务单号",
+      "source": {
+        "ds": "ds-taskno",
+        "rule": "按 TQ-{yyyyMMdd}-{4 位流水} 生成，跨日归零"
+      },
+      "target": {
+        "entity": "inspection",
+        "field": "taskNo"
+      }
+    },
+    {
+      "key": "material",
+      "label": "物资名称",
+      "source": {
+        "ds": "ds-inspection",
+        "field": "material"
+      }
+    },
+    {
+      "key": "spec",
+      "label": "规格型号",
+      "source": {
+        "ds": "ds-inspection",
+        "field": "spec",
+        "fallback": "未维护规格时显示「—」"
+      }
+    },
+    {
+      "key": "qty",
+      "label": "到货数量",
+      "source": {
+        "ds": "ds-inspection",
+        "field": "qty"
+      }
+    },
+    {
+      "key": "supplier",
+      "label": "供应商名称",
+      "source": {
+        "ds": "ds-inspection",
+        "field": "supplier"
+      }
+    },
+    {
+      "key": "supplierBatch",
+      "label": "供应商批次号",
+      "source": {
+        "ds": "ds-inspection",
+        "field": "supplierBatch"
+      }
+    },
+    {
+      "key": "status",
+      "label": "报告状态",
+      "source": {
+        "ds": "ds-status",
+        "field": "status"
+      }
+    },
+    {
+      "key": "reviewOpinion",
+      "label": "审核意见",
+      "source": {
+        "ds": "ds-inspection",
+        "field": "reviewOpinion"
+      },
+      "target": {
+        "entity": "inspection",
+        "field": "reviewOpinion"
+      },
+      "note": "审核时填写；与标准不符时必须写依据条款"
+    }
+  ],
+  "dataSources": [
+    {
+      "id": "ds-wms",
+      "kind": "api",
+      "ref": "WMS.arrivalOrder",
+      "note": "到货单由 WMS 开具，本系统只读引用；接口契约未定，先按单号取"
+    },
+    {
+      "id": "ds-taskno",
+      "kind": "system",
+      "ref": "taskNo"
+    },
+    {
+      "id": "ds-inspection",
+      "kind": "entity",
+      "ref": "inspection",
+      "note": "来料检验任务主表"
+    },
+    {
+      "id": "ds-status",
+      "kind": "dict",
+      "ref": "inspection.status"
     }
   ],
   "slices": [

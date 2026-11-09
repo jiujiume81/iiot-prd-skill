@@ -284,7 +284,8 @@
                       "count": 1
                     }
                   ]
-                }
+                },
+                "children": []
               },
               {
                 "id": "n-filter",
@@ -295,7 +296,8 @@
                       "key": "accNo",
                       "label": "事故编号",
                       "type": "text",
-                      "placeholder": "SG-202611-006"
+                      "placeholder": "SG-202611-006",
+                      "field": "accNo"
                     },
                     {
                       "key": "dept",
@@ -307,7 +309,8 @@
                         "装配车间",
                         "配料车间",
                         "干燥车间"
-                      ]
+                      ],
+                      "field": "dept"
                     },
                     {
                       "key": "level",
@@ -319,12 +322,14 @@
                         "较大",
                         "一般",
                         "轻微"
-                      ]
+                      ],
+                      "field": "level"
                     },
                     {
                       "key": "range",
                       "label": "发生日期",
-                      "type": "daterange"
+                      "type": "daterange",
+                      "filterNote": "按发生时间区间筛选，含首尾当天"
                     }
                   ],
                   "actions": [
@@ -338,7 +343,8 @@
                       "text": "重置"
                     }
                   ]
-                }
+                },
+                "children": []
               },
               {
                 "id": "n-toolbar",
@@ -357,7 +363,8 @@
                       "capability": "cap-export"
                     }
                   ]
-                }
+                },
+                "children": []
               },
               {
                 "id": "n-table",
@@ -370,53 +377,82 @@
                       "key": "accNo",
                       "title": "事故编号",
                       "width": 140,
-                      "type": "link"
+                      "type": "link",
+                      "display": {
+                        "empty": "—"
+                      }
                     },
                     {
                       "key": "type",
                       "title": "事故类型",
-                      "width": 100
+                      "width": 100,
+                      "display": {
+                        "empty": "—"
+                      }
                     },
                     {
                       "key": "dept",
                       "title": "发生部门",
-                      "width": 100
+                      "width": 100,
+                      "display": {
+                        "empty": "—"
+                      }
                     },
                     {
                       "key": "level",
                       "title": "等级",
                       "width": 84,
-                      "type": "tag"
+                      "type": "tag",
+                      "display": {
+                        "empty": "—"
+                      }
                     },
                     {
                       "key": "at",
                       "title": "发生时间",
-                      "width": 130
+                      "width": 130,
+                      "display": {
+                        "empty": "—"
+                      }
                     },
                     {
                       "key": "reporter",
                       "title": "报告人",
-                      "width": 70
+                      "width": 70,
+                      "display": {
+                        "empty": "—"
+                      }
                     },
                     {
                       "key": "status",
                       "title": "当前状态",
                       "width": 108,
-                      "type": "tag"
+                      "type": "tag",
+                      "display": {
+                        "empty": "—"
+                      },
+                      "field": "accStatus"
                     },
                     {
                       "key": "stay",
                       "title": "停留(天)",
                       "width": 70,
                       "type": "num",
-                      "align": "right"
+                      "align": "right",
+                      "display": {
+                        "empty": "—"
+                      }
                     },
                     {
                       "key": "measure",
                       "title": "措施",
                       "width": 50,
                       "type": "num",
-                      "align": "right"
+                      "align": "right",
+                      "display": {
+                        "empty": "—"
+                      },
+                      "field": "measureCount"
                     },
                     {
                       "key": "op",
@@ -558,7 +594,8 @@
                       }
                     ]
                   }
-                }
+                },
+                "children": []
               },
               {
                 "id": "n-footer",
@@ -567,7 +604,8 @@
                   "total": 7,
                   "page": 1,
                   "size": 20
-                }
+                },
+                "children": []
               }
             ]
           }
@@ -928,7 +966,8 @@
                       "count": 26
                     }
                   ]
-                }
+                },
+                "children": []
               },
               {
                 "id": "n-filter",
@@ -939,7 +978,8 @@
                       "key": "kw",
                       "label": "关键词",
                       "type": "text",
-                      "placeholder": "事故编号 / 措施编号"
+                      "placeholder": "事故编号 / 措施编号",
+                      "filterNote": "在单据编号、待办事项、关联事故中模糊匹配"
                     },
                     {
                       "key": "overdue",
@@ -949,7 +989,8 @@
                         "全部",
                         "已超期",
                         "3 天内到期"
-                      ]
+                      ],
+                      "filterNote": "按要求完成日期早于今天且未关闭判定超期"
                     },
                     {
                       "key": "dept",
@@ -960,7 +1001,8 @@
                         "生产部",
                         "设备部",
                         "品质部"
-                      ]
+                      ],
+                      "field": "dept"
                     }
                   ],
                   "actions": [
@@ -974,7 +1016,8 @@
                       "text": "重置"
                     }
                   ]
-                }
+                },
+                "children": []
               },
               {
                 "id": "n-toolbar",
@@ -987,7 +1030,8 @@
                       "capability": "cap-export"
                     }
                   ]
-                }
+                },
+                "children": []
               },
               {
                 "id": "n-table",
@@ -1000,40 +1044,64 @@
                       "key": "docNo",
                       "title": "单据编号",
                       "width": 128,
-                      "type": "link"
+                      "type": "link",
+                      "display": {
+                        "empty": "—"
+                      }
                     },
                     {
                       "key": "kind",
                       "title": "类型",
-                      "width": 66
+                      "width": 66,
+                      "display": {
+                        "empty": "—"
+                      },
+                      "field": "todoKind"
                     },
                     {
                       "key": "todo",
                       "title": "待办事项",
-                      "width": 110
+                      "width": 110,
+                      "display": {
+                        "empty": "—"
+                      }
                     },
                     {
                       "key": "accNo",
                       "title": "关联事故",
-                      "width": 130
+                      "width": 130,
+                      "display": {
+                        "empty": "—"
+                      }
                     },
                     {
                       "key": "due",
                       "title": "要求完成",
-                      "width": 104
+                      "width": 104,
+                      "display": {
+                        "empty": "—"
+                      }
                     },
                     {
                       "key": "left",
                       "title": "剩余(天)",
                       "width": 84,
                       "type": "num",
-                      "align": "right"
+                      "align": "right",
+                      "display": {
+                        "empty": "—"
+                      },
+                      "field": "daysLeft"
                     },
                     {
                       "key": "status",
                       "title": "当前状态",
                       "width": 96,
-                      "type": "tag"
+                      "type": "tag",
+                      "display": {
+                        "empty": "—"
+                      },
+                      "field": "measureStatus"
                     },
                     {
                       "key": "op",
@@ -1152,7 +1220,8 @@
                       }
                     ]
                   }
-                }
+                },
+                "children": []
               },
               {
                 "id": "n-footer",
@@ -1161,7 +1230,8 @@
                   "total": 7,
                   "page": 1,
                   "size": 20
-                }
+                },
+                "children": []
               }
             ]
           }
@@ -1500,7 +1570,8 @@
                       "value": "0.6 天"
                     }
                   ]
-                }
+                },
+                "children": []
               },
               {
                 "id": "n-desc",
@@ -1511,40 +1582,73 @@
                   "items": [
                     {
                       "label": "事故类型",
-                      "value": "设备失效"
+                      "value": "设备失效",
+                      "key": "type",
+                      "display": {
+                        "empty": "—"
+                      }
                     },
                     {
                       "label": "事故等级",
-                      "value": "较大"
+                      "value": "较大",
+                      "key": "level",
+                      "display": {
+                        "empty": "—"
+                      }
                     },
                     {
                       "label": "发生部门",
-                      "value": "涂布车间"
+                      "value": "涂布车间",
+                      "key": "dept",
+                      "display": {
+                        "empty": "—"
+                      }
                     },
                     {
                       "label": "发生地点",
-                      "value": "涂布 2 线 · 3# 涂布辊"
+                      "value": "涂布 2 线 · 3# 涂布辊",
+                      "key": "place",
+                      "display": {
+                        "empty": "—"
+                      }
                     },
                     {
                       "label": "涉及人员",
-                      "value": "罗会敏、张应龙"
+                      "value": "罗会敏、张应龙",
+                      "key": "people",
+                      "display": {
+                        "empty": "—"
+                      }
                     },
                     {
                       "label": "损失工时",
-                      "value": "4.5 h"
+                      "value": "4.5 h",
+                      "key": "loss",
+                      "display": {
+                        "empty": "—"
+                      }
                     },
                     {
                       "label": "事故经过",
                       "value": "14:20 在线测厚仪连续 6 卷超上限，停线检查发现 3# 涂布辊表面划痕，判定为设备失效导致批量厚度超差。",
-                      "span": 3
+                      "span": 3,
+                      "key": "story",
+                      "display": {
+                        "empty": "—"
+                      }
                     },
                     {
                       "label": "临时处置",
                       "value": "停线更换备用辊，已产出 6 卷隔离待评审。",
-                      "span": 3
+                      "span": 3,
+                      "key": "temp",
+                      "display": {
+                        "empty": "—"
+                      }
                     }
                   ]
-                }
+                },
+                "children": []
               },
               {
                 "id": "n-sec-patrol",
@@ -1563,27 +1667,48 @@
                       "items": [
                         {
                           "label": "排查人",
-                          "value": "傅高修（安全员）"
+                          "value": "傅高修（安全员）",
+                          "key": "patrolBy",
+                          "display": {
+                            "empty": "—"
+                          }
                         },
                         {
                           "label": "到场时间",
-                          "value": "2026-10-28 14:35"
+                          "value": "2026-10-28 14:35",
+                          "key": "arriveAt",
+                          "display": {
+                            "empty": "—"
+                          }
                         },
                         {
                           "label": "排查结论",
-                          "value": "设备失效"
+                          "value": "设备失效",
+                          "key": "patrolResult",
+                          "display": {
+                            "empty": "—"
+                          }
                         },
                         {
                           "label": "责任部门",
-                          "value": "设备部"
+                          "value": "设备部",
+                          "key": "patrolDept",
+                          "display": {
+                            "empty": "—"
+                          }
                         },
                         {
                           "label": "现场勘查情况",
                           "value": "涂布辊 3# 表面有连续划痕，张力记录在 14:18 出现阶跃，当班未做点检签认。",
-                          "span": 2
+                          "span": 2,
+                          "key": "scene",
+                          "display": {
+                            "empty": "—"
+                          }
                         }
                       ]
-                    }
+                    },
+                    "children": []
                   }
                 ]
               },
@@ -1604,29 +1729,50 @@
                       "items": [
                         {
                           "label": "分析方法",
-                          "value": "5Why"
+                          "value": "5Why",
+                          "key": "tool",
+                          "display": {
+                            "empty": "—"
+                          }
                         },
                         {
                           "label": "分析人",
-                          "value": "—"
+                          "value": "—",
+                          "key": "analyzeBy",
+                          "display": {
+                            "empty": "—"
+                          }
                         },
                         {
                           "label": "直接原因",
                           "value": "尚未填写",
-                          "span": 2
+                          "span": 2,
+                          "key": "directCause",
+                          "display": {
+                            "empty": "—"
+                          }
                         },
                         {
                           "label": "根本原因",
                           "value": "尚未填写",
-                          "span": 2
+                          "span": 2,
+                          "key": "rootCause",
+                          "display": {
+                            "empty": "—"
+                          }
                         },
                         {
                           "label": "Why 链条",
                           "value": "待「我的待办 · 原因分析」提交后回填",
-                          "span": 2
+                          "span": 2,
+                          "key": "whyChain",
+                          "display": {
+                            "empty": "—"
+                          }
                         }
                       ]
-                    }
+                    },
+                    "children": []
                   }
                 ]
               },
@@ -1649,28 +1795,45 @@
                         {
                           "key": "no",
                           "title": "措施编号",
-                          "width": 110
+                          "width": 110,
+                          "display": {
+                            "empty": "—"
+                          },
+                          "field": "measureNo"
                         },
                         {
                           "key": "content",
                           "title": "措施内容",
-                          "width": 400
+                          "width": 400,
+                          "display": {
+                            "empty": "—"
+                          }
                         },
                         {
                           "key": "owner",
                           "title": "责任人",
-                          "width": 90
+                          "width": 90,
+                          "display": {
+                            "empty": "—"
+                          }
                         },
                         {
                           "key": "due",
                           "title": "完成期限",
-                          "width": 110
+                          "width": 110,
+                          "display": {
+                            "empty": "—"
+                          }
                         },
                         {
                           "key": "status",
                           "title": "状态",
                           "width": 100,
-                          "type": "tag"
+                          "type": "tag",
+                          "display": {
+                            "empty": "—"
+                          },
+                          "field": "measureStatus"
                         }
                       ],
                       "data": [
@@ -1701,7 +1864,8 @@
                         "title": "措施尚未下发",
                         "desc": "原因分析提交后，质量经理在台账「下发措施」里建措施单。"
                       }
-                    }
+                    },
+                    "children": []
                   }
                 ]
               },
@@ -1739,7 +1903,8 @@
                           "desc": "等待 罗会敏 在「我的待办」提交分析结论"
                         }
                       ]
-                    }
+                    },
+                    "children": []
                   }
                 ]
               },
@@ -1749,29 +1914,19 @@
                 "props": {
                   "title": "为什么这里没有操作按钮",
                   "tone": "info",
-                  "cols": 1
-                },
-                "children": [
-                  {
-                    "id": "n-tip-text",
-                    "type": "DescList",
-                    "props": {
-                      "cols": 1,
-                      "items": [
-                        {
-                          "label": "推进入口",
-                          "value": "排查 → 我的待办；分析 → 我的待办；下发措施 → 事故台账；验证 → 我的待办；审批 → 事故台账。",
-                          "span": 1
-                        },
-                        {
-                          "label": "原因",
-                          "value": "同一条命令若详情页和列表页都能执行，状态机就有两个触发点，四眼校验、幂等、操作日志都要写两遍。详情页只读是刻意的取舍，不是漏做。",
-                          "span": 1
-                        }
-                      ]
+                  "cols": 1,
+                  "notes": [
+                    {
+                      "label": "推进入口",
+                      "text": "排查 → 我的待办；分析 → 我的待办；下发措施 → 事故台账；验证 → 我的待办；审批 → 事故台账。"
+                    },
+                    {
+                      "label": "原因",
+                      "text": "同一条命令若详情页和列表页都能执行，状态机就有两个触发点，四眼校验、幂等、操作日志都要写两遍。详情页只读是刻意的取舍，不是漏做。"
                     }
-                  }
-                ]
+                  ]
+                },
+                "children": []
               }
             ]
           }
@@ -2058,7 +2213,8 @@
                     }
                   ],
                   "current": "draft"
-                }
+                },
+                "children": []
               },
               {
                 "id": "n-form",
@@ -2071,7 +2227,10 @@
                       "key": "at",
                       "label": "事故发生时间",
                       "type": "date",
-                      "required": true
+                      "required": true,
+                      "rules": {
+                        "text": "必填，不得晚于当前时间；精确到分钟，与现场记录一致"
+                      }
                     },
                     {
                       "key": "dept",
@@ -2083,7 +2242,10 @@
                         "装配车间",
                         "配料车间",
                         "干燥车间"
-                      ]
+                      ],
+                      "rules": {
+                        "text": "必填，从组织架构中选择发生部门；跨部门事故选主要责任车间"
+                      }
                     },
                     {
                       "key": "type",
@@ -2096,7 +2258,10 @@
                         "物料异常",
                         "环境因素",
                         "管理缺陷"
-                      ]
+                      ],
+                      "rules": {
+                        "text": "必填，按设备失效/操作违规/物料异常/环境因素/管理缺陷单选"
+                      }
                     },
                     {
                       "key": "level",
@@ -2108,18 +2273,27 @@
                         "一般",
                         "较大",
                         "重大"
-                      ]
+                      ],
+                      "rules": {
+                        "text": "必填，按损失与影响分级；「较大」及以上进入厂长审批"
+                      }
                     },
                     {
                       "key": "people",
                       "label": "涉及人员",
                       "type": "text",
-                      "placeholder": "多人用顿号分隔"
+                      "placeholder": "多人用顿号分隔",
+                      "rules": {
+                        "text": "参与人员用顿号分隔；无人员受伤填「无」，不得留空"
+                      }
                     },
                     {
                       "key": "loss",
                       "label": "损失工时(h)",
-                      "type": "number"
+                      "type": "number",
+                      "rules": {
+                        "text": "保留 1 位小数，单位小时；不足 0.5 小时按 0.5 计"
+                      }
                     },
                     {
                       "key": "story",
@@ -2128,17 +2302,24 @@
                       "required": true,
                       "span": 2,
                       "hint": "按时间顺序写：几点发现、看到什么、做了什么处置",
-                      "rows": 4
+                      "rows": 4,
+                      "rules": {
+                        "text": "必填，按时间顺序写：几点发现、看到什么、做了什么处置，不少于 50 字"
+                      }
                     },
                     {
                       "key": "temp",
                       "label": "临时处置",
                       "type": "textarea",
                       "span": 2,
-                      "hint": "停线、隔离、替换等已做的动作"
+                      "hint": "停线、隔离、替换等已做的动作",
+                      "rules": {
+                        "text": "写已采取的临时措施与隔离范围；未处置填「未处置」并说明原因"
+                      }
                     }
                   ]
-                }
+                },
+                "children": []
               },
               {
                 "id": "n-toolbar-2",
@@ -2156,7 +2337,8 @@
                       "capability": "cap-submit-report"
                     }
                   ]
-                }
+                },
+                "children": []
               }
             ]
           }
@@ -2313,7 +2495,10 @@
             "type": "date",
             "required": true,
             "value": "2026-10-28",
-            "hint": "与接报时间相差超过 2 小时需在结论里说明原因"
+            "hint": "与接报时间相差超过 2 小时需在结论里说明原因",
+            "rules": {
+              "text": "必填，到场时间不得早于事故发生时间"
+            }
           },
           {
             "key": "patrolResult",
@@ -2326,7 +2511,10 @@
               "物料异常",
               "环境因素",
               "管理缺陷"
-            ]
+            ],
+            "rules": {
+              "text": "必填，从结论字典中选择；选择「管理缺陷」时须在勘查情况中写明依据"
+            }
           },
           {
             "key": "scene",
@@ -2335,7 +2523,10 @@
             "required": true,
             "span": 2,
             "placeholder": "写清看到什么：设备状态、参数记录、当事人陈述、现场照片编号",
-            "value": "涂布辊 3# 表面有连续划痕，张力记录在 14:18 出现阶跃，当班未做点检签认。"
+            "value": "涂布辊 3# 表面有连续划痕，张力记录在 14:18 出现阶跃，当班未做点检签认。",
+            "rules": {
+              "text": "必填，写现场勘查看到的事实，不写判断；不少于 30 字"
+            }
           },
           {
             "key": "duty",
@@ -2347,7 +2538,11 @@
               "设备部",
               "品质部",
               "仓储部"
-            ]
+            ],
+            "rules": {
+              "text": "必填，从组织架构中选择责任部门"
+            },
+            "field": "patrolDept"
           },
           {
             "key": "stopLine",
@@ -2356,7 +2551,10 @@
             "options": [
               "是",
               "否"
-            ]
+            ],
+            "rules": {
+              "text": "必填，是否已停线停机；选「是」后须在临时处置中写明停线时间"
+            }
           }
         ]
       },
@@ -2395,7 +2593,10 @@
               "鱼骨图",
               "故障树 FTA"
             ],
-            "value": "5Why"
+            "value": "5Why",
+            "rules": {
+              "text": "必填，注明分析方法（5Why/鱼骨图等）"
+            }
           },
           {
             "key": "direct",
@@ -2403,7 +2604,11 @@
             "type": "textarea",
             "required": true,
             "span": 2,
-            "value": "涂布辊表面划痕导致涂布厚度不均，超出 ±3μm 控制线。"
+            "value": "涂布辊表面划痕导致涂布厚度不均，超出 ±3μm 控制线。",
+            "rules": {
+              "text": "必填，写直接触发因素，不少于 20 字"
+            },
+            "field": "directCause"
           },
           {
             "key": "root",
@@ -2412,35 +2617,51 @@
             "required": true,
             "span": 2,
             "placeholder": "写到「管理上缺了什么」为止，不写「操作不当」这种结论",
-            "value": "点检表中无涂布辊表面检查项，日常点检无法识别早期划痕。"
+            "value": "点检表中无涂布辊表面检查项，日常点检无法识别早期划痕。",
+            "rules": {
+              "text": "必填，写可整改的根本原因；不得写「管理不到位」这类无法落措施的结论"
+            },
+            "field": "rootCause"
           },
           {
             "key": "why1",
             "label": "Why1 为什么厚度不均",
             "type": "text",
             "span": 2,
-            "value": "辊面有划痕"
+            "value": "辊面有划痕",
+            "rules": {
+              "text": "按 5Why 逐层追问，每层不超过 120 字，不得跳层"
+            }
           },
           {
             "key": "why2",
             "label": "Why2 为什么会有划痕",
             "type": "text",
             "span": 2,
-            "value": "来料卷材边缘有硬质异物，未被清理"
+            "value": "来料卷材边缘有硬质异物，未被清理",
+            "rules": {
+              "text": "按 5Why 逐层追问，每层不超过 120 字，不得跳层"
+            }
           },
           {
             "key": "why3",
             "label": "Why3 为什么异物没被清理",
             "type": "text",
             "span": 2,
-            "value": "上料前无辊面清理这个动作"
+            "value": "上料前无辊面清理这个动作",
+            "rules": {
+              "text": "按 5Why 逐层追问，每层不超过 120 字，不得跳层"
+            }
           },
           {
             "key": "why4",
             "label": "Why4 为什么没有这个动作",
             "type": "text",
             "span": 2,
-            "value": "点检标准只覆盖温度与张力，未覆盖辊面"
+            "value": "点检标准只覆盖温度与张力，未覆盖辊面",
+            "rules": {
+              "text": "按 5Why 逐层追问，每层不超过 120 字，不得跳层"
+            }
           }
         ]
       },
@@ -2476,7 +2697,11 @@
             "type": "textarea",
             "required": true,
             "span": 2,
-            "placeholder": "一条措施只写一件事，能验收的那种"
+            "placeholder": "一条措施只写一件事，能验收的那种",
+            "rules": {
+              "text": "必填，措施须可验收：写清做什么、做到什么程度，不少于 20 字"
+            },
+            "field": "content"
           },
           {
             "key": "dept",
@@ -2487,7 +2712,11 @@
               "生产部",
               "设备部",
               "品质部"
-            ]
+            ],
+            "rules": {
+              "text": "必填，从组织架构中选择承接措施的部门"
+            },
+            "field": "measureDept"
           },
           {
             "key": "owner",
@@ -2498,14 +2727,20 @@
               "罗会敏（生产部）",
               "张应龙（设备部）",
               "傅高修（品质部）"
-            ]
+            ],
+            "rules": {
+              "text": "必填，从人员字典选择；不得填部门代替个人"
+            }
           },
           {
             "key": "due",
             "label": "完成期限",
             "type": "date",
             "required": true,
-            "hint": "超过 7 天需质量经理二次确认"
+            "hint": "超过 7 天需质量经理二次确认",
+            "rules": {
+              "text": "必填，不得早于今天；超期需在说明中写延期理由"
+            }
           },
           {
             "key": "check",
@@ -2513,7 +2748,11 @@
             "type": "text",
             "span": 2,
             "placeholder": "写可测量的结果，如「连续 20 卷厚度极差 ≤2μm」",
-            "hint": "不写「整改到位」这种情况"
+            "hint": "不写「整改到位」这种情况",
+            "rules": {
+              "text": "必填，写可判定的验收标准（数量/状态/文件），不写「整改完成」"
+            },
+            "field": "acceptance"
           }
         ]
       },
@@ -2552,7 +2791,11 @@
               "现场复核",
               "数据对比",
               "抽样检测"
-            ]
+            ],
+            "rules": {
+              "text": "必填，注明验证方式（现场复核/记录抽查/试运行）"
+            },
+            "field": "verifyWay"
           },
           {
             "key": "result",
@@ -2562,7 +2805,11 @@
             "options": [
               "措施有效",
               "措施无效需重新分析"
-            ]
+            ],
+            "rules": {
+              "text": "必填，从结论字典选择；判定无效须转「退回」并写无效依据"
+            },
+            "field": "verifyResult"
           },
           {
             "key": "evidence",
@@ -2570,7 +2817,10 @@
             "type": "textarea",
             "required": true,
             "span": 2,
-            "placeholder": "写数据或现场记录编号，不写「已确认」"
+            "placeholder": "写数据或现场记录编号，不写「已确认」",
+            "rules": {
+              "text": "必填，写验证依据的编号或附件名，可追溯"
+            }
           }
         ]
       },
@@ -2606,7 +2856,11 @@
             "type": "textarea",
             "required": true,
             "span": 2,
-            "placeholder": "必须写清实测数据与验收标准的差距，否则退回无意义"
+            "placeholder": "必须写清实测数据与验收标准的差距，否则退回无意义",
+            "rules": {
+              "text": "必填，写清哪一条不满足验收标准，不少于 20 字"
+            },
+            "field": "invalidReason"
           }
         ]
       },
@@ -2641,7 +2895,10 @@
             "label": "审批意见",
             "type": "textarea",
             "span": 2,
-            "value": "原因分析到点检标准缺失，措施已在执行中，同意关闭。"
+            "value": "原因分析到点检标准缺失，措施已在执行中，同意关闭。",
+            "rules": {
+              "text": "必填，写明同意/不同意及理由；不同意须指明退回环节"
+            }
           },
           {
             "key": "report",
@@ -2651,7 +2908,11 @@
               "纳入",
               "不纳入"
             ],
-            "value": "纳入"
+            "value": "纳入",
+            "rules": {
+              "text": "必填，是否纳入月度安环通报；选「是」后由安环汇总"
+            },
+            "field": "monthlyReport"
           }
         ]
       },
@@ -2687,7 +2948,11 @@
             "type": "textarea",
             "required": true,
             "span": 2,
-            "placeholder": "写清分析结论缺什么，不能只写「不同意」"
+            "placeholder": "写清分析结论缺什么，不能只写「不同意」",
+            "rules": {
+              "text": "必填，写退回原因与需补充的材料，不少于 20 字"
+            },
+            "field": "rejectReason"
           }
         ]
       },
@@ -2723,7 +2988,10 @@
             "type": "text",
             "span": 2,
             "placeholder": "如：11-03 停机 2h 更换辊体，11-04 完成点检表修订",
-            "hint": "写清哪天做什么，便于事后对进度"
+            "hint": "写清哪天做什么，便于事后对进度",
+            "rules": {
+              "text": "必填，写执行步骤与完成时点，不少于 20 字"
+            }
           }
         ]
       },
@@ -2757,7 +3025,10 @@
             "key": "doneAt",
             "label": "实际完成时间",
             "type": "date",
-            "required": true
+            "required": true,
+            "rules": {
+              "text": "必填，不得晚于当前时间，且不得早于措施下发时间"
+            }
           },
           {
             "key": "proof",
@@ -2765,13 +3036,19 @@
             "type": "text",
             "required": true,
             "span": 2,
-            "placeholder": "点检表编号 / 照片编号 / 采购单号"
+            "placeholder": "点检表编号 / 照片编号 / 采购单号",
+            "rules": {
+              "text": "必填，照片/记录编号至少一项；无证据不予验收"
+            }
           },
           {
             "key": "note",
             "label": "说明",
             "type": "textarea",
-            "span": 2
+            "span": 2,
+            "rules": {
+              "text": "可空；有延期或变更时写原因，不超过 200 字"
+            }
           }
         ]
       },
@@ -3025,6 +3302,123 @@
               "待审批",
               "已关闭"
             ]
+          },
+          {
+            "name": "place",
+            "label": "发生地点",
+            "type": "string"
+          },
+          {
+            "name": "people",
+            "label": "涉及人员",
+            "type": "string"
+          },
+          {
+            "name": "loss",
+            "label": "损失工时",
+            "type": "number",
+            "unit": "h"
+          },
+          {
+            "name": "temp",
+            "label": "临时处置",
+            "type": "text"
+          },
+          {
+            "name": "reporter",
+            "label": "报告人",
+            "type": "string"
+          },
+          {
+            "name": "arriveAt",
+            "label": "到场时间",
+            "type": "datetime"
+          },
+          {
+            "name": "patrolBy",
+            "label": "排查人",
+            "type": "string"
+          },
+          {
+            "name": "patrolDept",
+            "label": "责任部门",
+            "type": "string"
+          },
+          {
+            "name": "patrolResult",
+            "label": "排查结论",
+            "type": "enum",
+            "enum": [
+              "设备缺陷",
+              "操作违规",
+              "管理缺陷",
+              "物料异常"
+            ]
+          },
+          {
+            "name": "scene",
+            "label": "现场勘查情况",
+            "type": "text"
+          },
+          {
+            "name": "stopLine",
+            "label": "是否已停机",
+            "type": "boolean"
+          },
+          {
+            "name": "tool",
+            "label": "分析方法",
+            "type": "string"
+          },
+          {
+            "name": "analyzeBy",
+            "label": "分析人",
+            "type": "string"
+          },
+          {
+            "name": "directCause",
+            "label": "直接原因",
+            "type": "text"
+          },
+          {
+            "name": "rootCause",
+            "label": "根本原因",
+            "type": "text"
+          },
+          {
+            "name": "why1",
+            "label": "Why1",
+            "type": "text"
+          },
+          {
+            "name": "why2",
+            "label": "Why2",
+            "type": "text"
+          },
+          {
+            "name": "why3",
+            "label": "Why3",
+            "type": "text"
+          },
+          {
+            "name": "why4",
+            "label": "Why4",
+            "type": "text"
+          },
+          {
+            "name": "conclusion",
+            "label": "审批意见",
+            "type": "text"
+          },
+          {
+            "name": "monthlyReport",
+            "label": "是否纳入月度安环通报",
+            "type": "boolean"
+          },
+          {
+            "name": "rejectReason",
+            "label": "退回原因",
+            "type": "text"
           }
         ]
       },
@@ -3077,6 +3471,77 @@
               "执行中",
               "已完成"
             ]
+          },
+          {
+            "name": "dept",
+            "label": "责任部门",
+            "type": "string"
+          },
+          {
+            "name": "acceptance",
+            "label": "验收标准",
+            "type": "text"
+          },
+          {
+            "name": "kind",
+            "label": "待办类型",
+            "type": "enum",
+            "enum": [
+              "过程排查",
+              "原因分析",
+              "措施执行",
+              "效果验证",
+              "审批"
+            ]
+          },
+          {
+            "name": "todo",
+            "label": "待办事项",
+            "type": "string"
+          },
+          {
+            "name": "verifyWay",
+            "label": "验证方式",
+            "type": "string"
+          },
+          {
+            "name": "verifyResult",
+            "label": "验证结论",
+            "type": "enum",
+            "enum": [
+              "有效",
+              "无效"
+            ]
+          },
+          {
+            "name": "evidence",
+            "label": "验证依据",
+            "type": "string"
+          },
+          {
+            "name": "invalidReason",
+            "label": "无效依据",
+            "type": "text"
+          },
+          {
+            "name": "plan",
+            "label": "执行计划",
+            "type": "text"
+          },
+          {
+            "name": "doneAt",
+            "label": "实际完成时间",
+            "type": "datetime"
+          },
+          {
+            "name": "proof",
+            "label": "完成证据",
+            "type": "string"
+          },
+          {
+            "name": "note",
+            "label": "说明",
+            "type": "text"
           }
         ]
       }
@@ -3087,6 +3552,28 @@
         "to": "measure",
         "type": "1:N",
         "field": "accNo"
+      }
+    ],
+    "derived": [
+      {
+        "name": "stayDays",
+        "expr": "today - lastTransitionAt",
+        "fallback": "已关闭单据显示总周期；无迁移记录显示「—」"
+      },
+      {
+        "name": "measureCount",
+        "expr": "count(measure where status != 已关闭)",
+        "fallback": "无措施显示 0，不显示空"
+      },
+      {
+        "name": "daysLeft",
+        "expr": "due - today",
+        "fallback": "已完成为 0，超期为负数"
+      },
+      {
+        "name": "whyChain",
+        "expr": "why1 + ' → ' + why2 + ' → ' + why3 + ' → ' + why4",
+        "fallback": "未完成分析时显示「待分析」"
       }
     ]
   },
@@ -3221,20 +3708,26 @@
   ],
   "decisions": [
     {
-      "id": "d-1",
-      "title": "详情页只读，推进动作全部在列表页",
+      "id": "D-001",
+      "stage": "页面拆分",
+      "kind": "tradeoff",
+      "decision": "详情页只读，推进动作全部在列表页",
       "rationale": "同一条命令若详情页和列表页都能执行，状态机有两个触发点，四眼校验、幂等与操作日志都要写两遍",
       "date": "2026-11-02"
     },
     {
-      "id": "d-2",
-      "title": "原因分析用抽屉而不是弹框",
+      "id": "D-002",
+      "stage": "承载选型",
+      "kind": "model",
+      "decision": "原因分析用抽屉而不是弹框",
       "rationale": "5Why 需要一边看排查结论一边填，字段 7 个，弹框放不下也不方便对照",
       "date": "2026-11-02"
     },
     {
-      "id": "d-3",
-      "title": "新建报告用独立页面",
+      "id": "D-003",
+      "stage": "承载选型",
+      "kind": "model",
+      "decision": "新建报告用独立页面",
       "rationale": "事故经过是大段文本，加上临时处置，弹框里滚动不现实",
       "date": "2026-11-02"
     }
@@ -3242,71 +3735,692 @@
   "guards": [
     {
       "id": "g-1",
-      "desc": "未完成过程排查不能提交原因分析",
-      "expr": "accident.status == 'patrolled'"
+      "kind": "block",
+      "statement": "未完成过程排查不能提交原因分析",
+      "expr": "accident.status == 'patrolled'",
+      "capabilityId": "cap-analyze",
+      "message": "本单还没完成过程排查，不能做原因分析。"
     },
     {
       "id": "g-2",
-      "desc": "措施未全部完成不能进入效果验证",
-      "expr": "measures.all(status == 'done')"
+      "kind": "block",
+      "statement": "措施未全部完成不能进入效果验证",
+      "expr": "measures.all(status == 'done')",
+      "capabilityId": "cap-verify-pass",
+      "message": "还有 {未完成措施数} 项措施未完成，不能验证。"
     },
     {
       "id": "g-3",
-      "desc": "原因分析人与效果验证人不得为同一人",
-      "expr": "analyze.actor != verify.actor"
+      "kind": "block",
+      "statement": "原因分析人与效果验证人不得为同一人",
+      "expr": "analyze.actor != verify.actor",
+      "capabilityId": "cap-verify-pass",
+      "message": "验证人不能与原因分析人是同一个人（四眼原则）。"
     },
     {
       "id": "g-4",
-      "desc": "审批关闭需厂长角色，且不得与下发措施人为同一人",
-      "expr": "approve.actor != issue.actor"
+      "kind": "block",
+      "statement": "审批关闭需厂长角色，且不得与下发措施人为同一人",
+      "expr": "approve.actor != issue.actor",
+      "capabilityId": "cap-approve",
+      "message": "审批人不能与下发措施的人相同（四眼原则）。"
     }
   ],
-  "fieldRegistry": [
+  "fieldCatalog": [
     {
-      "name": "事故编号",
-      "type": "string",
-      "sourceRef": "列头 · 系统生成",
-      "pageId": "pg-acc-ledger",
-      "block": "n-table",
-      "required": true,
-      "scope": "out",
-      "reason": "对外报送与台账对账都以事故编号为准，不允许人工改写"
+      "key": "accNo",
+      "label": "事故编号",
+      "source": {
+        "ds": "ds-serial",
+        "rule": "SG-{yyyyMM}-{3 位流水}，按部门月度连续，提交时生成"
+      },
+      "target": {
+        "entity": "accident",
+        "field": "accNo"
+      }
     },
     {
-      "name": "事故等级",
-      "type": "enum",
-      "sourceRef": "新建页 · 单选",
-      "pageId": "pg-acc-new",
-      "block": "n-form",
-      "required": true,
-      "scope": "in"
+      "key": "dept",
+      "label": "发生部门",
+      "source": {
+        "ds": "ds-org",
+        "field": "deptName",
+        "fallback": "组织架构取不到时允许手填并标记待同步"
+      },
+      "target": {
+        "entity": "accident",
+        "field": "dept"
+      }
     },
     {
-      "name": "排查结论",
-      "type": "enum",
-      "sourceRef": "详情页 · 过程排查区块",
-      "pageId": "pg-acc-detail",
-      "block": "n-sec-patrol",
-      "required": true,
-      "scope": "in"
+      "key": "level",
+      "label": "事故等级",
+      "source": {
+        "ds": "ds-acc-level",
+        "field": "level"
+      },
+      "target": {
+        "entity": "accident",
+        "field": "level"
+      }
     },
     {
-      "name": "根本原因",
-      "type": "text",
-      "sourceRef": "详情页 · 原因分析区块",
-      "pageId": "pg-acc-detail",
-      "block": "n-sec-why",
-      "required": true,
-      "scope": "in"
+      "key": "type",
+      "label": "事故类型",
+      "source": {
+        "ds": "ds-acc-type",
+        "field": "type"
+      },
+      "target": {
+        "entity": "accident",
+        "field": "type"
+      }
     },
     {
-      "name": "完成期限",
-      "type": "date",
-      "sourceRef": "详情页 · 措施表",
-      "pageId": "pg-acc-detail",
-      "block": "n-table-measure",
-      "required": true,
-      "scope": "in"
+      "key": "at",
+      "label": "发生时间",
+      "source": {
+        "ds": "ds-accident",
+        "field": "at"
+      },
+      "target": {
+        "entity": "accident",
+        "field": "at"
+      }
+    },
+    {
+      "key": "reporter",
+      "label": "报告人",
+      "source": {
+        "ds": "ds-accident",
+        "field": "reporter",
+        "fallback": "无账号班组长由安全员代录"
+      },
+      "target": {
+        "entity": "accident",
+        "field": "reporter"
+      }
+    },
+    {
+      "key": "accStatus",
+      "label": "报告状态",
+      "source": {
+        "ds": "ds-acc-status",
+        "field": "status"
+      }
+    },
+    {
+      "key": "stay",
+      "label": "停留天数",
+      "source": {
+        "ds": "ds-stay",
+        "rule": "当前时间 − 最近一次状态迁移时间，按自然日向上取整",
+        "fallback": "已关闭单据显示总周期"
+      }
+    },
+    {
+      "key": "measureCount",
+      "label": "措施条数",
+      "source": {
+        "ds": "ds-measure-count",
+        "rule": "统计该事故下未关闭的措施条数",
+        "fallback": "无措施显示 0"
+      }
+    },
+    {
+      "key": "place",
+      "label": "发生地点",
+      "source": {
+        "ds": "ds-accident",
+        "field": "place"
+      },
+      "target": {
+        "entity": "accident",
+        "field": "place"
+      }
+    },
+    {
+      "key": "people",
+      "label": "涉及人员",
+      "source": {
+        "ds": "ds-accident",
+        "field": "people"
+      },
+      "target": {
+        "entity": "accident",
+        "field": "people"
+      }
+    },
+    {
+      "key": "loss",
+      "label": "损失工时",
+      "source": {
+        "ds": "ds-accident",
+        "field": "loss"
+      },
+      "target": {
+        "entity": "accident",
+        "field": "loss"
+      }
+    },
+    {
+      "key": "story",
+      "label": "事故经过",
+      "source": {
+        "ds": "ds-accident",
+        "field": "story"
+      },
+      "target": {
+        "entity": "accident",
+        "field": "story"
+      }
+    },
+    {
+      "key": "temp",
+      "label": "临时处置",
+      "source": {
+        "ds": "ds-accident",
+        "field": "temp"
+      },
+      "target": {
+        "entity": "accident",
+        "field": "temp"
+      }
+    },
+    {
+      "key": "patrolBy",
+      "label": "排查人",
+      "source": {
+        "ds": "ds-accident",
+        "field": "patrolBy"
+      },
+      "target": {
+        "entity": "accident",
+        "field": "patrolBy"
+      }
+    },
+    {
+      "key": "arriveAt",
+      "label": "到场时间",
+      "source": {
+        "ds": "ds-accident",
+        "field": "arriveAt"
+      },
+      "target": {
+        "entity": "accident",
+        "field": "arriveAt"
+      }
+    },
+    {
+      "key": "patrolResult",
+      "label": "排查结论",
+      "source": {
+        "ds": "ds-patrol-result",
+        "field": "patrolResult"
+      },
+      "target": {
+        "entity": "accident",
+        "field": "patrolResult"
+      }
+    },
+    {
+      "key": "patrolDept",
+      "label": "责任部门",
+      "source": {
+        "ds": "ds-org",
+        "field": "deptName",
+        "fallback": "组织架构取不到时允许手填"
+      },
+      "target": {
+        "entity": "accident",
+        "field": "patrolDept"
+      }
+    },
+    {
+      "key": "scene",
+      "label": "现场勘查情况",
+      "source": {
+        "ds": "ds-accident",
+        "field": "scene"
+      },
+      "target": {
+        "entity": "accident",
+        "field": "scene"
+      }
+    },
+    {
+      "key": "stopLine",
+      "label": "是否已停机",
+      "source": {
+        "ds": "ds-accident",
+        "field": "stopLine"
+      },
+      "target": {
+        "entity": "accident",
+        "field": "stopLine"
+      }
+    },
+    {
+      "key": "tool",
+      "label": "分析方法",
+      "source": {
+        "ds": "ds-accident",
+        "field": "tool"
+      },
+      "target": {
+        "entity": "accident",
+        "field": "tool"
+      }
+    },
+    {
+      "key": "analyzeBy",
+      "label": "分析人",
+      "source": {
+        "ds": "ds-accident",
+        "field": "analyzeBy"
+      },
+      "target": {
+        "entity": "accident",
+        "field": "analyzeBy"
+      }
+    },
+    {
+      "key": "directCause",
+      "label": "直接原因",
+      "source": {
+        "ds": "ds-accident",
+        "field": "directCause"
+      },
+      "target": {
+        "entity": "accident",
+        "field": "directCause"
+      }
+    },
+    {
+      "key": "rootCause",
+      "label": "根本原因",
+      "source": {
+        "ds": "ds-accident",
+        "field": "rootCause"
+      },
+      "target": {
+        "entity": "accident",
+        "field": "rootCause"
+      }
+    },
+    {
+      "key": "whyChain",
+      "label": "Why 链条",
+      "source": {
+        "ds": "ds-why-chain",
+        "rule": "按 why1→why4 顺序拼接，空层跳过",
+        "fallback": "未完成分析时显示「待分析」"
+      }
+    },
+    {
+      "key": "why1",
+      "label": "Why1",
+      "source": {
+        "ds": "ds-accident",
+        "field": "why1"
+      },
+      "target": {
+        "entity": "accident",
+        "field": "why1"
+      }
+    },
+    {
+      "key": "why2",
+      "label": "Why2",
+      "source": {
+        "ds": "ds-accident",
+        "field": "why2"
+      },
+      "target": {
+        "entity": "accident",
+        "field": "why2"
+      }
+    },
+    {
+      "key": "why3",
+      "label": "Why3",
+      "source": {
+        "ds": "ds-accident",
+        "field": "why3"
+      },
+      "target": {
+        "entity": "accident",
+        "field": "why3"
+      }
+    },
+    {
+      "key": "why4",
+      "label": "Why4",
+      "source": {
+        "ds": "ds-accident",
+        "field": "why4"
+      },
+      "target": {
+        "entity": "accident",
+        "field": "why4"
+      }
+    },
+    {
+      "key": "measureNo",
+      "label": "措施编号",
+      "source": {
+        "ds": "ds-measure",
+        "field": "measureNo"
+      }
+    },
+    {
+      "key": "content",
+      "label": "措施内容",
+      "source": {
+        "ds": "ds-measure",
+        "field": "content"
+      },
+      "target": {
+        "entity": "measure",
+        "field": "content"
+      }
+    },
+    {
+      "key": "owner",
+      "label": "责任人",
+      "source": {
+        "ds": "ds-measure",
+        "field": "owner"
+      },
+      "target": {
+        "entity": "measure",
+        "field": "owner"
+      }
+    },
+    {
+      "key": "due",
+      "label": "完成期限",
+      "source": {
+        "ds": "ds-measure",
+        "field": "due"
+      },
+      "target": {
+        "entity": "measure",
+        "field": "due"
+      }
+    },
+    {
+      "key": "measureStatus",
+      "label": "措施状态",
+      "source": {
+        "ds": "ds-measure-status",
+        "field": "status"
+      }
+    },
+    {
+      "key": "measureDept",
+      "label": "责任部门（措施）",
+      "source": {
+        "ds": "ds-org",
+        "field": "deptName",
+        "fallback": "组织架构取不到时允许手填"
+      },
+      "target": {
+        "entity": "measure",
+        "field": "dept"
+      }
+    },
+    {
+      "key": "acceptance",
+      "label": "验收标准",
+      "source": {
+        "ds": "ds-measure",
+        "field": "acceptance"
+      },
+      "target": {
+        "entity": "measure",
+        "field": "acceptance"
+      }
+    },
+    {
+      "key": "verifyWay",
+      "label": "验证方式",
+      "source": {
+        "ds": "ds-measure",
+        "field": "verifyWay"
+      },
+      "target": {
+        "entity": "measure",
+        "field": "verifyWay"
+      }
+    },
+    {
+      "key": "verifyResult",
+      "label": "验证结论",
+      "source": {
+        "ds": "ds-measure",
+        "field": "verifyResult"
+      },
+      "target": {
+        "entity": "measure",
+        "field": "verifyResult"
+      }
+    },
+    {
+      "key": "evidence",
+      "label": "验证依据",
+      "source": {
+        "ds": "ds-measure",
+        "field": "evidence"
+      },
+      "target": {
+        "entity": "measure",
+        "field": "evidence"
+      }
+    },
+    {
+      "key": "invalidReason",
+      "label": "无效依据",
+      "source": {
+        "ds": "ds-measure",
+        "field": "invalidReason"
+      },
+      "target": {
+        "entity": "measure",
+        "field": "invalidReason"
+      }
+    },
+    {
+      "key": "plan",
+      "label": "执行计划",
+      "source": {
+        "ds": "ds-measure",
+        "field": "plan"
+      },
+      "target": {
+        "entity": "measure",
+        "field": "plan"
+      }
+    },
+    {
+      "key": "doneAt",
+      "label": "实际完成时间",
+      "source": {
+        "ds": "ds-measure",
+        "field": "doneAt"
+      },
+      "target": {
+        "entity": "measure",
+        "field": "doneAt"
+      }
+    },
+    {
+      "key": "proof",
+      "label": "完成证据",
+      "source": {
+        "ds": "ds-measure",
+        "field": "proof"
+      },
+      "target": {
+        "entity": "measure",
+        "field": "proof"
+      }
+    },
+    {
+      "key": "note",
+      "label": "说明",
+      "source": {
+        "ds": "ds-measure",
+        "field": "note"
+      },
+      "target": {
+        "entity": "measure",
+        "field": "note"
+      }
+    },
+    {
+      "key": "conclusion",
+      "label": "审批意见",
+      "source": {
+        "ds": "ds-accident",
+        "field": "conclusion"
+      },
+      "target": {
+        "entity": "accident",
+        "field": "conclusion"
+      }
+    },
+    {
+      "key": "monthlyReport",
+      "label": "是否纳入月度安环通报",
+      "source": {
+        "ds": "ds-accident",
+        "field": "monthlyReport"
+      },
+      "target": {
+        "entity": "accident",
+        "field": "monthlyReport"
+      }
+    },
+    {
+      "key": "rejectReason",
+      "label": "退回原因",
+      "source": {
+        "ds": "ds-accident",
+        "field": "rejectReason"
+      },
+      "target": {
+        "entity": "accident",
+        "field": "rejectReason"
+      }
+    },
+    {
+      "key": "docNo",
+      "label": "单据编号",
+      "source": {
+        "ds": "ds-measure",
+        "field": "measureNo"
+      }
+    },
+    {
+      "key": "todo",
+      "label": "待办事项",
+      "source": {
+        "ds": "ds-measure",
+        "field": "todo"
+      }
+    },
+    {
+      "key": "todoKind",
+      "label": "待办类型",
+      "source": {
+        "ds": "ds-measure-kind",
+        "field": "kind"
+      }
+    },
+    {
+      "key": "daysLeft",
+      "label": "剩余天数",
+      "source": {
+        "ds": "ds-days-left",
+        "rule": "要求完成日期 − 今天，按自然日向下取整",
+        "fallback": "已完成为 0，超期为负数"
+      }
+    }
+  ],
+  "dataSources": [
+    {
+      "id": "ds-accident",
+      "kind": "entity",
+      "ref": "accident",
+      "note": "事故报告主表"
+    },
+    {
+      "id": "ds-measure",
+      "kind": "entity",
+      "ref": "measure",
+      "note": "措施单"
+    },
+    {
+      "id": "ds-acc-level",
+      "kind": "dict",
+      "ref": "accident.level"
+    },
+    {
+      "id": "ds-acc-type",
+      "kind": "dict",
+      "ref": "accident.type"
+    },
+    {
+      "id": "ds-acc-status",
+      "kind": "dict",
+      "ref": "accident.status"
+    },
+    {
+      "id": "ds-measure-status",
+      "kind": "dict",
+      "ref": "measure.status"
+    },
+    {
+      "id": "ds-measure-kind",
+      "kind": "dict",
+      "ref": "measure.kind"
+    },
+    {
+      "id": "ds-patrol-result",
+      "kind": "dict",
+      "ref": "accident.patrolResult"
+    },
+    {
+      "id": "ds-org",
+      "kind": "dict",
+      "ref": "组织架构",
+      "note": "组织架构由 HR 系统维护，本系统只读；接口未定，先按部门名取"
+    },
+    {
+      "id": "ds-serial",
+      "kind": "system",
+      "ref": "accNo"
+    },
+    {
+      "id": "ds-stay",
+      "kind": "calc",
+      "ref": "stayDays"
+    },
+    {
+      "id": "ds-measure-count",
+      "kind": "calc",
+      "ref": "measureCount"
+    },
+    {
+      "id": "ds-days-left",
+      "kind": "calc",
+      "ref": "daysLeft"
+    },
+    {
+      "id": "ds-why-chain",
+      "kind": "calc",
+      "ref": "whyChain"
     }
   ],
   "slices": [

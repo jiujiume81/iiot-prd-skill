@@ -1265,3 +1265,34 @@ textarea.ff-input { resize: vertical; line-height: 1.6; }
 .nav-item { cursor: pointer; }
 .nav-item.is-void { opacity: .5; cursor: not-allowed; }
 .nav-item.is-void:hover { background: transparent; color: #b9cace; }
+
+/* 字段字典（PRD 面板合成小节） */
+.prd-dict { display: flex; flex-direction: column; gap: 8px; }
+.prd-field {
+  border: 1px solid var(--line); border-radius: var(--r-md);
+  padding: 8px 10px; background: var(--surface);
+  transition: background .2s ease, box-shadow .2s ease;
+}
+.prd-field.is-flash {
+  background: var(--brand-50);
+  box-shadow: inset 0 0 0 1px var(--brand-400);
+}
+.prd-field-h {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 8px; margin-bottom: 4px;
+}
+.prd-field-k { font-size: var(--fs-xs); font-weight: 500; color: var(--text-1); }
+.prd-field-type { font-size: 10px; color: var(--text-3); font-family: ui-monospace, Menlo, monospace; }
+.prd-field-row { display: flex; gap: 8px; font-size: 11px; line-height: 1.7; color: var(--text-2); }
+.prd-field-row b { flex: 0 0 56px; font-weight: 500; color: var(--text-3); }
+@keyframes fieldFlash {
+  from { background: var(--brand-100); box-shadow: inset 0 0 0 1px var(--brand-500); }
+  to { background: var(--surface); box-shadow: inset 0 0 0 1px transparent; }
+}
+.prd-field.is-flash { animation: fieldFlash 1.6s ease-out; }
+
+/* 区块说明文案（SectionCard.props.notes）：小字、次要色，和字段值拉开 */
+.sec-notes { display: flex; flex-direction: column; gap: 6px; margin-bottom: 4px; }
+.sec-note { display: flex; gap: 10px; font-size: var(--fs-xs); line-height: 1.8; color: var(--text-2); }
+.sec-note-k { flex: 0 0 72px; color: var(--text-3); }
+.sec-note-v { flex: 1; min-width: 0; }

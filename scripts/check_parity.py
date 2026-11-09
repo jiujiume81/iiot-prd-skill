@@ -18,6 +18,7 @@ IIOT-PRD 三处一致校验（C 系列判据）
 退出码：0 一致，1 不一致，2 跑不起来（没 Chrome / 没构建产物）。
 """
 import argparse
+import hashlib
 import html as htmllib
 import json
 import os
@@ -26,6 +27,9 @@ import shutil
 import subprocess
 import sys
 import tempfile
+
+import build_prd
+import field_sites
 
 E, W = "ERROR", "WARN"
 issues = []
@@ -127,7 +131,7 @@ def walk(node, out):
     return out
 
 
-def check(proto_path, html_path, chrome):
+def check(proto_path, html_path, chrome, prd_path=None):
     proto = json.load(open(proto_path, encoding="utf-8"))
     base = "file://" + os.path.abspath(html_path)
     pages = proto.get("pages") or []
@@ -272,7 +276,164 @@ def check(proto_path, html_path, chrome):
                 add(E, "C-21",
                     f"命令 {c.get('id')} 的 from={unknown} 不在 {c.get('entity')} 的状态机里：状态写错了")
 
+    # ---- C-22 字段字典章必须与「主档 + 渲染位」同集同序 ----
+    check_c22(proto, prd_path, proto_path)
+    # ---- C-23 PRD 必须覆盖契约要素 ----
+    check_c23(proto, prd_path, proto_path)
+    # ---- C-24 产物必须自证生成来源 ----
+    check_c24(proto_path, prd_path, html_path)
+
     return tmpdir
+
+
+def check_c23(proto, prd_path, proto_path=None):
+    """C-23：PRD 必须覆盖每条 guard / requirement / decision。
+
+    guard 比 statement 全文（PRD 里出现 "g-1" 说明不了任何事）；
+    需求与决策按规格比 id。任一类缺一条就红，一类一条汇总，不逐条刷屏。
+    """
+    guards = proto.get("guards") or []
+    reqs = proto.get("requirements") or []
+    decs = proto.get("decisions") or []
+    if not (guards or reqs or decs):
+        return
+    if prd_path:
+        md = open(prd_path, encoding="utf-8").read()
+    else:
+        try:
+            md = build_prd.build(proto, None, proto_path)
+        except Exception as e:
+            add(E, "C-23", f"PRD 生成器跑不起来：{e}")
+            return
+
+    def miss(items, text_of, label, how):
+        # 形状不合（字段缺失）不在这一层报，交给 L2-102/L2-104，避免同一根因两层各红一次
+        usable = [(it, text_of(it)) for it in items if str(text_of(it) or "").strip()]
+        gone = [it.get("id") or "?" for it, t in usable if t.strip() not in md]
+        if gone:
+            add(E, "C-23", f"PRD 缺 {len(gone)} 条 {label}：{gone[:8]}{'…' if len(gone) > 8 else ''}（{how}）")
+
+    # 按规格：guard 比 statement 全文（比 id 等于没判）；需求与决策比 id
+    miss(guards, lambda g: g.get("statement"), "guard 规则", "按规则原文全文比对，不是 id")
+    miss(reqs, lambda r: r.get("id"), "需求", "按 id 比对")
+    miss(decs, lambda d: d.get("decision"), "决策", "按 decision 全文比对")
+
+
+def _file_sha16(path):
+    with open(path, "rb") as f:
+        return hashlib.sha256(f.read()).hexdigest()[:16]
+
+
+def check_c24(proto_path, prd_path, html_path):
+    """C-24：产物必须自证生成来源。
+
+    PRD 头部指纹 / 容器 meta 都必须等于当前契约文件字节哈希。
+    「没有指纹」也判红：旧版产物根本没有这一行，只判「不等」会把它 skip 掉。
+    """
+    cur = _file_sha16(proto_path)
+
+    # PRD
+    if prd_path:
+        md = open(prd_path, encoding="utf-8").read()
+    else:
+        try:
+            md = build_prd.build(json.load(open(proto_path, encoding="utf-8")), None, proto_path)
+        except Exception as e:
+            add(E, "C-24", f"PRD 生成器跑不起来：{e}")
+            md = ""
+    m = re.search(r"生成源：.*?sha256:([0-9a-f]{16})", md or "")
+    if not m:
+        add(E, "C-24", "PRD 头部没有「生成源：… sha256:…」指纹：无法证明这份文档是当前契约生成的")
+    elif m.group(1) != cur:
+        add(E, "C-24", f"PRD 生成自 sha256:{m.group(1)}，当前契约是 sha256:{cur}：PRD 是旧版")
+
+    # 容器
+    try:
+        hm = open(html_path, encoding="utf-8", errors="ignore").read(2000)
+    except Exception:
+        hm = ""
+    mh = re.search(r'<meta name="prd-source" content="sha256:([0-9a-f]{16})"', hm)
+    if not mh:
+        add(E, "C-24", "容器产物没有 prd-source 指纹：无法证明它是当前契约构建的")
+    elif mh.group(1) != cur:
+        add(E, "C-24", f"容器构建自 sha256:{mh.group(1)}，当前契约是 sha256:{cur}：产物是旧版")
+
+
+def _blocks(md):
+    return re.findall(r"^#### (field-\S+)", md, re.M)
+
+
+def check_c22(proto, prd_path, proto_path=None):
+    """C-22：PRD 的 4.1 主档表与 4.2 逐位块，必须与契约同集同序。
+
+    没有 fieldCatalog 时不报——那是 L2-96/97 的根因，同一条错不在 C 层重复报。
+    """
+    cat = proto.get("fieldCatalog") or []
+    if not cat:
+        return
+    if prd_path:
+        md = open(prd_path, encoding="utf-8").read()
+    else:
+        try:
+            md = build_prd.build(proto, None, proto_path)
+        except Exception as e:                     # 生成器自己崩了，比字段错更严重
+            add(E, "C-22", f"PRD 生成器跑不起来：{e}")
+            return
+
+    i = md.find("\n## 4 字段字典")
+    if i < 0:
+        add(E, "C-22", "PRD 里没有「## 4 字段字典」章：字段说明缺席，开发只能自己猜")
+        return
+    j = md.find("\n## 5 ", i)
+    ch = md[i:j if j > 0 else None]
+
+    # 4.1 主档表：字段列先后必须与声明顺序一致
+    seg = ch.split("### 4.1 字段主档")
+    got = []
+    if len(seg) > 1:
+        body = seg[1].split("### 4.2")[0]
+        for ln in body.splitlines():
+            s = ln.strip()
+            if s.startswith("|") and not re.match(r"^\|[\s:\-|]+\|$", s):
+                cells = [c.strip() for c in s.strip("|").split("|")]
+                if cells and cells[0] not in ("字段",):
+                    got.append(cells[1] if len(cells) > 1 else "")
+    want = [f.get("key") for f in cat]
+    if got != want:
+        miss = [k for k in want if k not in got]
+        extra = [k for k in got if k not in want]
+        if miss or extra:
+            add(E, "C-22", f"4.1 主档与 fieldCatalog 不同集：缺 {miss[:6]}，多 {extra[:6]}")
+        else:
+            add(E, "C-22", "4.1 主档顺序与 fieldCatalog 不一致：字段章要按主档声明序排")
+
+    # 4.2 逐位块：页序 + 组件树先序
+    sig = field_sites.render_sites(proto)
+    exp = []
+    for pg in proto.get("pages") or []:
+        k = 0
+        for s in sig:
+            if s["page_id"] != pg.get("id"):
+                continue
+            # 与 build_prd 完全同一套编号（三段：页 + 容器 + key）
+            exp.append(field_sites.block_id(s, k))
+            k += 1
+    gotb = _blocks(ch)
+    if gotb != exp:
+        # 用计数差，不用集合差：同一页同一个 key 可能出现两次（筛选项 + 列），
+        # 少一块时集合差会把它当成"还在"，误报成顺序问题
+        ce, cg = {}, {}
+        for x in exp:
+            ce[x] = ce.get(x, 0) + 1
+        for x in gotb:
+            cg[x] = cg.get(x, 0) + 1
+        miss = [x for x in ce if ce[x] > cg.get(x, 0)]
+        extra = [x for x in cg if cg[x] > ce.get(x, 0)]
+        if miss or extra:
+            add(E, "C-22", f"4.2 逐位说明与渲染位不同集：缺 {miss[:6]}，多 {extra[:6]}"
+                            "（手写的字段块或生成器漏页）")
+        else:
+            add(E, "C-22", "4.2 逐位说明顺序不对：块序必须是「页序 + 组件树先序」")
 
 
 def main():
@@ -280,6 +441,7 @@ def main():
     ap.add_argument("proto")
     ap.add_argument("--html", default=None, help="容器产物，默认 assets/container/dist/index.html")
     ap.add_argument("--chrome", default=None)
+    ap.add_argument("--prd", default=None, help="已生成的 PRD.md；不给则现场用 build_prd 生成后比对（C-22）")
     ap.add_argument("--keep", action="store_true", help="保留抓取到的 DOM 与 MD 便于排查")
     args = ap.parse_args()
 
@@ -294,7 +456,7 @@ def main():
               file=sys.stderr)
         return 2
 
-    tmpdir = check(args.proto, html_path, chrome)
+    tmpdir = check(args.proto, html_path, chrome, args.prd)
 
     errors = [i for i in issues if i[0] == E]
     warns = [i for i in issues if i[0] == W]

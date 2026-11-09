@@ -21,6 +21,8 @@ import subprocess
 import sys
 import tempfile
 
+import field_sites      # 渲染位抽取：与 check_contract.py 共用这一份实现
+
 CHROME_CANDIDATES = [
     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
     "/Applications/Chromium.app/Contents/MacOS/Chromium",
@@ -302,6 +304,73 @@ def build_cases(proto):
     # 8. R-09 引擎自保：绕过界面直接调 RD.action 也拦得住。
     cases += role_all_cases(proto)
     cases += bypass_cases(proto)
+    cases += field_cases(proto)
+    return cases
+
+
+def field_cases(proto):
+    """R-11 点字段定位 / R-12 不劫持输入与标注。
+
+    一个页面一条用例，页内所有已绑定的渲染位在探针里循环点一遍：
+    按位拆成 Python 用例会把 84 个渲染位变成 84 次浏览器跳页，
+    budget 直接撞上限；页内循环既快，报错也能聚合。
+    """
+    # 条件是「这一位在 PRD 里有块」，不是「它绑定了主档」：
+    # 条件筛选（关键词/日期区间/是否超期）没有业务字段，但同样有块、同样挂 data-field，
+    # 用户点它一样期待跳过去。按「已绑定」筛会把它们漏掉，绿着但没测。
+    sites = [s for s in field_sites.render_sites(proto) if not s["missing_key"]]
+    by_page = {}
+    for s in sites:
+        by_page.setdefault(s["page_id"], []).append(s)
+
+    cases = []
+    for pid, grp in by_page.items():
+        caps_by = {c.get("id"): c for c in (proto.get("capabilities") or [])}
+        # 弹层挂在 owns 页的字典里，但按钮可能渲染在别页（越权渲染/双入口）；
+        # 点击必须去"真正画了按钮"的那一页，否则入口找不到
+        render_page = {}
+        for pg in (proto.get("pages") or []):
+            for nd in field_sites.walk_tree(pg.get("componentTree") or {}):
+                pr = nd.get("props") or {}
+                ids = [pr.get("capability")]
+                ids += [a.get("capability") for a in (pr.get("actions") or []) if isinstance(a, dict)]
+                cols = pr.get("columns")
+                for c in (cols if isinstance(cols, list) else []):
+                    if isinstance(c, dict):
+                        ids += [a.get("capability") for a in (c.get("actions") or []) if isinstance(a, dict)]
+                for cid in ids:
+                    if cid and cid not in render_page:
+                        render_page[cid] = pg.get("id")
+        payload = [{
+            "key": s["key"],
+            "site": s["site_id"],
+            "label": s["label"] or s["key"],
+            "kind": s["kind"],
+            "cap": s["cap_id"],
+            "openPage": render_page.get(s["cap_id"]),
+            "from": ((caps_by.get(s["cap_id"]) or {}).get("from") or [None])[0],
+        } for s in grp]
+        cases.append({
+            "kind": "field",
+            "name": "R-11 %s · %d 个渲染位点标签都能定位到字段块" % (pid, len(payload)),
+            "page": pid,
+            "sites": payload,
+        })
+        # R-12 挑一个带输入框的位置和一个有标签的位置：优先表单，其次筛选条
+        typed = next((s for s in grp if s["kind"] in ("form", "filter")
+                      and s["scope"] in ("in", "filter-field")
+                      and s["raw"].get("type") not in ("upload", "readonly")
+                      and not s["raw"].get("readonly")), None)
+        labelled = next((s for s in grp if s["kind"] in ("form", "filter", "column", "desc")), None)
+        if typed and labelled:
+            cases.append({
+                "kind": "fieldguard",
+                "name": "R-12 %s · 字段点击不劫持输入、不劫持标注" % pid,
+                "page": pid,
+                "inputKey": typed["key"],
+                "annotKey": labelled["key"],
+                "annotSite": labelled["site_id"],
+            })
     return cases
 
 
@@ -1161,8 +1230,110 @@ PROBE = r"""(function () {
             }
           }
         }
+      } else if (c.kind === 'field') {
+        // R-11：本页每个已绑定的渲染位，点它的标签都要定位到 field-{page}-{key} 块
+        var S1 = (window.__RD_TEST__ || {}).store || {};
+        var miss = [];
+        for (var si = 0; si < c.sites.length; si++) {
+          var sf = c.sites[si];
+          if (sf.cap) {
+            if (sf.openPage && sf.openPage !== c.page) {
+              window.RD.goto(sf.openPage, '探针-入口页');
+              await sleep(420);
+            }
+            var ent = findClickable('', sf.cap);
+            if (!ent) { miss.push(sf.key + '：找不到命令入口'); continue; }
+            if (ent.classList.contains('is-off') || ent.classList.contains('is-disabled')) {
+              // 行级命令的可点性跟状态走；先把状态拨到这条命令的 from，再重取入口
+              if (sf.from) { setStatus(sf.from); await sleep(300); }
+              ent = findClickable('', sf.cap);
+              if (!ent || ent.classList.contains('is-off') || ent.classList.contains('is-disabled')) {
+                miss.push(sf.key + '：命令入口置灰（from=' + (sf.from || '未声明') + '）'); continue;
+              }
+            }
+            ent.click();
+            if (!await waitFor(mask, 1200)) { miss.push(sf.key + '：弹层打不开'); continue; }
+          }
+          var el1 = document.querySelector('[data-field="' + sf.key + '"][data-site="' + sf.site + '"]');
+          if (!el1) { miss.push(sf.key + '：找不到 [data-field][data-site]（标识缺失）'); }
+          else if (el1.getAttribute('data-page') !== c.page) {
+            miss.push(sf.key + '：data-page=' + el1.getAttribute('data-page'));
+          } else {
+            var lab1 = el1.querySelector('.field-label, .form-label, .desc-k, .ff-label') ||
+                       (el1.classList.contains('dt-cell') ? el1 : null);
+            if (!lab1) { miss.push(sf.key + '：没有可点标签'); }
+            else {
+              lab1.click();
+              await sleep(300);
+              var id1 = 'field-' + c.page + '-' + sf.site + '-' + sf.key;
+              var blk = document.getElementById(id1);
+              if (!S1.showPrd || S1.prdTab !== 'page') { miss.push(sf.key + '：没打开 PRD 面板'); }
+              else if (!blk) { miss.push(sf.key + '：目标块 ' + id1 + ' 不存在'); }
+              else if (txt(blk).indexOf(sf.label) < 0) { miss.push(sf.key + '：块里没有「' + sf.label + '」'); }
+              else if (txt(blk).indexOf(sf.site) < 0) { miss.push(sf.key + '：块里没写位置 ' + sf.site); }
+              else if (!blk.classList.contains('is-flash')) { miss.push(sf.key + '：没高亮'); }
+              S1.showPrd = false;
+              await sleep(90);
+            }
+          }
+          if (sf.cap) {
+            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+            await sleep(160);
+          }
+        }
+        ok = miss.length === 0;
+        detail = ok ? (c.sites.length + ' 个渲染位全部定位成功')
+                    : (miss.length + ' 个失败：' + miss.slice(0, 6).join('；'));
+      } else if (c.kind === 'fieldguard') {
+        // R-12：输入不被劫持 / 标注优先级 / 关掉标注后恢复
+        var S2 = (window.__RD_TEST__ || {}).store || {};
+        var t1 = false, t2 = false, t3 = false, why2 = [];
+        var inp = document.querySelector('[data-field="' + c.inputKey + '"] input, [data-field="' + c.inputKey + '"] textarea, [data-field="' + c.inputKey + '"] select');
+        if (!inp) why2.push('找不到输入控件');
+        else {
+          S2.showPrd = false;
+          var typedVal;
+          if (inp.tagName === 'SELECT') {
+            typedVal = (inp.options[1] || inp.options[0] || {}).value || inp.value;
+            inp.value = typedVal;
+            inp.dispatchEvent(new Event('change', { bubbles: true }));
+          } else {
+            typedVal = '涂布辊划痕';
+            inp.focus(); inp.value = typedVal;
+            inp.dispatchEvent(new Event('input', { bubbles: true }));
+          }
+          await sleep(150);
+          t1 = (inp.value === typedVal) && !S2.showPrd;
+          if (!t1) why2.push('输入/选择被字段点击劫持');
+        }
+        var host2 = document.querySelector('[data-field="' + c.annotKey + '"]');
+        var lab2 = host2 ? (host2.querySelector('.field-label, .form-label, .desc-k, .ff-label') ||
+                            (host2.classList.contains('dt-cell') ? host2 : null)) : null;
+        if (!lab2) why2.push('找不到可点标签');
+        else {
+          S2.annotMode = true;
+          await sleep(120);
+          var r2 = lab2.getBoundingClientRect();
+          lab2.dispatchEvent(new MouseEvent('click', {
+            bubbles: true, clientX: r2.left + r2.width / 2, clientY: r2.top + r2.height / 2
+          }));
+          await sleep(280);
+          t2 = !!document.querySelector('.annot-pop') && !S2.showPrd;
+          if (!t2) why2.push('标注模式优先被破坏：点字段没弹标注框');
+          S2.popover = null;
+          S2.annotMode = false;
+          await sleep(160);
+          lab2.click();
+          await sleep(280);
+          t3 = !!S2.showPrd && !!document.getElementById('field-' + c.page + '-' + c.annotSite + '-' + c.annotKey);
+          if (!t3) why2.push('关掉标注后点同一处没能打开字典');
+          S2.showPrd = false;
+        }
+        ok = t1 && t2 && t3;
+        detail = ok ? '输入不劫持 / 标注优先 / 关标注后定位恢复'
+                    : why2.join('；');
       } else {
-        // R-10 三级判定。
+
         // 这条用例问的是"契约说有的入口，点得开吗"，但点不开有两种原因：
         // ① 承载层没实现；② mock 数据里没有能触发的行。它自己分不清这两者，
         // 硬让它报红就是让它替数据层背锅（数据的事归 C-21）。
@@ -1293,7 +1464,10 @@ def main():
     # 单条用例最坏约 2~3s 虚拟时间（跳页 450ms + 三轮拨状态与重渲染），按 6s 留余量。
     # 上限 300s：--virtual-time-budget 是虚拟时钟，撞到上限说明页面里有东西一直排任务，
     # 那不是"用例太多"，加钱（加预算）解决不了，得去查那个死循环。
-    budget = args.budget or min(300000, max(60000, len(cases) * 6000))
+    # R-11 会逐个渲染位点标签（弹层还要先切到按钮真实所在页），
+    # 只按用例数估会低估虚拟时间，最后一段没跑完就被截断、报"没跑起来"
+    field_sites_n = sum(len(c.get("sites") or []) for c in cases if c.get("kind") == "field")
+    budget = args.budget or min(540000, max(60000, len(cases) * 6000 + field_sites_n * 1200))
 
     # 升版守卫的种子必须在 app 脚本跑起来之前落到 localStorage，
     # 所以插在 <body> 之后，而不是跟探针一起塞在 </body> 前。

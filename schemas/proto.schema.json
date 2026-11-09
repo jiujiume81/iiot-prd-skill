@@ -91,10 +91,18 @@
         "$ref": "#/$defs/guard"
       }
     },
-    "fieldRegistry": {
+    "fieldCatalog": {
       "type": "array",
+      "description": "业务字段主档：一条 = 一个业务字段，跨页唯一。渲染位通过 field 引用它；位置信息不写在这里，写在组件 props 上",
       "items": {
-        "$ref": "#/$defs/fieldRegistryItem"
+        "$ref": "#/$defs/fieldCatalogItem"
+      }
+    },
+    "dataSources": {
+      "type": "array",
+      "description": "全局取数口。字段的 source.ds 只能引用这里声明的 id；页级取数链路表由渲染位反推，不手写",
+      "items": {
+        "$ref": "#/$defs/dataSource"
       }
     },
     "slices": {
@@ -808,6 +816,7 @@
             "select",
             "user",
             "radio",
+            "upload",
             "readonly"
           ]
         },
@@ -835,6 +844,28 @@
         "value": {
           "type": "string",
           "description": "原型预填值，用于展示典型填写状态"
+        },
+        "field": {
+          "type": "string",
+          "description": "引用的业务字段键（fieldCatalog[].key）；缺省时等于本字段 key。写错由 L2-96 报「不在 fieldCatalog」"
+        },
+        "rules": {
+          "type": "object",
+          "description": "本处的录入校验。同一字段两处录入，必填性可以不同，所以归渲染位不归主档",
+          "required": [
+            "text"
+          ],
+          "properties": {
+            "text": {
+              "type": "string",
+              "minLength": 6,
+              "description": "校验口径，写清口径而不是写「按需填写」"
+            },
+            "message": {
+              "type": "string",
+              "description": "校验失败提示，逐字可抄"
+            }
+          }
         }
       }
     },
@@ -1603,53 +1634,123 @@
         "fallback": {
           "type": "string",
           "description": "不在界面体现时的理由"
+        },
+        "expr": {
+          "type": "string",
+          "description": "可判定形式（表达式/伪代码）。给人看的口径写 statement；这条是给机器与测试用的，可选"
+        },
+        "message": {
+          "type": "string",
+          "description": "不满足时给用户看的那句话，逐字可抄；挂了 capabilityId 的 guard 必填（L2-102）"
         }
       }
     },
-    "fieldRegistryItem": {
+    "fieldCatalogItem": {
       "type": "object",
+      "description": "一个业务字段的一生：身份、从哪来（source）、到哪去（target）。位置信息不在这里——它归渲染位",
       "required": [
-        "name",
-        "sourceRef",
-        "type",
-        "pageId",
-        "block",
-        "required",
-        "scope"
+        "key",
+        "label",
+        "source"
       ],
       "properties": {
-        "name": {
+        "key": {
           "type": "string",
-          "description": "逐字取自源文档"
+          "pattern": "^[a-z][A-Za-z0-9_]*$",
+          "description": "业务键，小驼峰；与落库字段同名为佳。不是任何一处渲染位的 key"
         },
-        "sourceRef": {
-          "type": "string"
-        },
-        "type": {
-          "type": "string"
-        },
-        "pageId": {
-          "type": "string"
-        },
-        "block": {
+        "label": {
           "type": "string",
-          "description": "组件树节点 id；该节点可渲染文本里必须真的看得到这个字段"
+          "minLength": 2,
+          "description": "业务全名。渲染位的界面文案（如列头「等级」）不要求与它相等——那是文案，不是身份"
         },
-        "required": {
-          "type": "boolean"
+        "source": {
+          "$ref": "#/$defs/dataSourceRef"
         },
-        "scope": {
+        "target": {
+          "type": "object",
+          "description": "落库去向。只有会被录入的字段才必须有；纯计算、纯筛选字段没有",
+          "required": [
+            "entity",
+            "field"
+          ],
+          "properties": {
+            "entity": {
+              "type": "string"
+            },
+            "field": {
+              "type": "string"
+            }
+          }
+        },
+        "reqRefs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "需求出处：流程小节、决策 id。一条字段常同时来自多处"
+        },
+        "note": {
+          "type": "string",
+          "description": "口径例外、统计含义这类「不放会出错」的话"
+        }
+      }
+    },
+    "dataSource": {
+      "type": "object",
+      "description": "一个取数口。只到「哪个口、哪一格」，不下钻接口与库表字段",
+      "required": [
+        "id",
+        "kind",
+        "ref"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^ds-[A-Za-z0-9_-]+$"
+        },
+        "kind": {
           "type": "string",
           "enum": [
-            "in",
-            "out"
-          ]
+            "entity",
+            "dict",
+            "calc",
+            "api",
+            "system"
+          ],
+          "description": "entity=本系统实体；dict=字典；calc=计算口径（必须是 dataModel.derived 里的 name）；api=外部接口；system=系统生成（单号/时间/当前人）"
         },
-        "reason": {
+        "ref": {
+          "type": "string",
+          "description": "entity=实体 id；dict=实体.字段 或外部字典名；calc=dataModel.derived[].name；api=接口/对象名；system=生成物标识"
+        },
+        "note": {
+          "type": "string",
+          "description": "外部字典与 api 必须写：说明为什么机器核不了"
+        }
+      }
+    },
+    "dataSourceRef": {
+      "type": "object",
+      "description": "字段级取数引用：从哪个口的哪一格取、取不到怎么兜底",
+      "required": [
+        "ds"
+      ],
+      "properties": {
+        "ds": {
           "type": "string"
         },
-        "decisionId": {
-          "type": "string"
+        "field": {
+          "type": "string",
+          "description": "取数口内的字段名；entity/dict/api 必填"
+        },
+        "rule": {
+          "type": "string",
+          "description": "calc/system 必填：算式口径或生成规则（单号格式、当前时间、当前人）"
+        },
+        "fallback": {
+          "type": "string",
+          "description": "取不到时的兜底口径"
         }
       }
     },

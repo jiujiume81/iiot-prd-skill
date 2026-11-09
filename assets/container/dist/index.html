@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="prd-source" content="sha256:ffa678421e4d8f4a">
 <title>新锂想质量管理系统 · 原型与 PRD</title>
 <style id="iiot-css">
 /* ============================================================
@@ -1273,6 +1274,37 @@ textarea.ff-input { resize: vertical; line-height: 1.6; }
 .nav-item.is-void { opacity: .5; cursor: not-allowed; }
 .nav-item.is-void:hover { background: transparent; color: #b9cace; }
 
+/* 字段字典（PRD 面板合成小节） */
+.prd-dict { display: flex; flex-direction: column; gap: 8px; }
+.prd-field {
+  border: 1px solid var(--line); border-radius: var(--r-md);
+  padding: 8px 10px; background: var(--surface);
+  transition: background .2s ease, box-shadow .2s ease;
+}
+.prd-field.is-flash {
+  background: var(--brand-50);
+  box-shadow: inset 0 0 0 1px var(--brand-400);
+}
+.prd-field-h {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 8px; margin-bottom: 4px;
+}
+.prd-field-k { font-size: var(--fs-xs); font-weight: 500; color: var(--text-1); }
+.prd-field-type { font-size: 10px; color: var(--text-3); font-family: ui-monospace, Menlo, monospace; }
+.prd-field-row { display: flex; gap: 8px; font-size: 11px; line-height: 1.7; color: var(--text-2); }
+.prd-field-row b { flex: 0 0 56px; font-weight: 500; color: var(--text-3); }
+@keyframes fieldFlash {
+  from { background: var(--brand-100); box-shadow: inset 0 0 0 1px var(--brand-500); }
+  to { background: var(--surface); box-shadow: inset 0 0 0 1px transparent; }
+}
+.prd-field.is-flash { animation: fieldFlash 1.6s ease-out; }
+
+/* 区块说明文案（SectionCard.props.notes）：小字、次要色，和字段值拉开 */
+.sec-notes { display: flex; flex-direction: column; gap: 6px; margin-bottom: 4px; }
+.sec-note { display: flex; gap: 10px; font-size: var(--fs-xs); line-height: 1.8; color: var(--text-2); }
+.sec-note-k { flex: 0 0 72px; color: var(--text-3); }
+.sec-note-v { flex: 1; min-width: 0; }
+
 </style>
 </head>
 <body>
@@ -1285,7 +1317,7 @@ window.addEventListener('error', function (e) {
   d.textContent = 'ERR: ' + (e.message || e.type);
   document.body.appendChild(d);
 });
-window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管理系统","version":"0.1.0","domain":"qms","targets":["pc","pda"],"designWidth":{"pc":1440,"pda":390},"baseResolution":"1920x1080","currentPageId":"pg-iqc-report","skin":"industrial-petrol"},"modules":[{"id":"m-iqc","code":"IQC","name":"来料检验","order":1,"owner":"质量部","icon":"inbox","pages":["pg-iqc-report","pg-iqc-sample-pda","pg-iqc-stats"],"pageGroups":[{"key":"exec","title":"检验执行","children":[{"key":"report","title":"来料检验报告","page":"pg-iqc-report"},{"key":"pda","title":"取样任务","page":"pg-iqc-sample-pda"}]},{"key":"stat","title":"统计分析","children":[{"key":"stats","title":"来料检验统计","page":"pg-iqc-stats"}]}]}],"pages":[{"id":"pg-iqc-report","moduleId":"m-iqc","target":"pc","route":"/iqc/report","title":"来料检验报告","parentId":null,"layout":"list","entity":"inspection","contract":{"task":"质量工程师按到货批次核对检验结论，审核后导出报告交供应商","actor":["u-qa"],"owns":["cap-approve","cap-export-report"],"doneWhen":"本批结论已审核且报告已导出","entryFrom":[],"submitBoundary":"单批报告审核"},"states":[{"id":"s-default","kind":"default","desc":"默认态：10 条/页，查询条件回填","vars":{"batchNo":"","taskNo":""}},{"id":"s-loading","kind":"loading","desc":"首屏骨架 + 表体 loading"},{"id":"s-empty","kind":"empty","desc":"系统内无任何到货批次时的引导态"},{"id":"s-zero","kind":"zero-result","desc":"有条件但查不到，提示放宽条件并保留条件","vars":{"batchNo":"PA-2026"}},{"id":"s-error","kind":"error","desc":"接口失败，可重试且不清空查询条件"}],"componentTree":{"id":"n-root","type":"AppShell","props":{"siderCollapsed":false,"brand":{"name":"质量管理","sub":"NILET QMS"},"search":"菜单搜索","groups":[{"title":"工作台","items":[{"key":"my-flow","label":"我的流程","count":3},{"key":"base","label":"基础数据管理"}]},{"title":"来料检验","items":[{"key":"data","label":"来料检测数据"},{"key":"notice","label":"检验通知"},{"key":"task","label":"检验任务"},{"key":"sample","label":"取样任务"},{"key":"my-task","label":"我的来料检验任务","count":5},{"key":"report","label":"来料检验报告","on":true},{"key":"process","label":"过程检验"},{"key":"delivery","label":"发货检验"},{"key":"patrol","label":"现场巡检"},{"key":"stock","label":"库存检验"},{"key":"return","label":"成品退货检验"}]}],"header":{"title":"来料检验报告","crumb":["来料检验","报告"],"user":"傅高修","actions":["刷新","全屏"]}},"children":[{"id":"n-page","type":"PageShell","children":[{"id":"n-tabs","type":"TabStrip","props":{"activeKey":"report","tabs":[{"key":"apply","label":"发起申请","closable":true},{"key":"data","label":"来料检测数据","closable":true},{"key":"notice","label":"检验通知","closable":true},{"key":"report","label":"来料检验报告","closable":true}]}},{"id":"n-filter","type":"FilterBar","props":{"fields":[{"key":"batchNo","label":"到货单号","placeholder":"请输入"},{"key":"taskNo","label":"任务单号","placeholder":"请输入"},{"key":"supplier","label":"供应商","placeholder":"请选择"},{"key":"material","label":"物资名称","placeholder":"请输入"}],"actions":[{"key":"reset","text":"重置","variant":"ghost"},{"key":"search","text":"搜索","variant":"primary"}]}},{"id":"n-status","type":"StatusBar","props":{"note":"单据状态由取样与审核推进，按钮可用性随状态变化","steps":[{"key":"created","label":"待取样"},{"key":"sampled","label":"已取样"},{"key":"reported","label":"待审核"},{"key":"approved","label":"已归档"}]}},{"id":"n-toolbar","type":"ToolBar","props":{"actions":[{"key":"export","text":"导出","variant":"primary","capability":"cap-export-report"},{"key":"approve","text":"审核","variant":"default","capability":"cap-approve"},{"key":"print","text":"打印","variant":"ghost"}],"selected":0}},{"id":"n-table","type":"DataTable","props":{"size":"xs","tableLayout":"fixed","rowKey":"batchNo","pagination":{"page":1,"pageSize":10,"total":9407,"pages":941},"columns":[{"key":"_idx","title":"序号","width":52,"type":"index"},{"key":"batchNo","title":"到货单号","width":130},{"key":"taskNo","title":"任务单号","width":136},{"key":"material","title":"物资名称","width":150},{"key":"spec","title":"规格型号","width":92},{"key":"qty","title":"数量","width":62,"type":"num","align":"right"},{"key":"supplier","title":"供应商名称","width":170},{"key":"supplierBatch","title":"供应商批次号","width":110},{"key":"stdTemplate","title":"质检标准模板","width":114},{"key":"status","title":"报告状态","width":86,"type":"tag"},{"key":"_act","title":"操作","width":94,"type":"action","actions":[{"key":"detail","text":"详情"},{"key":"approve","text":"审核","capability":"cap-approve"}]}],"data":[{"batchNo":"PA-20261028-001","taskNo":"INST20261029001","material":"匣钵","spec":"-","qty":320,"supplier":"萍乡市康明科技有限公司","supplierBatch":"-","secondCode":"-","stdTemplate":"匣钵来料检验","status":"待审核"},{"batchNo":"PA-20261027-006","taskNo":"INST20261028002","material":"迷你撮箕扫把套","spec":"-","qty":40,"supplier":"天津星辰自动化科技有限公司","supplierBatch":"-","secondCode":"-","stdTemplate":"辅材通用","status":"已审核"},{"batchNo":"PA-20261027-005","taskNo":"INST20261028001","material":"迷你撮箕扫把套","spec":"-","qty":40,"supplier":"天津星辰自动化科技有限公司","supplierBatch":"-","secondCode":"-","stdTemplate":"辅材通用","status":"待审核"},{"batchNo":"PA-20261027-002","taskNo":"INST20261027022","material":"泡沫镜","spec":"-","qty":60,"supplier":"安耐康（成都）智能装备科技有限公司","supplierBatch":"-","secondCode":"-","stdTemplate":"外观件","status":"已审核"},{"batchNo":"PA-20260928-008","taskNo":"INST20261027021","material":"加热棒","spec":"-","qty":24,"supplier":"辽阳宏图碳化物有限公司","supplierBatch":"-","secondCode":"-","stdTemplate":"电气件","status":"待取样"},{"batchNo":"PA-20260928-009","taskNo":"INST20261027020","material":"气缸","spec":"-","qty":12,"supplier":"华欧创联（天津）智能电气有限公司","supplierBatch":"-","secondCode":"-","stdTemplate":"气动件","status":"待取样"},{"batchNo":"PA-20260928-009","taskNo":"INST20261027019","material":"旋转气缸","spec":"-","qty":8,"supplier":"华欧创联（天津）智能电气有限公司","supplierBatch":"-","secondCode":"-","stdTemplate":"气动件","status":"待审核"},{"batchNo":"PA-20260928-010","taskNo":"INST20261027018","material":"气缸","spec":"-","qty":16,"supplier":"华欧创联（天津）智能电气有限公司","supplierBatch":"-","secondCode":"-","stdTemplate":"气动件","status":"已审核"},{"batchNo":"PA-20261016-003","taskNo":"INST20261027017","material":"加热棒","spec":"-","qty":30,"supplier":"辽阳宏图碳化物有限公司","supplierBatch":"-","secondCode":"-","stdTemplate":"电气件","status":"待审核"},{"batchNo":"PA-20261016-005","taskNo":"INST20261027016","material":"加热棒","spec":"-","qty":30,"supplier":"辽阳宏图碳化物有限公司","supplierBatch":"-","secondCode":"-","stdTemplate":"电气件","status":"已驳回"}]}},{"id":"n-footer","type":"Pager","props":{"total":9407,"current":1,"pageSize":10,"pages":941}}]}]},"interactions":[{"id":"ix-1","on":"n-table__act_approve","do":"submit","effect":"仅「待审核」可用；点击进入审核确认"},{"id":"ix-2","on":"n-toolbar__act_export","do":"submit","effect":"按当前筛选导出，成功提示条数"},{"id":"ix-3","on":"n-filter__act_search","do":"setState","effect":"有结果进 default，无结果进 zero-result"}],"prd":{"sections":[{"type":"goal","heading":"页面目标","body":"让质量工程师在一屏内完成「按批次找到报告 → 核对结论 → 审核 → 导出」，不需要来回跳页。这一页只承载「已出报告」的核对与审核，取样在现场 PDA 完成。"},{"type":"flow","heading":"主流程","caption":"从到货批次到报告归档","nodes":[{"id":"f1","label":"进入报告列表","kind":"start","sub":"/iqc/report"},{"id":"f2","label":"按到货单号 / 供应商查询","kind":"task"},{"id":"f3","label":"有结果？","kind":"decision"},{"id":"f4","label":"审核报告","kind":"task","sub":"cap-approve"},{"id":"f5","label":"导出报告交供应商","kind":"end"},{"id":"f6","label":"放宽条件重查","kind":"warn"}],"edges":[{"from":"f1","to":"f2"},{"from":"f2","to":"f3"},{"from":"f3","to":"f4","label":"是"},{"from":"f3","to":"f6","label":"否"},{"from":"f6","to":"f2"},{"from":"f4","to":"f5"}]},{"type":"availability","heading":"动作可用性","body":"审核：仅「待审核」可用，其余状态置灰并说明原因（取样人不得自审）。导出：待审核 / 已审核可用，待取样时报告尚未生成，置灰。打印：始终可用。","requirementIds":["REQ-002"]},{"type":"interaction","heading":"交互说明","body":"查询与翻页保留条件；行内「审核」与工具条「审核」同一入口同一能力；点行不跳页，避免误触（工业现场单手操作较多）。"},{"type":"rule","heading":"业务规则","body":"① 审核人与取样人不得为同一人；② 报告导出内容必须与当前筛选一致；③ 已驳回批次需重新发起检验，不允许直接改判。","requirementIds":["REQ-002"]},{"type":"state","heading":"页面状态","body":"默认 / 加载 / 空 / 零结果 / 异常 五态。空态引导去「发起申请」，零结果保留查询条件并给放宽建议，异常可重试。"},{"type":"acceptance","heading":"验收","body":"REQ-002 全部用例通过；9407 条数据下翻页与查询响应可接受；导出行数与列表总数一致。"}]}},{"id":"pg-iqc-sample-pda","moduleId":"m-iqc","target":"pda","route":"/m/iqc/sample","title":"取样任务","parentId":null,"layout":"pda-scan","entity":"inspection","contract":{"task":"取样员在收货现场扫码进入待取样任务，录入数量并提交，弱网可离线暂存","actor":["u-sampler"],"owns":["cap-submit-sample"],"doneWhen":"取样记录提交成功并进入待审核","entryFrom":[],"submitBoundary":"单批次取样提交"},"states":[{"id":"s-default","kind":"default","desc":"扫码前的待扫态","vars":{"batchNo":"","qty":0}},{"id":"s-loading","kind":"loading","desc":"扫码后拉取任务详情"},{"id":"s-empty","kind":"empty","desc":"该批次无待取样任务"},{"id":"s-error","kind":"error","desc":"码无效或网络不可用，转离线暂存"}],"componentTree":{"id":"n-root","type":"PdaShell","props":{"title":"取样任务","sync":"pending","syncCount":1},"children":[{"id":"n-scan","type":"ScanBar","props":{"placeholder":"扫描到货单号 / 批次码"}},{"id":"n-cards","type":"PdaCardList","props":{"cards":[{"id":"PA-20261028-001","sub":"匣钵 · 320 件","status":"待取样","tone":"warning","kv":[{"k":"供应商","v":"萍乡康明"},{"k":"到货时间","v":"10-28 14:20"}]},{"id":"PA-20260928-008","sub":"加热棒 · 24 件","status":"待取样","tone":"warning","kv":[{"k":"供应商","v":"辽阳宏图"},{"k":"到货时间","v":"09-28 09:05"}]}]}},{"id":"n-num","type":"NumpadInput","props":{"label":"取样数量","value":0,"unit":"件","max":320}},{"id":"n-submit","type":"BigAction","props":{"label":"提交取样","capability":"cap-submit-sample","sub":"提交后进入待审核，取样人不得自审"}}]},"interactions":[{"id":"ix-1","on":"n-scan__scan","do":"setState","effect":"回填批次并拉取任务，失败进 error 并转离线暂存"},{"id":"ix-2","on":"n-submit__click","do":"submit","effect":"数量必须在 1~320 之间，越界就地标红"}],"pda":{"onlineOnly":false,"offline":{"queue":true,"conflict":"server-wins","cacheTtlMinutes":480},"scan":{"fields":["batchNo"],"codeTypes":["qrcode","barcode"]},"primaryAction":"n-submit","minTouchTarget":44},"prd":{"sections":[{"type":"goal","heading":"页面目标","body":"让取样员戴着手套、单手、在货场弱网下三步内完成取样提交：扫码 → 填数量 → 提交。"},{"type":"flow","heading":"主流程","nodes":[{"id":"p1","label":"扫描批次码","kind":"start"},{"id":"p2","label":"匹配到待取样任务？","kind":"decision"},{"id":"p3","label":"录入取样数量","kind":"task"},{"id":"p4","label":"提交（可离线）","kind":"end"},{"id":"p5","label":"提示无任务 / 转离线","kind":"warn"}],"edges":[{"from":"p1","to":"p2"},{"from":"p2","to":"p3","label":"是"},{"from":"p2","to":"p5","label":"否"},{"from":"p3","to":"p4"}]},{"type":"rule","heading":"业务规则","body":"数量必须在 1 到到货数量之间；同一批次只允许一次有效提交；离线提交按 server-wins 合并，冲突时保留服务端结论并提示复核。","requirementIds":["REQ-001"]},{"type":"acceptance","heading":"验收","body":"弱网提交不丢数据；数量越界就地拦截；离线队列角标可见；扫码失败可手输。"}]}},{"id":"pg-iqc-stats","title":"来料检验统计","moduleId":"m-iqc","target":"pc","layout":"dashboard","contract":{"task":"质量经理与质量工程师查看本月来料合格率、报告及时率与供应商表现，发现异常后下钻到明细","actor":["u-qa","u-qm"],"owns":["cap-export-stats"],"doneWhen":"看到本月四项核心指标、近 8 周趋势与 TOP6 供应商排名，任一异常指标可一键下钻到明细列表","entryFrom":["pg-iqc-report"],"submitBoundary":"只读统计；所有写操作留在明细页，统计页不提供审核入口"},"states":[{"id":"s-default","kind":"default","desc":"默认态：本月 1 日至当日，四项指标 + 趋势 + 排名"},{"id":"s-loading","kind":"loading","desc":"指标卡骨架 + 图表骨架，不动布局（避免加载完成时页面跳动）"},{"id":"s-empty","kind":"empty","desc":"本月没有任何检验记录：四张指标卡显示「—」，图表区给出「发起申请」入口"},{"id":"s-error","kind":"error","desc":"统计接口失败：显示 trace id，保留上次成功结果并标注「数据截至 xx:xx」"}],"interactions":[{"id":"ix-1","on":"n-k4__click","do":"navigate","target":"pg-iqc-report","effect":"下钻：待审核超期 23 批 → 列表页并带上「超期未审」筛选，返回时保留统计页周期"},{"id":"ix-2","on":"n-toolbar-stats__act_export","do":"submit","capability":"cap-export-stats","effect":"导出本月统计为 Excel，含「指标」「趋势」「供应商排名」三个 sheet"}],"componentTree":{"id":"n-root","type":"AppShell","props":{"siderCollapsed":false,"brand":{"name":"质量管理","sub":"NILET QMS"},"search":"菜单搜索","groups":[{"title":"工作台","items":[{"key":"my-flow","label":"我的流程","count":3},{"key":"base","label":"基础数据管理"}]},{"title":"来料检验","items":[{"key":"data","label":"来料检测数据"},{"key":"notice","label":"检验通知"},{"key":"task","label":"检验任务"},{"key":"sample","label":"取样任务"},{"key":"my-task","label":"我的来料检验任务","count":5},{"key":"report","label":"来料检验报告"},{"key":"process","label":"过程检验"},{"key":"delivery","label":"发货检验"},{"key":"patrol","label":"现场巡检"},{"key":"stock","label":"库存检验"},{"key":"return","label":"成品退货检验"},{"key":"stats","label":"来料检验统计","on":true}]}],"header":{"title":"来料检验统计","crumb":["来料检验","统计"],"user":"傅高修","actions":["刷新","导出","全屏"]}},"children":[{"id":"n-page","type":"PageShell","props":{},"children":[{"id":"n-toolbar-stats","type":"ToolBar","props":{"actions":[{"key":"export","text":"导出统计报表","capability":"cap-export-stats"}]}},{"id":"n-kpi","type":"SectionCard","props":{"title":"本月概况","sub":"2026-10-01 ~ 2026-10-29","extra":"截至 17:20","cols":4},"children":[{"id":"n-k1","type":"KpiCard","props":{"label":"来料批次","value":2847,"unit":"批","delta":8.2,"deltaLabel":"环比","foot":"其中待检 41 批、待审核 67 批","tone":"flat"}},{"id":"n-k2","type":"KpiCard","props":{"label":"报告及时率","value":86.4,"unit":"%","delta":12.1,"positiveIsGood":true,"deltaLabel":"环比","foot":"目标 ≥90%，尚差 3.6pt"}},{"id":"n-k3","type":"KpiCard","props":{"label":"来料不合格率","value":3.7,"unit":"%","delta":0.6,"deltaLabel":"环比","foot":"高于年度目标 3.0%，主要来自 2 家供应商"}},{"id":"n-k4","type":"KpiCard","props":{"label":"待审核超期","value":23,"unit":"批","delta":5,"deltaLabel":"环比","foot":"超 48 小时未审核，点击下钻","href":"pg-iqc-report","hrefLabel":"待审核超期明细"}}]},{"id":"n-grid","type":"Grid","props":{"cols":2,"gap":12},"children":[{"id":"n-trend","type":"SectionCard","props":{"title":"来料合格率趋势","sub":"近 8 周","extra":"口径：合格批次 ÷ 检验批次"},"children":[{"id":"n-chart","type":"Chart","props":{"kind":"line","yUnit":"%","yMin":90,"xAxis":["09-08","09-15","09-22","09-29","10-06","10-13","10-20","10-27"],"series":[{"key":"pass","name":"合格率","color":"#0A7183","data":[95.1,96.3,94.8,97.2,96.6,95.9,96.4,96.3]}],"height":200}}]},{"id":"n-supplier","type":"SectionCard","props":{"title":"供应商合格率 TOP6","sub":"按批次加权，仅统计本月 ≥3 批的供应商"},"children":[{"id":"n-supplier-list","type":"ProgressList","props":{"max":100,"items":[{"key":"s1","label":"江苏鑫材","value":99.2,"unit":"%","tone":"good","note":"42 批 / 不合格 0 批"},{"key":"s2","label":"宁波精铸","value":98.6,"unit":"%","tone":"good","note":"38 批 / 不合格 1 批"},{"key":"s3","label":"山东铝业","value":97.1,"unit":"%","tone":"good","note":"35 批 / 不合格 1 批"},{"key":"s4","label":"常州金属","value":94.3,"unit":"%","tone":"warn","note":"31 批 / 不合格 2 批"},{"key":"s5","label":"苏州铜业","value":91.8,"unit":"%","tone":"bad","note":"27 批 / 不合格 3 批 · 连续 2 月下降"},{"key":"s6","label":"河北型材","value":88.4,"unit":"%","tone":"bad","note":"24 批 / 不合格 4 批 · 建议加严检验"}]}}]}]},{"id":"n-grid2","type":"Grid","props":{"cols":2,"gap":12},"children":[{"id":"n-flow-card","type":"SectionCard","props":{"title":"单据状态分布","sub":"当前本批所处位置","extra":"切换顶部「单据状态」可看不同位置"},"children":[{"id":"n-flow","type":"StatusFlow","props":{"stateMachine":"sm-inspection","followEntity":true,"showGuard":true}}]},{"id":"n-log","type":"SectionCard","props":{"title":"最近异常","extra":"近 72 小时"},"children":[{"id":"n-timeline","type":"Timeline","props":{"items":[{"key":"t1","at":"10-29 15:42","actor":"系统","action":"标准未就绪，任务挂起","note":"RK202610290031 的物料「电解液 A」新版标准尚未发布，取样入口保持可用，审核按钮置灰","tone":"warn"},{"key":"t2","at":"10-28 09:17","actor":"王工","action":"判定不合格","note":"RK202610280012 · 苏州铜业 · 尺寸超差 0.8mm，已触发让步接收审批","tone":"bad"},{"key":"t3","at":"10-27 18:05","actor":"李取样","action":"离线补传 6 条","note":"货场无信号，回办公室后自动上传；其中 1 条与已有记录批次号重复，已作废重取","tone":"normal"}]}}]}]}]}]},"prd":{"sections":[{"type":"goal","heading":"这一页解决什么问题","body":"质量经理每天要知道两件事：**这批货能不能放**、**哪家供应商在变差**。前者在明细页解决，后者需要一个只看趋势和排名的页面。\n\n所以本页不做任何写操作——它只回答「现在正常吗」，异常的处置一律下钻到明细页。这也是列表页顶部不放指标卡的原因：指标和明细是两种查看方式，混在一页里两边都不好用。"},{"type":"flow","heading":"看数到下钻","caption":"指标 → 判定 → 下钻","nodes":[{"id":"s1","label":"进入统计页","kind":"start","sub":"/iqc/stats"},{"id":"s2","label":"看四项指标 + 趋势","kind":"task"},{"id":"s3","label":"有指标越界？","kind":"decision"},{"id":"s4","label":"下钻到明细列表","kind":"task","sub":"navigate pg-iqc-report"},{"id":"s5","label":"结束（本页只读）","kind":"end"}],"edges":[{"from":"s1","to":"s2"},{"from":"s2","to":"s3"},{"from":"s3","to":"s4","label":"越界"},{"from":"s3","to":"s5","label":"正常"},{"from":"s4","to":"s5"}]},{"type":"availability","heading":"动作可用性","body":"导出统计报表：始终可用，不受单据状态影响（`cap-export-stats` 的 `from` 为空）。\n审核、取样：**本页不出现**。统计页出现审核按钮会让「看数」和「处置」混在一起，也是批量误操作的高发点。\n下钻：只读跳转，跳转后带筛选条件，返回键回到本页并保留统计周期。","requirementIds":["REQ-002"]},{"type":"data","heading":"指标口径","body":"| 指标 | 口径 | 分母为 0 时 |\n|---|---|---|\n| 来料批次 | 本月 1 日至当日的检验任务数，按到货单去重 | 显示「—」 |\n| 报告及时率 | 24 小时内出报告的批次数 ÷ 已出报告批次数 | 显示「—」 |\n| 来料不合格率 | 判定不合格的批次数 ÷ 已判定批次数 | 显示「—」 |\n| 待审核超期 | 状态为「待审核」且滞留 >48 小时的批次数 | 显示 0（0 是有效值） |\n\n迁移数据（migrated 标记）**不参与**前三项计算，否则历史 3 200 条会把及时率拉到 11 小时口径，看板数字不能用于汇报。"},{"type":"state","heading":"状态分布怎么读","body":"状态分布图直接由 `sm-inspection` 渲染，不是另画一张图——所以状态机的任何改动（新增状态、改显示名、改迁移触发）都会立刻反映在这里，不会出现「图对不上流程」。\n\n切换顶部「单据状态」可看到同一批数据在不同位置的呈现，用于评审时演示：状态为「已归档」时，本页指标不变，但状态分布图的高亮会移动到末位。"},{"type":"note","heading":"已知限制","body":"1. 趋势图只给近 8 周，更长周期需要下钻到明细导出后自行透视；\n2. 供应商排名只统计本月 ≥3 批的供应商，1~2 批的不参与排名（样本太小，一次不合格就能把排名打到末位）；\n3. 指标为 T+0 实时算，未做预聚合；数据量到 5 万条以上时需改为每日快照。"}]},"route":"/iqc/stats"}],"capabilities":[{"id":"cap-submit-sample","name":"提交取样","actor":["u-sampler"],"entity":"inspection","from":["created"],"guard":"g-1","policy":"disabled","reason":"仅「待取样」可提交","to":"sampled","stage":"submit","target":"pda","label":"提交取样","ui":{"kind":"inline","entry":"n-submit"}},{"id":"cap-approve","name":"审核报告","actor":["u-qa"],"entity":"inspection","from":["reported"],"policy":"disabled","reason":"仅「待审核」可审核","to":"approved","stage":"verify","target":"pc","label":"审核","ui":{"kind":"dialog","entry":"n-table__act_approve","title":"审核来料检验报告","width":560,"submitLabel":"审核通过","successText":"报告已归档","fields":[{"key":"opinion","label":"审核意见","type":"textarea","span":2,"hint":"结论与标准不符时写明依据条款"}]},"placement":"row"},{"id":"cap-export-report","name":"导出报告","actor":["u-qa"],"entity":"inspection","from":["reported","approved"],"policy":"disabled","reason":"报告尚未生成，仅「待审核 / 已归档」可导出","to":null,"stage":null,"target":"pc","label":"导出报告","ui":{"kind":"inline","entry":"n-toolbar__act_export"}},{"id":"cap-export-stats","label":"导出统计报表","entity":"inspection","actor":["u-qa"],"from":[],"policy":"disabled","reason":"统计导出不受单据状态限制；无数据时导出空表并提示","guard":"导出范围不得超过当前筛选的统计周期","pageIds":["pg-iqc-stats"],"ui":{"kind":"inline","entry":"n-toolbar-stats__act_export"}}],"stateMachines":[{"id":"sm-inspection","entity":"inspection","label":"检验任务生命周期","initial":"created","states":[{"key":"created","label":"待取样","tone":"default"},{"key":"sampled","label":"已取样","tone":"processing"},{"key":"reported","label":"待审核","tone":"warning"},{"key":"approved","label":"已归档","tone":"success","terminal":true}],"transitions":[{"from":"created","to":"sampled","trigger":"cap-submit-sample","actor":"u-sampler","guard":"g-1"},{"from":"sampled","to":"reported","trigger":"system-auto-report","system":true},{"from":"reported","to":"approved","trigger":"cap-approve","actor":"u-qa"}]}],"dataModel":{"entities":[{"id":"inspection","name":"Inspection","label":"检验任务","fields":[{"name":"batchNo","label":"到货单号","type":"string","pk":true,"required":true},{"name":"taskNo","label":"任务单号","type":"string","required":true},{"name":"material","label":"物资名称","type":"string","required":true},{"name":"qty","label":"到货数量","type":"number","required":true,"unit":"件"},{"name":"sampleQty","label":"取样数量","type":"number","constraint":"1 <= sampleQty <= qty"},{"name":"supplier","label":"供应商名称","type":"string"},{"name":"stdTemplateId","label":"质检标准模板","type":"ref","fk":"stdTemplate"},{"name":"status","label":"状态","type":"enum","enum":["created","sampled","reported","approved"],"required":true}]},{"id":"stdTemplate","name":"StdTemplate","label":"质检标准模板","fields":[{"name":"id","type":"string","pk":true},{"name":"name","label":"模板名称","type":"string","required":true},{"name":"version","label":"版本","type":"string","required":true}]}],"relations":[{"from":"inspection","to":"stdTemplate","kind":"N:1","on":"stdTemplateId"}],"derived":[{"name":"取样完成率","expr":"sampledCount / totalCount","fallback":"无任务时显示「—」而非 0%"},{"name":"来料合格率","expr":"passBatch / inspectedBatch","fallback":"检验批次为 0 时显示「—」，不显示 0%（0% 会被误读为全不合格）"},{"name":"报告及时率","expr":"reportWithin24h / reportedTotal","fallback":"报告尚未生成的单据不计入分母；迁移数据（migrated）不参与计算"}]},"requirements":[{"id":"REQ-001","title":"取样员提交取样记录","actor":"取样员","trigger":"扫描到货批次码并匹配到待取样任务时","rule":"取样数量必须在 1 到到货数量之间；同一批次仅允许一次有效提交；离线提交进本地队列，恢复网络后自动上传","stateMachine":"sm-inspection：created → sampled（cap-submit-sample，前置 g-1）","expectation":"系统保存取样记录并将任务状态置为「已取样」","acceptance":[{"given":"任务状态为「待取样」且网络正常","when":"取样员录入数量 32 并提交","then":"记录保存成功，状态变为「已取样」","kind":"happy"},{"given":"任务状态为「已取样」","when":"取样员再次提交","then":"按钮置灰并提示「仅待取样可提交」","kind":"illegal"},{"given":"录入数量为 0 或超过到货数量","when":"点击提交","then":"就地标红并拒绝提交","kind":"illegal"}],"priority":"P0","targets":["pda"],"pageIds":["pg-iqc-sample-pda"],"source":"stated","status":"confirmed"},{"id":"REQ-002","title":"质量工程师审核并导出报告","actor":"质量工程师","trigger":"报告状态变为「待审核」时","rule":"仅「待审核」可审核；审核人与取样人不得为同一人；导出内容必须与当前筛选一致","stateMachine":"sm-inspection：reported → approved（cap-approve）","expectation":"系统记录审核结论、审核人与时间，并允许导出 PDF","acceptance":[{"given":"报告状态为「待审核」","when":"质量工程师填写结论并审核","then":"状态变为「已归档」并记录审核人","kind":"happy"},{"given":"当前用户是该批取样人","when":"尝试审核","then":"按钮不可用并提示「取样人不得自审」","kind":"illegal"}],"priority":"P0","targets":["pc"],"pageIds":["pg-iqc-report"],"source":"stated","status":"confirmed"}],"components":[{"id":"c-1","name":"报告列表","type":"DataTable","category":"pc-data","states":["default","loading","empty","zero-result","error"],"props":{"size":"xs","tableLayout":"fixed"},"usage":"作业型列表页：全宽表格 + 行内操作"},{"id":"c-2","name":"现场扫码取样","type":"ScanBar","category":"pda","states":["default","scanning","success","fail"],"usage":"现场首选入口，手输为兜底"}],"annotations":[{"id":"an-1","pageId":"pg-iqc-report","nodeId":"n-toolbar","anchor":{"x":0.34,"y":0.5},"body":"导出和审核放一起容易误点，建议把审核挪到行内，工具条只留导出。","severity":"major","status":"open","author":"俞秀福","createdAt":"2026-10-29T16:50:00+08:00","affects":["componentTree","capability"]},{"id":"an-2","pageId":"pg-iqc-stats","nodeId":"n-k3","anchor":{"x":0.62,"y":0.42},"body":"不合格率 3.7% 只给了总数，看不出是哪两家贡献的。建议卡片下方加一行「TOP2 供应商：苏州铜业 1.2pt / 河北型材 0.9pt」，点击直接筛该供应商。","severity":"major","status":"open","author":"俞秀福","createdAt":"2026-10-29T17:22:00+08:00","affects":["componentTree","prd"]}],"openQuestions":[{"id":"q-1","question":"报告是否需要供应商在线确认环节？","priority":"P1","status":"assumed","answer":"本期不做，导出后线下发送","impact":"影响是否增加 supplier-confirmed 状态"}],"decisions":[{"id":"D-001","stage":"schema","kind":"tradeoff","decision":"单文件交付 + 模块级逻辑拆页","rationale":"离线双击可用优先；跨文件导航与标注锚定会失效","active":true},{"id":"D-002","stage":"container","kind":"tradeoff","decision":"取消缩放，1:1 渲染；导航与 PRD 以覆盖层出现","rationale":"原型要能直接交给开发；缩放会牺牲像素真实度，覆盖层保证画布永不被挤压","active":true}],"guards":[{"id":"g-1","kind":"block","statement":"发起检验前必须先编质检标准模板","sourceRef":"蓝图v2 §4.2","capabilityId":"cap-submit-sample"}],"fieldRegistry":[{"name":"到货单号","sourceRef":"列头","type":"string","pageId":"pg-iqc-report","block":"n-table","required":true,"scope":"in"},{"name":"供应商批次号","sourceRef":"列头","type":"string","pageId":"pg-iqc-report","block":"n-table","required":false,"scope":"in"},{"name":"报告状态","sourceRef":"列头","type":"enum","pageId":"pg-iqc-report","block":"n-table","required":true,"scope":"in"},{"name":"报告及时率","sourceRef":"统计口径","type":"number","pageId":"pg-iqc-stats","block":"n-k2","required":true,"scope":"out","reason":"本页是计算结果展示，不从表单采集"},{"name":"供应商合格率","sourceRef":"统计口径","type":"number","pageId":"pg-iqc-stats","block":"n-supplier-list","required":false,"scope":"out","reason":"聚合结果，来源为 inspection 明细计算"}],"slices":["s-01","s-02"],"actors":[{"id":"u-sampler","name":"取样员","dept":"仓库 / 车间","exists":true},{"id":"u-qa","name":"质量工程师","dept":"质量部","exists":true},{"id":"u-qm","name":"质量经理","dept":"质量部","exists":false,"note":"实际由质量工程师兼任（1/1 同一人），二级审批必须可关闭，否则单据全卡在一个人手上"},{"id":"u-keeper","name":"仓库保管员","dept":"仓库","exists":true,"note":"与取样员有 3 人重叠，因此「取样人≠收货人」不做，只做「审核人≠取样人」"},{"id":"u-admin","name":"IT 运维","dept":"信息部","exists":true}]};
+window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管理系统","version":"0.1.0","domain":"qms","targets":["pc","pda"],"designWidth":{"pc":1440,"pda":390},"baseResolution":"1920x1080","currentPageId":"pg-iqc-report","skin":"industrial-petrol"},"modules":[{"id":"m-iqc","code":"IQC","name":"来料检验","order":1,"owner":"质量部","icon":"inbox","pages":["pg-iqc-report","pg-iqc-sample-pda","pg-iqc-stats"],"pageGroups":[{"key":"exec","title":"检验执行","children":[{"key":"report","title":"来料检验报告","page":"pg-iqc-report"},{"key":"pda","title":"取样任务","page":"pg-iqc-sample-pda"}]},{"key":"stat","title":"统计分析","children":[{"key":"stats","title":"来料检验统计","page":"pg-iqc-stats"}]}]}],"pages":[{"id":"pg-iqc-report","moduleId":"m-iqc","target":"pc","route":"/iqc/report","title":"来料检验报告","parentId":null,"layout":"list","entity":"inspection","contract":{"task":"质量工程师按到货批次核对检验结论，审核后导出报告交供应商","actor":["u-qa"],"owns":["cap-approve","cap-export-report"],"doneWhen":"本批结论已审核且报告已导出","entryFrom":[],"submitBoundary":"单批报告审核"},"states":[{"id":"s-default","kind":"default","desc":"默认态：10 条/页，查询条件回填","vars":{"batchNo":"","taskNo":""}},{"id":"s-loading","kind":"loading","desc":"首屏骨架 + 表体 loading"},{"id":"s-empty","kind":"empty","desc":"系统内无任何到货批次时的引导态"},{"id":"s-zero","kind":"zero-result","desc":"有条件但查不到，提示放宽条件并保留条件","vars":{"batchNo":"PA-2026"}},{"id":"s-error","kind":"error","desc":"接口失败，可重试且不清空查询条件"}],"componentTree":{"id":"n-root","type":"AppShell","props":{"siderCollapsed":false,"brand":{"name":"质量管理","sub":"NILET QMS"},"search":"菜单搜索","groups":[{"title":"工作台","items":[{"key":"my-flow","label":"我的流程","count":3},{"key":"base","label":"基础数据管理"}]},{"title":"来料检验","items":[{"key":"data","label":"来料检测数据"},{"key":"notice","label":"检验通知"},{"key":"task","label":"检验任务"},{"key":"sample","label":"取样任务"},{"key":"my-task","label":"我的来料检验任务","count":5},{"key":"report","label":"来料检验报告","on":true},{"key":"process","label":"过程检验"},{"key":"delivery","label":"发货检验"},{"key":"patrol","label":"现场巡检"},{"key":"stock","label":"库存检验"},{"key":"return","label":"成品退货检验"}]}],"header":{"title":"来料检验报告","crumb":["来料检验","报告"],"user":"傅高修","actions":["刷新","全屏"]}},"children":[{"id":"n-page","type":"PageShell","children":[{"id":"n-tabs","type":"TabStrip","props":{"activeKey":"report","tabs":[{"key":"apply","label":"发起申请","closable":true},{"key":"data","label":"来料检测数据","closable":true},{"key":"notice","label":"检验通知","closable":true},{"key":"report","label":"来料检验报告","closable":true}]}},{"id":"n-filter","type":"FilterBar","props":{"fields":[{"key":"batchNo","label":"到货单号","placeholder":"请输入","field":"batchNo"},{"key":"taskNo","label":"任务单号","placeholder":"请输入","field":"taskNo"},{"key":"supplier","label":"供应商","placeholder":"请选择","field":"supplier"},{"key":"material","label":"物资名称","placeholder":"请输入","field":"material"}],"actions":[{"key":"reset","text":"重置","variant":"ghost"},{"key":"search","text":"搜索","variant":"primary"}]}},{"id":"n-status","type":"StatusBar","props":{"note":"单据状态由取样与审核推进，按钮可用性随状态变化","steps":[{"key":"created","label":"待取样"},{"key":"sampled","label":"已取样"},{"key":"reported","label":"待审核"},{"key":"approved","label":"已归档"}]}},{"id":"n-toolbar","type":"ToolBar","props":{"actions":[{"key":"export","text":"导出","variant":"primary","capability":"cap-export-report"},{"key":"approve","text":"审核","variant":"default","capability":"cap-approve"},{"key":"print","text":"打印","variant":"ghost"}],"selected":0}},{"id":"n-table","type":"DataTable","props":{"size":"xs","tableLayout":"fixed","rowKey":"batchNo","pagination":{"page":1,"pageSize":10,"total":9407,"pages":941},"columns":[{"key":"_idx","title":"序号","width":52,"type":"index"},{"key":"batchNo","title":"到货单号","width":130,"display":{"empty":"—"}},{"key":"taskNo","title":"任务单号","width":136,"display":{"empty":"—"}},{"key":"material","title":"物资名称","width":150,"display":{"empty":"—"}},{"key":"spec","title":"规格型号","width":92,"display":{"empty":"—"}},{"key":"qty","title":"数量","width":62,"type":"num","align":"right","display":{"empty":"—"}},{"key":"supplier","title":"供应商名称","width":170,"display":{"empty":"—"}},{"key":"supplierBatch","title":"供应商批次号","width":110,"display":{"empty":"—"}},{"key":"stdTemplate","title":"质检标准模板","width":114,"display":{"empty":"未绑定"}},{"key":"status","title":"报告状态","width":86,"type":"tag","display":{"empty":"—"}},{"key":"_act","title":"操作","width":94,"type":"action","actions":[{"key":"detail","text":"详情"},{"key":"approve","text":"审核","capability":"cap-approve"}]}],"data":[{"batchNo":"PA-20261028-001","taskNo":"INST20261029001","material":"匣钵","spec":"-","qty":320,"supplier":"萍乡市康明科技有限公司","supplierBatch":"-","secondCode":"-","stdTemplate":"匣钵来料检验","status":"待审核"},{"batchNo":"PA-20261027-006","taskNo":"INST20261028002","material":"迷你撮箕扫把套","spec":"-","qty":40,"supplier":"天津星辰自动化科技有限公司","supplierBatch":"-","secondCode":"-","stdTemplate":"辅材通用","status":"已审核"},{"batchNo":"PA-20261027-005","taskNo":"INST20261028001","material":"迷你撮箕扫把套","spec":"-","qty":40,"supplier":"天津星辰自动化科技有限公司","supplierBatch":"-","secondCode":"-","stdTemplate":"辅材通用","status":"待审核"},{"batchNo":"PA-20261027-002","taskNo":"INST20261027022","material":"泡沫镜","spec":"-","qty":60,"supplier":"安耐康（成都）智能装备科技有限公司","supplierBatch":"-","secondCode":"-","stdTemplate":"外观件","status":"已审核"},{"batchNo":"PA-20260928-008","taskNo":"INST20261027021","material":"加热棒","spec":"-","qty":24,"supplier":"辽阳宏图碳化物有限公司","supplierBatch":"-","secondCode":"-","stdTemplate":"电气件","status":"待取样"},{"batchNo":"PA-20260928-009","taskNo":"INST20261027020","material":"气缸","spec":"-","qty":12,"supplier":"华欧创联（天津）智能电气有限公司","supplierBatch":"-","secondCode":"-","stdTemplate":"气动件","status":"待取样"},{"batchNo":"PA-20260928-009","taskNo":"INST20261027019","material":"旋转气缸","spec":"-","qty":8,"supplier":"华欧创联（天津）智能电气有限公司","supplierBatch":"-","secondCode":"-","stdTemplate":"气动件","status":"待审核"},{"batchNo":"PA-20260928-010","taskNo":"INST20261027018","material":"气缸","spec":"-","qty":16,"supplier":"华欧创联（天津）智能电气有限公司","supplierBatch":"-","secondCode":"-","stdTemplate":"气动件","status":"已审核"},{"batchNo":"PA-20261016-003","taskNo":"INST20261027017","material":"加热棒","spec":"-","qty":30,"supplier":"辽阳宏图碳化物有限公司","supplierBatch":"-","secondCode":"-","stdTemplate":"电气件","status":"待审核"},{"batchNo":"PA-20261016-005","taskNo":"INST20261027016","material":"加热棒","spec":"-","qty":30,"supplier":"辽阳宏图碳化物有限公司","supplierBatch":"-","secondCode":"-","stdTemplate":"电气件","status":"已驳回"}]}},{"id":"n-footer","type":"Pager","props":{"total":9407,"current":1,"pageSize":10,"pages":941}}]}]},"interactions":[{"id":"ix-1","on":"n-table__act_approve","do":"submit","effect":"仅「待审核」可用；点击进入审核确认"},{"id":"ix-2","on":"n-toolbar__act_export","do":"submit","effect":"按当前筛选导出，成功提示条数"},{"id":"ix-3","on":"n-filter__act_search","do":"setState","effect":"有结果进 default，无结果进 zero-result"}],"prd":{"sections":[{"type":"goal","heading":"页面目标","body":"让质量工程师在一屏内完成「按批次找到报告 → 核对结论 → 审核 → 导出」，不需要来回跳页。这一页只承载「已出报告」的核对与审核，取样在现场 PDA 完成。"},{"type":"flow","heading":"主流程","caption":"从到货批次到报告归档","nodes":[{"id":"f1","label":"进入报告列表","kind":"start","sub":"/iqc/report"},{"id":"f2","label":"按到货单号 / 供应商查询","kind":"task"},{"id":"f3","label":"有结果？","kind":"decision"},{"id":"f4","label":"审核报告","kind":"task","sub":"cap-approve"},{"id":"f5","label":"导出报告交供应商","kind":"end"},{"id":"f6","label":"放宽条件重查","kind":"warn"}],"edges":[{"from":"f1","to":"f2"},{"from":"f2","to":"f3"},{"from":"f3","to":"f4","label":"是"},{"from":"f3","to":"f6","label":"否"},{"from":"f6","to":"f2"},{"from":"f4","to":"f5"}]},{"type":"availability","heading":"动作可用性","body":"审核：仅「待审核」可用，其余状态置灰并说明原因（取样人不得自审）。导出：待审核 / 已审核可用，待取样时报告尚未生成，置灰。打印：始终可用。","requirementIds":["REQ-002"]},{"type":"interaction","heading":"交互说明","body":"查询与翻页保留条件；行内「审核」与工具条「审核」同一入口同一能力；点行不跳页，避免误触（工业现场单手操作较多）。"},{"type":"rule","heading":"业务规则","body":"① 审核人与取样人不得为同一人；② 报告导出内容必须与当前筛选一致；③ 已驳回批次需重新发起检验，不允许直接改判。","requirementIds":["REQ-002"]},{"type":"state","heading":"页面状态","body":"默认 / 加载 / 空 / 零结果 / 异常 五态。空态引导去「发起申请」，零结果保留查询条件并给放宽建议，异常可重试。"},{"type":"acceptance","heading":"验收","body":"REQ-002 全部用例通过；9407 条数据下翻页与查询响应可接受；导出行数与列表总数一致。"}]}},{"id":"pg-iqc-sample-pda","moduleId":"m-iqc","target":"pda","route":"/m/iqc/sample","title":"取样任务","parentId":null,"layout":"pda-scan","entity":"inspection","contract":{"task":"取样员在收货现场扫码进入待取样任务，录入数量并提交，弱网可离线暂存","actor":["u-sampler"],"owns":["cap-submit-sample"],"doneWhen":"取样记录提交成功并进入待审核","entryFrom":[],"submitBoundary":"单批次取样提交"},"states":[{"id":"s-default","kind":"default","desc":"扫码前的待扫态","vars":{"batchNo":"","qty":0}},{"id":"s-loading","kind":"loading","desc":"扫码后拉取任务详情"},{"id":"s-empty","kind":"empty","desc":"该批次无待取样任务"},{"id":"s-error","kind":"error","desc":"码无效或网络不可用，转离线暂存"}],"componentTree":{"id":"n-root","type":"PdaShell","props":{"title":"取样任务","sync":"pending","syncCount":1},"children":[{"id":"n-scan","type":"ScanBar","props":{"placeholder":"扫描到货单号 / 批次码"}},{"id":"n-cards","type":"PdaCardList","props":{"cards":[{"id":"PA-20261028-001","sub":"匣钵 · 320 件","status":"待取样","tone":"warning","kv":[{"k":"供应商","v":"萍乡康明"},{"k":"到货时间","v":"10-28 14:20"}]},{"id":"PA-20260928-008","sub":"加热棒 · 24 件","status":"待取样","tone":"warning","kv":[{"k":"供应商","v":"辽阳宏图"},{"k":"到货时间","v":"09-28 09:05"}]}]}},{"id":"n-num","type":"NumpadInput","props":{"label":"取样数量","value":0,"unit":"件","max":320}},{"id":"n-submit","type":"BigAction","props":{"label":"提交取样","capability":"cap-submit-sample","sub":"提交后进入待审核，取样人不得自审"}}]},"interactions":[{"id":"ix-1","on":"n-scan__scan","do":"setState","effect":"回填批次并拉取任务，失败进 error 并转离线暂存"},{"id":"ix-2","on":"n-submit__click","do":"submit","effect":"数量必须在 1~320 之间，越界就地标红"}],"pda":{"onlineOnly":false,"offline":{"queue":true,"conflict":"server-wins","cacheTtlMinutes":480},"scan":{"fields":["batchNo"],"codeTypes":["qrcode","barcode"]},"primaryAction":"n-submit","minTouchTarget":44},"prd":{"sections":[{"type":"goal","heading":"页面目标","body":"让取样员戴着手套、单手、在货场弱网下三步内完成取样提交：扫码 → 填数量 → 提交。"},{"type":"flow","heading":"主流程","nodes":[{"id":"p1","label":"扫描批次码","kind":"start"},{"id":"p2","label":"匹配到待取样任务？","kind":"decision"},{"id":"p3","label":"录入取样数量","kind":"task"},{"id":"p4","label":"提交（可离线）","kind":"end"},{"id":"p5","label":"提示无任务 / 转离线","kind":"warn"}],"edges":[{"from":"p1","to":"p2"},{"from":"p2","to":"p3","label":"是"},{"from":"p2","to":"p5","label":"否"},{"from":"p3","to":"p4"}]},{"type":"rule","heading":"业务规则","body":"数量必须在 1 到到货数量之间；同一批次只允许一次有效提交；离线提交按 server-wins 合并，冲突时保留服务端结论并提示复核。","requirementIds":["REQ-001"]},{"type":"acceptance","heading":"验收","body":"弱网提交不丢数据；数量越界就地拦截；离线队列角标可见；扫码失败可手输。"}]}},{"id":"pg-iqc-stats","title":"来料检验统计","moduleId":"m-iqc","target":"pc","layout":"dashboard","contract":{"task":"质量经理与质量工程师查看本月来料合格率、报告及时率与供应商表现，发现异常后下钻到明细","actor":["u-qa","u-qm"],"owns":["cap-export-stats"],"doneWhen":"看到本月四项核心指标、近 8 周趋势与 TOP6 供应商排名，任一异常指标可一键下钻到明细列表","entryFrom":["pg-iqc-report"],"submitBoundary":"只读统计；所有写操作留在明细页，统计页不提供审核入口"},"states":[{"id":"s-default","kind":"default","desc":"默认态：本月 1 日至当日，四项指标 + 趋势 + 排名"},{"id":"s-loading","kind":"loading","desc":"指标卡骨架 + 图表骨架，不动布局（避免加载完成时页面跳动）"},{"id":"s-empty","kind":"empty","desc":"本月没有任何检验记录：四张指标卡显示「—」，图表区给出「发起申请」入口"},{"id":"s-error","kind":"error","desc":"统计接口失败：显示 trace id，保留上次成功结果并标注「数据截至 xx:xx」"}],"interactions":[{"id":"ix-1","on":"n-k4__click","do":"navigate","target":"pg-iqc-report","effect":"下钻：待审核超期 23 批 → 列表页并带上「超期未审」筛选，返回时保留统计页周期"},{"id":"ix-2","on":"n-toolbar-stats__act_export","do":"submit","capability":"cap-export-stats","effect":"导出本月统计为 Excel，含「指标」「趋势」「供应商排名」三个 sheet"}],"componentTree":{"id":"n-root","type":"AppShell","props":{"siderCollapsed":false,"brand":{"name":"质量管理","sub":"NILET QMS"},"search":"菜单搜索","groups":[{"title":"工作台","items":[{"key":"my-flow","label":"我的流程","count":3},{"key":"base","label":"基础数据管理"}]},{"title":"来料检验","items":[{"key":"data","label":"来料检测数据"},{"key":"notice","label":"检验通知"},{"key":"task","label":"检验任务"},{"key":"sample","label":"取样任务"},{"key":"my-task","label":"我的来料检验任务","count":5},{"key":"report","label":"来料检验报告"},{"key":"process","label":"过程检验"},{"key":"delivery","label":"发货检验"},{"key":"patrol","label":"现场巡检"},{"key":"stock","label":"库存检验"},{"key":"return","label":"成品退货检验"},{"key":"stats","label":"来料检验统计","on":true}]}],"header":{"title":"来料检验统计","crumb":["来料检验","统计"],"user":"傅高修","actions":["刷新","导出","全屏"]}},"children":[{"id":"n-page","type":"PageShell","props":{},"children":[{"id":"n-toolbar-stats","type":"ToolBar","props":{"actions":[{"key":"export","text":"导出统计报表","capability":"cap-export-stats"}]}},{"id":"n-kpi","type":"SectionCard","props":{"title":"本月概况","sub":"2026-10-01 ~ 2026-10-29","extra":"截至 17:20","cols":4},"children":[{"id":"n-k1","type":"KpiCard","props":{"label":"来料批次","value":2847,"unit":"批","delta":8.2,"deltaLabel":"环比","foot":"其中待检 41 批、待审核 67 批","tone":"flat"}},{"id":"n-k2","type":"KpiCard","props":{"label":"报告及时率","value":86.4,"unit":"%","delta":12.1,"positiveIsGood":true,"deltaLabel":"环比","foot":"目标 ≥90%，尚差 3.6pt"}},{"id":"n-k3","type":"KpiCard","props":{"label":"来料不合格率","value":3.7,"unit":"%","delta":0.6,"deltaLabel":"环比","foot":"高于年度目标 3.0%，主要来自 2 家供应商"}},{"id":"n-k4","type":"KpiCard","props":{"label":"待审核超期","value":23,"unit":"批","delta":5,"deltaLabel":"环比","foot":"超 48 小时未审核，点击下钻","href":"pg-iqc-report","hrefLabel":"待审核超期明细"}}]},{"id":"n-grid","type":"Grid","props":{"cols":2,"gap":12},"children":[{"id":"n-trend","type":"SectionCard","props":{"title":"来料合格率趋势","sub":"近 8 周","extra":"口径：合格批次 ÷ 检验批次"},"children":[{"id":"n-chart","type":"Chart","props":{"kind":"line","yUnit":"%","yMin":90,"xAxis":["09-08","09-15","09-22","09-29","10-06","10-13","10-20","10-27"],"series":[{"key":"pass","name":"合格率","color":"#0A7183","data":[95.1,96.3,94.8,97.2,96.6,95.9,96.4,96.3]}],"height":200}}]},{"id":"n-supplier","type":"SectionCard","props":{"title":"供应商合格率 TOP6","sub":"按批次加权，仅统计本月 ≥3 批的供应商"},"children":[{"id":"n-supplier-list","type":"ProgressList","props":{"max":100,"items":[{"key":"s1","label":"江苏鑫材","value":99.2,"unit":"%","tone":"good","note":"42 批 / 不合格 0 批"},{"key":"s2","label":"宁波精铸","value":98.6,"unit":"%","tone":"good","note":"38 批 / 不合格 1 批"},{"key":"s3","label":"山东铝业","value":97.1,"unit":"%","tone":"good","note":"35 批 / 不合格 1 批"},{"key":"s4","label":"常州金属","value":94.3,"unit":"%","tone":"warn","note":"31 批 / 不合格 2 批"},{"key":"s5","label":"苏州铜业","value":91.8,"unit":"%","tone":"bad","note":"27 批 / 不合格 3 批 · 连续 2 月下降"},{"key":"s6","label":"河北型材","value":88.4,"unit":"%","tone":"bad","note":"24 批 / 不合格 4 批 · 建议加严检验"}]}}]}]},{"id":"n-grid2","type":"Grid","props":{"cols":2,"gap":12},"children":[{"id":"n-flow-card","type":"SectionCard","props":{"title":"单据状态分布","sub":"当前本批所处位置","extra":"切换顶部「单据状态」可看不同位置"},"children":[{"id":"n-flow","type":"StatusFlow","props":{"stateMachine":"sm-inspection","followEntity":true,"showGuard":true}}]},{"id":"n-log","type":"SectionCard","props":{"title":"最近异常","extra":"近 72 小时"},"children":[{"id":"n-timeline","type":"Timeline","props":{"items":[{"key":"t1","at":"10-29 15:42","actor":"系统","action":"标准未就绪，任务挂起","note":"RK202610290031 的物料「电解液 A」新版标准尚未发布，取样入口保持可用，审核按钮置灰","tone":"warn"},{"key":"t2","at":"10-28 09:17","actor":"王工","action":"判定不合格","note":"RK202610280012 · 苏州铜业 · 尺寸超差 0.8mm，已触发让步接收审批","tone":"bad"},{"key":"t3","at":"10-27 18:05","actor":"李取样","action":"离线补传 6 条","note":"货场无信号，回办公室后自动上传；其中 1 条与已有记录批次号重复，已作废重取","tone":"normal"}]}}]}]}]}]},"prd":{"sections":[{"type":"goal","heading":"这一页解决什么问题","body":"质量经理每天要知道两件事：**这批货能不能放**、**哪家供应商在变差**。前者在明细页解决，后者需要一个只看趋势和排名的页面。\n\n所以本页不做任何写操作——它只回答「现在正常吗」，异常的处置一律下钻到明细页。这也是列表页顶部不放指标卡的原因：指标和明细是两种查看方式，混在一页里两边都不好用。"},{"type":"flow","heading":"看数到下钻","caption":"指标 → 判定 → 下钻","nodes":[{"id":"s1","label":"进入统计页","kind":"start","sub":"/iqc/stats"},{"id":"s2","label":"看四项指标 + 趋势","kind":"task"},{"id":"s3","label":"有指标越界？","kind":"decision"},{"id":"s4","label":"下钻到明细列表","kind":"task","sub":"navigate pg-iqc-report"},{"id":"s5","label":"结束（本页只读）","kind":"end"}],"edges":[{"from":"s1","to":"s2"},{"from":"s2","to":"s3"},{"from":"s3","to":"s4","label":"越界"},{"from":"s3","to":"s5","label":"正常"},{"from":"s4","to":"s5"}]},{"type":"availability","heading":"动作可用性","body":"导出统计报表：始终可用，不受单据状态影响（`cap-export-stats` 的 `from` 为空）。\n审核、取样：**本页不出现**。统计页出现审核按钮会让「看数」和「处置」混在一起，也是批量误操作的高发点。\n下钻：只读跳转，跳转后带筛选条件，返回键回到本页并保留统计周期。","requirementIds":["REQ-002"]},{"type":"data","heading":"指标口径","body":"| 指标 | 口径 | 分母为 0 时 |\n|---|---|---|\n| 来料批次 | 本月 1 日至当日的检验任务数，按到货单去重 | 显示「—」 |\n| 报告及时率 | 24 小时内出报告的批次数 ÷ 已出报告批次数 | 显示「—」 |\n| 来料不合格率 | 判定不合格的批次数 ÷ 已判定批次数 | 显示「—」 |\n| 待审核超期 | 状态为「待审核」且滞留 >48 小时的批次数 | 显示 0（0 是有效值） |\n\n迁移数据（migrated 标记）**不参与**前三项计算，否则历史 3 200 条会把及时率拉到 11 小时口径，看板数字不能用于汇报。"},{"type":"state","heading":"状态分布怎么读","body":"状态分布图直接由 `sm-inspection` 渲染，不是另画一张图——所以状态机的任何改动（新增状态、改显示名、改迁移触发）都会立刻反映在这里，不会出现「图对不上流程」。\n\n切换顶部「单据状态」可看到同一批数据在不同位置的呈现，用于评审时演示：状态为「已归档」时，本页指标不变，但状态分布图的高亮会移动到末位。"},{"type":"note","heading":"已知限制","body":"1. 趋势图只给近 8 周，更长周期需要下钻到明细导出后自行透视；\n2. 供应商排名只统计本月 ≥3 批的供应商，1~2 批的不参与排名（样本太小，一次不合格就能把排名打到末位）；\n3. 指标为 T+0 实时算，未做预聚合；数据量到 5 万条以上时需改为每日快照。"}]},"route":"/iqc/stats"}],"capabilities":[{"id":"cap-submit-sample","name":"提交取样","actor":["u-sampler"],"entity":"inspection","from":["created"],"guard":"g-1","policy":"disabled","reason":"仅「待取样」可提交","to":"sampled","stage":"submit","target":"pda","label":"提交取样","ui":{"kind":"inline","entry":"n-submit"}},{"id":"cap-approve","name":"审核报告","actor":["u-qa"],"entity":"inspection","from":["reported"],"policy":"disabled","reason":"仅「待审核」可审核","to":"approved","stage":"verify","target":"pc","label":"审核","ui":{"kind":"dialog","entry":"n-table__act_approve","title":"审核来料检验报告","width":560,"submitLabel":"审核通过","successText":"报告已归档","fields":[{"key":"opinion","label":"审核意见","type":"textarea","span":2,"hint":"结论与标准不符时写明依据条款","rules":{"text":"必填，不少于 10 字；结论与检验标准不符时必须写明条款编号与实测值","message":"请写明审核结论与依据条款"},"field":"reviewOpinion"}]},"placement":"row"},{"id":"cap-export-report","name":"导出报告","actor":["u-qa"],"entity":"inspection","from":["reported","approved"],"policy":"disabled","reason":"报告尚未生成，仅「待审核 / 已归档」可导出","to":null,"stage":null,"target":"pc","label":"导出报告","ui":{"kind":"inline","entry":"n-toolbar__act_export"}},{"id":"cap-export-stats","label":"导出统计报表","entity":"inspection","actor":["u-qa"],"from":[],"policy":"disabled","reason":"统计导出不受单据状态限制；无数据时导出空表并提示","guard":"导出范围不得超过当前筛选的统计周期","pageIds":["pg-iqc-stats"],"ui":{"kind":"inline","entry":"n-toolbar-stats__act_export"}}],"stateMachines":[{"id":"sm-inspection","entity":"inspection","label":"检验任务生命周期","initial":"created","states":[{"key":"created","label":"待取样","tone":"default"},{"key":"sampled","label":"已取样","tone":"processing"},{"key":"reported","label":"待审核","tone":"warning"},{"key":"approved","label":"已归档","tone":"success","terminal":true}],"transitions":[{"from":"created","to":"sampled","trigger":"cap-submit-sample","actor":"u-sampler","guard":"g-1"},{"from":"sampled","to":"reported","trigger":"system-auto-report","system":true},{"from":"reported","to":"approved","trigger":"cap-approve","actor":"u-qa"}]}],"dataModel":{"entities":[{"id":"inspection","name":"Inspection","label":"检验任务","fields":[{"name":"batchNo","label":"到货单号","type":"string","pk":true,"required":true},{"name":"taskNo","label":"任务单号","type":"string","required":true},{"name":"material","label":"物资名称","type":"string","required":true},{"name":"qty","label":"到货数量","type":"number","required":true,"unit":"件"},{"name":"sampleQty","label":"取样数量","type":"number","constraint":"1 <= sampleQty <= qty"},{"name":"supplier","label":"供应商名称","type":"string"},{"name":"stdTemplateId","label":"质检标准模板","type":"ref","fk":"stdTemplate"},{"name":"status","label":"状态","type":"enum","enum":["created","sampled","reported","approved"],"required":true},{"name":"spec","label":"规格型号","type":"string"},{"name":"supplierBatch","label":"供应商批次号","type":"string"},{"name":"reviewOpinion","label":"审核意见","type":"string"}]},{"id":"stdTemplate","name":"StdTemplate","label":"质检标准模板","fields":[{"name":"id","type":"string","pk":true},{"name":"name","label":"模板名称","type":"string","required":true},{"name":"version","label":"版本","type":"string","required":true}]}],"relations":[{"from":"inspection","to":"stdTemplate","kind":"N:1","on":"stdTemplateId"}],"derived":[{"name":"取样完成率","expr":"sampledCount / totalCount","fallback":"无任务时显示「—」而非 0%"},{"name":"来料合格率","expr":"passBatch / inspectedBatch","fallback":"检验批次为 0 时显示「—」，不显示 0%（0% 会被误读为全不合格）"},{"name":"报告及时率","expr":"reportWithin24h / reportedTotal","fallback":"报告尚未生成的单据不计入分母；迁移数据（migrated）不参与计算"}]},"requirements":[{"id":"REQ-001","title":"取样员提交取样记录","actor":"取样员","trigger":"扫描到货批次码并匹配到待取样任务时","rule":"取样数量必须在 1 到到货数量之间；同一批次仅允许一次有效提交；离线提交进本地队列，恢复网络后自动上传","stateMachine":"sm-inspection：created → sampled（cap-submit-sample，前置 g-1）","expectation":"系统保存取样记录并将任务状态置为「已取样」","acceptance":[{"given":"任务状态为「待取样」且网络正常","when":"取样员录入数量 32 并提交","then":"记录保存成功，状态变为「已取样」","kind":"happy"},{"given":"任务状态为「已取样」","when":"取样员再次提交","then":"按钮置灰并提示「仅待取样可提交」","kind":"illegal"},{"given":"录入数量为 0 或超过到货数量","when":"点击提交","then":"就地标红并拒绝提交","kind":"illegal"}],"priority":"P0","targets":["pda"],"pageIds":["pg-iqc-sample-pda"],"source":"stated","status":"confirmed"},{"id":"REQ-002","title":"质量工程师审核并导出报告","actor":"质量工程师","trigger":"报告状态变为「待审核」时","rule":"仅「待审核」可审核；审核人与取样人不得为同一人；导出内容必须与当前筛选一致","stateMachine":"sm-inspection：reported → approved（cap-approve）","expectation":"系统记录审核结论、审核人与时间，并允许导出 PDF","acceptance":[{"given":"报告状态为「待审核」","when":"质量工程师填写结论并审核","then":"状态变为「已归档」并记录审核人","kind":"happy"},{"given":"当前用户是该批取样人","when":"尝试审核","then":"按钮不可用并提示「取样人不得自审」","kind":"illegal"}],"priority":"P0","targets":["pc"],"pageIds":["pg-iqc-report"],"source":"stated","status":"confirmed"}],"components":[{"id":"c-1","name":"报告列表","type":"DataTable","category":"pc-data","states":["default","loading","empty","zero-result","error"],"props":{"size":"xs","tableLayout":"fixed"},"usage":"作业型列表页：全宽表格 + 行内操作"},{"id":"c-2","name":"现场扫码取样","type":"ScanBar","category":"pda","states":["default","scanning","success","fail"],"usage":"现场首选入口，手输为兜底"}],"annotations":[{"id":"an-1","pageId":"pg-iqc-report","nodeId":"n-toolbar","anchor":{"x":0.34,"y":0.5},"body":"导出和审核放一起容易误点，建议把审核挪到行内，工具条只留导出。","severity":"major","status":"open","author":"俞秀福","createdAt":"2026-10-29T16:50:00+08:00","affects":["componentTree","capability"]},{"id":"an-2","pageId":"pg-iqc-stats","nodeId":"n-k3","anchor":{"x":0.62,"y":0.42},"body":"不合格率 3.7% 只给了总数，看不出是哪两家贡献的。建议卡片下方加一行「TOP2 供应商：苏州铜业 1.2pt / 河北型材 0.9pt」，点击直接筛该供应商。","severity":"major","status":"open","author":"俞秀福","createdAt":"2026-10-29T17:22:00+08:00","affects":["componentTree","prd"]}],"openQuestions":[{"id":"q-1","question":"报告是否需要供应商在线确认环节？","priority":"P1","status":"assumed","answer":"本期不做，导出后线下发送","impact":"影响是否增加 supplier-confirmed 状态"}],"decisions":[{"id":"D-001","stage":"schema","kind":"tradeoff","decision":"单文件交付 + 模块级逻辑拆页","rationale":"离线双击可用优先；跨文件导航与标注锚定会失效","active":true},{"id":"D-002","stage":"container","kind":"tradeoff","decision":"取消缩放，1:1 渲染；导航与 PRD 以覆盖层出现","rationale":"原型要能直接交给开发；缩放会牺牲像素真实度，覆盖层保证画布永不被挤压","active":true}],"guards":[{"id":"g-1","kind":"block","statement":"发起检验前必须先编质检标准模板","sourceRef":"蓝图v2 §4.2","capabilityId":"cap-submit-sample","message":"该物资还没有质检标准模板，请先编制模板，再发起检验。"}],"fieldCatalog":[{"key":"batchNo","label":"到货单号","source":{"ds":"ds-wms","field":"arrivalNo","fallback":"WMS 取不到时按扫描枪录入的单号落库"},"note":"WMS 到货单主键，本系统只读"},{"key":"taskNo","label":"任务单号","source":{"ds":"ds-taskno","rule":"按 TQ-{yyyyMMdd}-{4 位流水} 生成，跨日归零"},"target":{"entity":"inspection","field":"taskNo"}},{"key":"material","label":"物资名称","source":{"ds":"ds-inspection","field":"material"}},{"key":"spec","label":"规格型号","source":{"ds":"ds-inspection","field":"spec","fallback":"未维护规格时显示「—」"}},{"key":"qty","label":"到货数量","source":{"ds":"ds-inspection","field":"qty"}},{"key":"supplier","label":"供应商名称","source":{"ds":"ds-inspection","field":"supplier"}},{"key":"supplierBatch","label":"供应商批次号","source":{"ds":"ds-inspection","field":"supplierBatch"}},{"key":"stdTemplate","label":"质检标准模板","source":{"ds":"ds-inspection","field":"stdTemplateId","fallback":"未绑定模板时显示「未绑定」"}},{"key":"status","label":"报告状态","source":{"ds":"ds-status","field":"status"}},{"key":"reviewOpinion","label":"审核意见","source":{"ds":"ds-inspection","field":"reviewOpinion"},"target":{"entity":"inspection","field":"reviewOpinion"}}],"dataSources":[{"id":"ds-wms","kind":"api","ref":"WMS.arrivalOrder","note":"到货单由 WMS 开具，本系统只读引用；接口契约未定，先按单号取"},{"id":"ds-taskno","kind":"system","ref":"taskNo"},{"id":"ds-inspection","kind":"entity","ref":"inspection","note":"来料检验任务主表"},{"id":"ds-status","kind":"dict","ref":"inspection.status"}],"slices":["s-01","s-02"],"actors":[{"id":"u-sampler","name":"取样员","dept":"仓库 / 车间","exists":true},{"id":"u-qa","name":"质量工程师","dept":"质量部","exists":true},{"id":"u-qm","name":"质量经理","dept":"质量部","exists":false,"note":"实际由质量工程师兼任（1/1 同一人），二级审批必须可关闭，否则单据全卡在一个人手上"},{"id":"u-keeper","name":"仓库保管员","dept":"仓库","exists":true,"note":"与取样员有 3 人重叠，因此「取样人≠收货人」不做，只做「审核人≠取样人」"},{"id":"u-admin","name":"IT 运维","dept":"信息部","exists":true}]};
 </script>
 <script>/**
 * vue v3.4.38
@@ -1567,6 +1599,13 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
     return st.currentUser || '';
   }
 
+  // 字段级 DOM 标识用：这一处渲染位属于哪一页。
+  // 弹层里的字段可能来自别的页面（L2-93 越权渲染），那边由 app.js 按 cap.owns 算，不用这个。
+  function curPageId() {
+    var st = (window.RD && window.RD.state) || {};
+    return st.pageId || '';
+  }
+
   function can(capId, rowState) {
     if (!capId) return { ok: true };
     return window.RD.can(capId, rowState, curActor());
@@ -1773,12 +1812,18 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
 
   var FilterBar = {
     name: 'FilterBar',
-    props: { p: { type: Object, default: function () { return {}; } } },
+    props: { p: { type: Object, default: function () { return {}; } }, site: String },
     setup: function (props) {
       return function () {
         var p = props.p || {};
         var fields = (p.fields || []).map(function (f) {
-          return h('div', { class: 'field', key: f.key }, [
+          return h('div', {
+            class: 'field',
+            key: f.key,
+            'data-field': f.key || null,
+            'data-site': props.site || '',
+            'data-page': curPageId()
+          }, [
             h('label', { class: 'field-label' }, f.label),
             h('input', {
               class: 'input',
@@ -1893,12 +1938,17 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
     }
   };
 
-  function cellRender(col, row, i) {
+  function cellRender(col, row, i, site) {
+    // 列的空值口径由契约给（display.empty），缺省 '-'
+    var empty = (col.display && col.display.empty) || '-';
+    // 字段级标识挂在既有的 div.dt-cell 上，不包 wrapper、不改层级：
+    // check_parity 的 C-09 靠数 class="dt-cell 子串核对列数
+    var fattr = { 'data-field': col.key || null, 'data-site': site || '', 'data-page': curPageId() };
     if (col.type === 'index') return h('div', { class: 'dt-cell is-idx num' }, String(i + 1));
-    if (col.type === 'num') return h('div', { class: 'dt-cell is-num num' }, String(row[col.key] == null ? '-' : row[col.key]));
+    if (col.type === 'num') return h('div', { class: 'dt-cell is-num num', 'data-field': col.key || null, 'data-site': fattr['data-site'], 'data-page': fattr['data-page'] }, String(row[col.key] == null ? empty : row[col.key]));
     if (col.type === 'tag') {
       var txt = row[col.key];
-      return h('div', { class: 'dt-cell' }, [h('span', { class: ['tag', 'is-dot', statusTone(txt)] }, txt)]);
+      return h('div', { class: 'dt-cell', 'data-field': col.key || null, 'data-site': fattr['data-site'], 'data-page': fattr['data-page'] }, [h('span', { class: ['tag', 'is-dot', statusTone(txt)] }, txt == null ? empty : txt)]);
     }
     if (col.type === 'action') {
       var rawLinks = col.actions || [];
@@ -1926,7 +1976,7 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
       }
       return h('div', { class: 'dt-cell is-act' }, links);
     }
-    return h('div', { class: 'dt-cell', title: row[col.key] }, row[col.key] == null ? '-' : String(row[col.key]));
+    return h('div', { class: 'dt-cell', title: row[col.key], 'data-field': col.key || null, 'data-site': fattr['data-site'], 'data-page': fattr['data-page'] }, row[col.key] == null ? empty : String(row[col.key]));
   }
 
   var StateBlock = {
@@ -1953,7 +2003,7 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
 
   var DataTable = {
     name: 'DataTable',
-    props: { p: { type: Object, default: function () { return {}; } } },
+    props: { p: { type: Object, default: function () { return {}; } }, site: String },
     setup: function (props) {
       return function () {
         var p = props.p || {};
@@ -1968,7 +2018,14 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
 
         var head = h('div', { class: 'dt-head', style: { gridTemplateColumns: tpl } },
           cols.map(function (c) {
-            return h('div', { class: ['dt-cell', c.align === 'right' ? 'is-num' : ''], key: c.key, title: c.title }, c.title);
+            return h('div', {
+              class: ['dt-cell', c.align === 'right' ? 'is-num' : ''],
+              key: c.key,
+              title: c.title,
+              'data-field': c.type === 'action' || c.type === 'index' ? null : (c.key || null),
+              'data-site': props.site || '',
+              'data-page': curPageId()
+            }, c.title);
           }));
 
         var body;
@@ -2016,7 +2073,7 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
                 window.RD.selectRow(row);
               }
             }, cols.map(function (c, ci) {
-              var cell = cellRender(c, row, i);
+              var cell = cellRender(c, row, i, props.site || '');
               cell.key = 'c' + ci;
               return cell;
             }));
@@ -2100,10 +2157,23 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
           acts.length ? h('div', { class: 'sec-actions', style: { marginLeft: p.extra ? '0' : 'auto' } }, acts) : null
         ]) : null;
         var bodyStyle = p.cols ? { display: 'grid', gridTemplateColumns: 'repeat(' + p.cols + ', minmax(0,1fr))', gap: (p.gap || 12) + 'px' } : null;
+        // 说明文案走 props.notes，不再塞一个 DescList 子节点：
+        // DescList 只装数据字段，混进说明文案会被字段判据当成"没绑定的字段"。
+        var noteNodes = (p.notes || []).length ? h('div', {
+          class: 'sec-notes',
+          style: p.cols ? { gridColumn: '1 / -1' } : null
+        }, p.notes.map(function (n, i) {
+          return h('div', { class: 'sec-note', key: i }, [
+            h('span', { class: 'sec-note-k' }, n.label || ''),
+            h('span', { class: 'sec-note-v' }, n.text || '')
+          ]);
+        })) : null;
         return h('section', { class: 'sec-card' }, [
           head,
-          h('div', { class: ['sec-body', p.pad === false ? 'is-flush' : ''], style: bodyStyle },
-            ctx.slots.default ? ctx.slots.default() : null)
+          h('div', { class: ['sec-body', p.pad === false ? 'is-flush' : ''], style: bodyStyle }, [
+            noteNodes,
+            ctx.slots.default ? ctx.slots.default() : null
+          ])
         ]);
       };
     }
@@ -2356,7 +2426,7 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
 
   var DescList = {
     name: 'DescList',
-    props: { p: { type: Object, default: function () { return {}; } } },
+    props: { p: { type: Object, default: function () { return {}; } }, site: String },
     setup: function (props) {
       return function () {
         var p = props.p || {};
@@ -2365,9 +2435,17 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
         if (!items.length) return h('div', { class: 'chart-empty' }, '暂无字段');
         return h('div', { class: ['desc-list', p.bordered ? 'is-bordered' : ''], style: { gridTemplateColumns: 'repeat(' + cols + ', minmax(0,1fr))' } },
           items.map(function (it, i) {
-            return h('div', { class: 'desc-item', key: it.key || i, style: it.span ? { gridColumn: 'span ' + it.span } : {} }, [
+            return h('div', {
+              class: 'desc-item',
+              key: it.key || i,
+              'data-field': it.key || null,
+              'data-site': props.site || '',
+              'data-page': curPageId(),
+              style: it.span ? { gridColumn: 'span ' + it.span } : {}
+            }, [
               h('span', { class: 'desc-k' }, it.label),
-              h('span', { class: ['desc-v', it.tone ? 'is-' + it.tone : ''] }, it.value == null || it.value === '' ? '—' : String(it.value))
+              // 空值口径由契约给（display.empty）；缺省仍是 —
+              h('span', { class: ['desc-v', it.tone ? 'is-' + it.tone : ''] }, it.value == null || it.value === '' ? ((it.display && it.display.empty) || '—') : String(it.value))
             ]);
           }));
       };
@@ -2596,7 +2674,7 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
   // 表单栅格：建单、执行填报、审批意见都要它。只吃 props，不校验不提交（校验规则在 guards 里）
   var FormGrid = {
     name: 'FormGrid',
-    props: { p: { type: Object, default: function () { return {}; } } },
+    props: { p: { type: Object, default: function () { return {}; } }, site: String },
     setup: function (props) {
       return function () {
         var p = props.p || {};
@@ -2640,6 +2718,9 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
           return h('div', {
             class: ['form-item', it.type === 'textarea' || it.span ? 'is-wide' : ''],
             key: it.key || i,
+            'data-field': it.key || null,
+            'data-site': props.site || '',
+            'data-page': curPageId(),
             style: it.span ? { gridColumn: 'span ' + it.span } : null
           }, [
             h('label', { class: 'form-label' }, [
@@ -2910,6 +2991,162 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
    * 推进型动作不写在页面里，写在契约的 capabilities[].ui 上：
    * 入口节点 + 承载形式 + 字段清单。这里只负责按契约把层打开、校验、提交、关闭。
    */
+  // 弹层字段属于哪一页的字典：认 cap.owns，不按节点 id 反查（n-table 多页复用）
+  function ownsPageOf(capId) {
+    var hit = (DATA.pages || []).filter(function (p) {
+      return ((p.contract || {}).owns || []).indexOf(capId) >= 0;
+    })[0];
+    return hit ? hit.id : store.pageId;
+  }
+
+  /* ---------------- 字段字典（面板合成，不写进 prd.sections） ----------------
+   * 面板正文按 pageId:index 存，插进数组中间会让用户改过的正文整体错位一行，
+   * 所以字典小节是渲染时追加在最后一节之后，只读。
+   * 顺序 = 本页渲染位的组件树先序（PRD 章节 id 也按这个生成）。
+   */
+  function walkTree(n, out) {
+    out.push(n);
+    (n.children || []).forEach(function (c) { walkTree(c, out); });
+    return out;
+  }
+
+  function siteOf(nodeId, raw, kind, label, capId) {
+    var key = raw.key;
+    var ro = raw.type === 'readonly' || !!raw.readonly;
+    var scope = (kind === 'form' || kind === 'dialog')
+      ? (ro ? 'out' : 'in')
+      : (kind === 'filter' ? (raw.field ? 'filter-field' : 'filter-cond') : 'out');
+    return {
+      nodeId: nodeId, capId: capId, siteId: capId || nodeId, kind: kind, key: key,
+      biz: raw.field || key, label: label || key || '（无 key）',
+      scope: scope, raw: raw
+    };
+  }
+
+  function fieldSites(pageId) {
+    var pg = (DATA.pages || []).filter(function (p) { return p.id === pageId; })[0];
+    var out = [];
+    if (!pg) return out;
+    walkTree(pg.componentTree || {}, []).forEach(function (nd) {
+      var pr = nd.props || {}, t = nd.type;
+      if (t === 'FilterBar') {
+        (pr.fields || []).forEach(function (f) { out.push(siteOf(nd.id, f, 'filter', f.label)); });
+      } else if (t === 'FormGrid') {
+        (pr.fields || pr.items || []).forEach(function (f) { out.push(siteOf(nd.id, f, 'form', f.label)); });
+      } else if (t === 'DataTable') {
+        (pr.columns || []).forEach(function (c) {
+          if (c.type === 'action' || c.type === 'index') return;
+          out.push(siteOf(nd.id, c, 'column', c.title));
+        });
+      } else if (t === 'DescList') {
+        (pr.items || []).forEach(function (it) { out.push(siteOf(nd.id, it, 'desc', it.label)); });
+      }
+    });
+    (DATA.capabilities || []).forEach(function (c) {
+      if (ownsPageOf(c.id) !== pageId) return;
+      ((c.ui || {}).fields || []).forEach(function (f) { out.push(siteOf(null, f, 'dialog', f.label, c.id)); });
+    });
+    return out;
+  }
+
+  function dsOf(id) {
+    return (DATA.dataSources || []).filter(function (d) { return d.id === id; })[0];
+  }
+
+  function sourceText(src) {
+    if (!src) return '未声明';
+    var ds = dsOf(src.ds);
+    if (!ds) return (src.ds || '?') + '（未声明的数据源）';
+    var k = { entity: '实体', dict: '字典', calc: '计算', api: '接口', system: '系统' }[ds.kind] || ds.kind;
+    var where = src.field ? (ds.ref + '.' + src.field) : (src.rule || ds.ref);
+    return k + ' · ' + where + (src.fallback ? '；兜底：' + src.fallback : '');
+  }
+
+  function targetText(t) {
+    return t ? (t.entity + '.' + t.field) : '不落库（纯展示/计算/筛选）';
+  }
+
+  function scopeText(s) {
+    return { 'in': '录入', 'out': '展示', 'filter-field': '字段筛选', 'filter-cond': '条件筛选' }[s.scope] || s.scope;
+  }
+
+  function localLabel(s) {
+    return { 'in': '校验规则', 'out': '空值显示', 'filter-field': '筛选口径', 'filter-cond': '筛选口径' }[s.scope] || '本处口径';
+  }
+
+  function localValue(s) {
+    var v = ((s.raw.rules || {}).text) || ((s.raw.display || {}).empty) || s.raw.filterNote;
+    if (v) return v;
+    return s.scope === 'filter-field' ? '按该字段值筛选' : '未声明';
+  }
+
+  // 点字段标签 → 打开 PRD 面板并定位到该渲染位的块。
+  // 优先级由 fieldClick 保证：标注模式 > 输入控件 > 字段标签 > 其余。
+  function jumpToField(pid, site, key) {
+    var target = (DATA.pages || []).filter(function (p) { return p.id === pid; })[0];
+    if (!target) return;
+    if (store.pageId !== pid) {
+      store.pageId = pid;
+      store.pageState = 'default';
+      store.entityStatus = defaultStatus(target);
+      refreshPins();
+    }
+    var id = 'field-' + pid + '-' + site + '-' + key;
+    store.showPrd = true;
+    store.prdTab = 'page';
+    // 高亮用「标记 + 一次性淡出动画」而不是定时清标记：
+    // headless 的虚拟时钟会把 1.6s 定时器瞬间推完，定时清标记会让 R-11 永远读不到高亮
+    store.prdFocus = id;
+    persist();
+    setTimeout(function () {
+      var el = document.getElementById(id);
+      if (el && el.scrollIntoView) el.scrollIntoView({ block: 'center' });
+    }, 0);
+  }
+
+  function fieldClick(e) {
+    if (store.annotMode) return false;                       // 标注优先，已在 annotClick 里处理
+    var t = e.target;
+    if (!t.closest) return false;
+    // 输入控件内的点击是填表，不是查字典
+    if (t.closest('input, textarea, select, .input, .form-ro, .ff-ro')) return false;
+    // 只认标签区：表格只认表头（点单元格要留给选中行）
+    var lab = t.closest('.dt-head [data-field], .field-label, .form-label, .desc-k, .ff-label');
+    if (!lab) return false;
+    var host = lab.closest('[data-field]');
+    if (!host) return false;
+    var key = host.getAttribute('data-field');
+    var site = host.getAttribute('data-site') || '';
+    var pid = host.getAttribute('data-page') || store.pageId;
+    if (!key) return false;
+    jumpToField(pid, site, key);
+    return true;
+  }
+
+  function dictBlock(pageId, s, i) {
+    // 三段：页 + 容器 + key。同页同 key 出现在筛选/列/弹层时，只带 key 会撞
+    var id = 'field-' + pageId + '-' + (s.siteId || 'no-site') + '-' + (s.key || ('x' + i));
+    var cat = (DATA.fieldCatalog || []).filter(function (f) { return f.key === s.biz; })[0];
+    var local = localValue(s);
+    return h('div', {
+      class: ['prd-field', store.prdFocus === id ? 'is-flash' : ''],
+      id: id,
+      key: id
+    }, [
+      h('div', { class: 'prd-field-h' }, [
+        h('span', { class: 'prd-field-k' }, s.label),
+        h('span', { class: 'prd-field-type' }, scopeText(s) + ' · ' + (s.siteId || '-') + ' · ' + s.key)
+      ]),
+      h('div', { class: 'prd-field-row' }, [h('b', null, localLabel(s)), h('span', null, local)]),
+      h('div', { class: 'prd-field-row' }, [h('b', null, '业务字段'), h('span', null,
+        cat ? (cat.label + '（' + cat.key + '）') : ('未绑定：' + (s.biz || '?')))]),
+      h('div', { class: 'prd-field-row' }, [h('b', null, '来源'), h('span', null,
+        cat ? sourceText(cat.source) : '—')]),
+      h('div', { class: 'prd-field-row' }, [h('b', null, '去向'), h('span', null,
+        cat ? targetText(cat.target) : '—')])
+    ]);
+  }
+
   function openLayer(capId, row, kindOverride) {
     var cap = capsById[capId];
     if (!cap) { toast('命令不存在：' + capId); return; }
@@ -3143,7 +3380,8 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
     if (!node) return null;
     var known = window.RD_COMPONENTS[node.type];
     var C = known || window.RD_COMPONENTS.Fallback;
-    var props = { p: node.props || {}, 'data-node-id': node.id };
+    // site 传给组件：字段级 data-site 要用容器节点 id（与 check 里的 siteId 同一口径）
+    var props = { p: node.props || {}, site: node.id, 'data-node-id': node.id };
     if (!known) props.type = node.type;
     var kids = (node.children || []).map(renderNode).filter(Boolean);
     if (kids.length) return h(C, props, { default: function () { return kids; } });
@@ -3368,6 +3606,35 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
         });
       }
     }
+    // 字段字典：与面板同源（fieldSites + fieldCatalog），顺序 = 组件树先序
+    var fss = fieldSites(page.value.id);
+    if (fss.length) {
+      L.push('');
+      L.push('## 6 字段字典');
+      L.push('');
+      L.push('| 位置 | 文案 | 形态 | 业务字段 | 来源 | 去向 | 本处口径 |');
+      L.push('|---|---|---|---|---|---|---|');
+      fss.forEach(function (s) {
+        var cat = (DATA.fieldCatalog || []).filter(function (f) { return f.key === s.biz; })[0];
+        var local = localValue(s);
+        L.push('| ' + s.kind + ' | ' + (s.label || s.key) + ' | ' + scopeText(s) + ' | '
+          + (cat ? cat.label + '（' + cat.key + '）' : '未绑定') + ' | '
+          + (cat ? sourceText(cat.source) : '—') + ' | '
+          + (cat ? targetText(cat.target) : '—') + ' | ' + local + ' |');
+      });
+      L.push('');
+      fss.forEach(function (s, i) {
+        var cat = (DATA.fieldCatalog || []).filter(function (f) { return f.key === s.biz; })[0];
+        L.push('### field-' + page.value.id + '-' + (s.key || ('x' + i)) + ' ' + (s.label || s.key));
+        L.push('');
+        L.push('- 形态：' + scopeText(s));
+        L.push('- ' + localLabel(s) + '：' + localValue(s));
+        L.push('- 业务字段：' + (cat ? cat.label + '（' + cat.key + '）' : '未绑定'));
+        L.push('- 来源：' + (cat ? sourceText(cat.source) : '—'));
+        L.push('- 去向：' + (cat ? targetText(cat.target) : '—'));
+        L.push('');
+      });
+    }
     return L.join('\n');
   }
 
@@ -3534,7 +3801,16 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
                   innerText: edited || s.body || ''
                 })
               ]);
-            })
+            }),
+            // 字段字典：合成在最后一节之后，只读。没有渲染位的页面不生成空小节
+            (function () {
+              var ss = fieldSites(pg.id);
+              if (!ss.length) return null;
+              return h('div', { class: 'prd-sec' }, [
+                h('div', { class: 'prd-sec-h' }, ['字段字典', h('span', null, 'fields')]),
+                h('div', { class: 'prd-dict' }, ss.map(function (s, i) { return dictBlock(pg.id, s, i); }))
+              ]);
+            })()
           ]);
         } else if (store.prdTab === 'global') {
           var sm = smByEntity[pg.entity] || { states: [] };
@@ -3708,7 +3984,7 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
           h('div', { class: 'overlay-grip', onMousedown: startDrag, title: '拖动调宽' }),
           h('div', { class: 'overlay-head' }, [
             h('div', { class: 'overlay-title' }, 'PRD'),
-            h('button', { class: 'icon-btn', onClick: function () { store.showPrd = false; } }, '×')
+            h('button', { class: 'icon-btn', onClick: function () { store.showPrd = false; store.prdFocus = ''; } }, '×')
           ]),
           h('div', { class: 'prd-tabs' }, tabs.map(function (t) {
             return h('button', {
@@ -3942,6 +4218,9 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
           return h('label', {
             class: ['ff', f.span === 2 ? 'is-wide' : ''],
             key: f.key,
+            'data-field': f.key || null,
+            'data-site': L.capId,
+            'data-page': ownsPageOf(L.capId),
             'data-node-id': 'layer:' + L.capId + ':' + f.key,
             'data-node-label': (L.title || '') + ' · ' + f.label
           }, [
@@ -3958,7 +4237,7 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
           h('div', {
             class: ['layer', 'layer-' + L.kind],
             style: { width: L.width + 'px' },
-            onClick: function (e) { annotClick(e); }
+            onClick: function (e) { if (!annotClick(e)) fieldClick(e); }
           }, [
             h('div', { class: 'layer-head' }, [
               h('div', null, [
@@ -4008,6 +4287,8 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
         if (annotClick(e)) return;
         // 命令按钮/行内操作自己有 onClick，冒泡到这里不重复处理
         if (e.target.closest('button') || e.target.closest('a')) return;
+        // 字段标签：打开 PRD 并定位；输入控件内的点击不拦（R-12）
+        if (fieldClick(e)) return;
         var el = e.target.closest('[data-node-id]');
         if (!el) return;
         var nid = el.getAttribute('data-node-id');
@@ -4020,7 +4301,7 @@ window.__PROTO__ = {"schemaVersion":"1.0","meta":{"product":"新锂想质量管�
           if (store.layer) { closeLayer(); return; }
           if (store.popover) { store.popover = null; return; }
           if (store.showToc) { store.showToc = false; return; }
-          if (store.showPrd) { store.showPrd = false; }
+          if (store.showPrd) { store.showPrd = false; store.prdFocus = ''; }
         }
       }
 

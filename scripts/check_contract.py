@@ -15,6 +15,8 @@ import os
 import re
 import sys
 
+import field_sites          # 渲染位抽取：与 check_interact.py 共用这一份实现
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CATALOG = os.path.join(ROOT, "schemas", "catalog.json")
 
@@ -991,14 +993,8 @@ def check_proto(proto, catalog):
             if not isinstance(ax.get(k), (int, float)) or not (0 <= ax.get(k) <= 1):
                 add(E, "L2-39", f"标注 {a.get('id')} 的 anchor.{k} 必须是 0~1 的归一化坐标")
 
-    for f in (proto.get("fieldRegistry") or []):
-        pid = f.get("pageId")
-        if pid not in page_ids:
-            add(E, "L2-40", f"字段登记「{f.get('name')}」指向不存在的页面 {pid}")
-        elif f.get("block") not in tree_of.get(pid, set()):
-            add(E, "L2-41", f"字段登记「{f.get('name')}」的 block={f.get('block')} 不指向 {pid} 的真实节点")
-        if f.get("scope") == "out" and not f.get("reason"):
-            add(E, "L2-42", f"字段登记「{f.get('name')}」标了 scope=out 却没写 reason")
+    # 字段登记已废弃（2026-11-09 v2）：fieldRegistry → fieldCatalog + 渲染位引用。
+    # L2-40/41/42 判的对象不存在，由 L2-96/97 接手；残留的 fieldRegistry 由 L2-97 报硬错。
 
     # ---------- L2 H. 数据模型 ----------
     ents = (proto.get("dataModel") or {}).get("entities") or []
@@ -1017,6 +1013,181 @@ def check_proto(proto, catalog):
     for d in (proto.get("dataModel") or {}).get("derived") or []:
         if not d.get("fallback"):
             add(E, "L2-47", f"派生指标 {d.get('name')} 缺 fallback（无数据口径）")
+
+    # ---------- L2 J. 字段主档与渲染位（2026-11-09 v2） ----------
+    # 主档回答"这个字段从哪来到哪去"，渲染位回答"这一处画的是哪个字段"。
+    # 抽取只许一份实现（scripts/field_sites.py），这里与 check_interact.py 共用。
+    cat_list = proto.get("fieldCatalog") or []
+    cat = field_sites.catalog_index(proto)
+    sites = field_sites.render_sites(proto)
+    ents_by_id = {e.get("id"): e for e in ents}
+    ent_fields = {e.get("id"): {f.get("name") for f in (e.get("fields") or [])} for e in ents}
+    ent_field_type = {
+        e.get("id"): {f.get("name"): f.get("type") for f in (e.get("fields") or [])}
+        for e in ents
+    }
+    derived_names = {d.get("name") for d in ((proto.get("dataModel") or {}).get("derived") or [])}
+
+    # 主档 key 重复：重复了 cat 会静默覆盖，后面所有"能解析"都建立在一个残缺映射上
+    dup_cat = {k for k in cat if [f.get("key") for f in cat_list].count(k) > 1}
+    for k in sorted(dup_cat):
+        add(E, "L2-97", f"fieldCatalog 里业务键 {k} 重复：渲染位引用它时无法确定指向哪一条")
+
+    # L2-96 每个渲染位都必须绑定（按页聚合，逐条打印会把报告淹掉）
+    by_page = {}
+    for s in sites:
+        by_page.setdefault(s["page_id"] or "(未归属页面，命令不在任何页的 owns 里)", []).append(s)
+    for pid, grp in by_page.items():
+        bad = []
+        for s in grp:
+            if s["missing_key"]:
+                bad.append((s["label"] or s["kind"], "没有 key，无法绑定"))
+            elif s["kind"] == "filter" and not s["has_field"]:
+                if not s["has_filter_note"]:
+                    bad.append((s["key"], "筛选位既没写 field 也没写 filterNote"))
+            elif s["biz"] not in cat:
+                bad.append((s["key"], f"引用的业务字段 {s['biz']} 不在 fieldCatalog"))
+        if bad:
+            add(E, "L2-96", f"{pid} 有 {len(bad)} 个渲染位未绑定：{bad[:8]}"
+                            + ("…" if len(bad) > 8 else ""))
+        # (siteId, key) 必须唯一：它等价于块 id 唯一。
+        # 只判「同容器 key 不重复」不够——dept 在 n-filter 与 cap-patrol 各一次，是合法的两处；
+        # 而同一个 siteId 内重复，就是画了两遍同一个控件，data-site+data-field 定位会撞。
+        seen, dups = {}, []
+        for s in grp:
+            if s["missing_key"]:
+                continue
+            box = s["site_id"]
+            if s["key"] in seen.setdefault(box, set()):
+                dups.append(f"{box}/{s['key']}")
+            seen[box].add(s["key"])
+        if dups:
+            add(E, "L2-96", f"{pid} 有渲染位重复：{sorted(set(dups))}——同一容器同一 key 画了两遍，"
+                            "块 id 与 data-site 定位都会撞")
+
+    # L2-97 主档不许有孤儿；fieldRegistry 不许残留（静默忽略等于放行旧写法）
+    used = {s["biz"] for s in sites
+            if not s["missing_key"] and s["scope"] != "filter-cond"}
+    for k in cat:
+        if k not in used:
+            add(E, "L2-97", f"主档字段 {k}（{cat[k].get('label')}）没有被任何渲染位引用："
+                            "要么组件树漏画，要么主档多写了")
+    if "fieldRegistry" in proto:
+        add(E, "L2-97", "fieldRegistry 已废弃（2026-11-09 v2）：迁移到顶层 fieldCatalog + "
+                        "渲染位 field 引用，block / scope / sourceRef 一律删除")
+
+    # L2-98 取数引用必须可解析（能核的机器核，核不了的必须写清为什么）
+    dsmap = {d.get("id"): d for d in (proto.get("dataSources") or [])}
+    for k, it in cat.items():
+        src = it.get("source") or {}
+        dsid = src.get("ds")
+        ds = dsmap.get(dsid)
+        if not ds:
+            if dsid == "TODO":
+                add(E, "L2-98", f"字段 {k} 的数据源待人工指定（TODO）：迁移脚本只出草稿，取数口必须人填")
+            else:
+                add(E, "L2-98", f"字段 {k} 的 source.ds={dsid} 引用了未声明的数据源")
+            continue
+        kind, ref = ds.get("kind"), ds.get("ref")
+        if kind == "entity":
+            if not src.get("field"):
+                add(E, "L2-98", f"字段 {k} 来自实体 {ref}，但 source.field 没写取哪一格")
+            elif ref not in ents_by_id:
+                add(E, "L2-98", f"字段 {k} 的数据源 {dsid} 指向不存在的实体 {ref}")
+            elif src.get("field") not in ent_fields.get(ref, set()):
+                add(E, "L2-98", f"字段 {k} 取 {ref}.{src.get('field')}，但实体 {ref} 没有该字段")
+        elif kind == "dict":
+            if not src.get("field"):
+                add(E, "L2-98", f"字段 {k} 来自字典 {dsid}，但 source.field 没写取哪一格")
+            if "." in str(ref or ""):
+                ref_e, ref_f = str(ref).split(".", 1)
+                if ref_e not in ents_by_id:
+                    add(E, "L2-98", f"字段 {k} 的字典 {dsid} 指向不存在的实体 {ref_e}")
+                elif ref_f not in ent_fields.get(ref_e, set()):
+                    add(E, "L2-98", f"字段 {k} 的字典 {dsid} 指向 {ref}，但该实体没有字段 {ref_f}")
+                elif ent_field_type.get(ref_e, {}).get(ref_f) != "enum":
+                    add(E, "L2-98", f"字段 {k} 的字典 {dsid} 指向 {ref}，但该字段 type 不是 enum")
+            elif not ds.get("note"):
+                add(E, "L2-98", f"字段 {k} 的字典 {dsid} 是外部字典（{ref}），必须写 note 说明来源")
+        elif kind == "calc":
+            if not src.get("rule"):
+                add(E, "L2-98", f"字段 {k} 是计算字段（{dsid}），必须写 source.rule 说明算式")
+            if ref not in derived_names:
+                add(E, "L2-98", f"字段 {k} 的计算口径 {ref} 未在 dataModel.derived 登记")
+        elif kind == "api":
+            if not src.get("field"):
+                add(E, "L2-98", f"字段 {k} 来自接口 {dsid}，但 source.field 没写取哪一格")
+            if not ds.get("note"):
+                add(E, "L2-98", f"字段 {k} 的接口 {dsid} 必须写 note（接口契约未定，说明取数口径）")
+        elif kind == "system":
+            if not src.get("rule") or len(str(src.get("rule")).strip()) < 4:
+                add(E, "L2-98", f"字段 {k} 由系统生成（{dsid}），source.rule 必须写清生成规则（≥4 字）")
+        else:
+            add(E, "L2-98", f"字段 {k} 的数据源 {dsid} kind={kind} 不是 entity/dict/calc/api/system")
+
+    # L2-99 会被录入的字段必须有去向（to 哪张表哪个字段）
+    in_biz = {s["biz"] for s in sites if s["scope"] == "in" and not s["missing_key"]}
+    for k, it in cat.items():
+        if k not in in_biz:
+            continue          # 纯展示/纯计算/纯筛选，没有去向是合法的
+        t = it.get("target") or {}
+        if not t:
+            add(E, "L2-99", f"字段 {k}（{it.get('label')}）会被录入，但没有 target："
+                            "开发只能自己发明一张表")
+        elif t.get("entity") not in ents_by_id:
+            add(E, "L2-99", f"字段 {k} 的 target.entity={t.get('entity')} 不存在")
+        elif t.get("field") not in ent_fields.get(t.get("entity"), set()):
+            add(E, "L2-99", f"字段 {k} 的 target={t.get('entity')}.{t.get('field')} 不存在")
+
+    # L2-100 录入位必须有校验规则，且不许拿占位符刷绿
+    BAN = {"—", "-", "无", "暂无", "同上", "N/A", "略", "按需填写", "按规范填写"}
+    for s in sites:
+        if s["scope"] != "in":
+            continue
+        txt = str((s["raw"].get("rules") or {}).get("text") or "").strip()
+        if txt in BAN or len(txt) < 6:
+            add(E, "L2-100", f"{s['page_id'] or ''}/{s['key']} 的校验规则是空的或占位符"
+                             f"（{txt or '未填'}）：写清口径，不写「按需填写」")
+
+    # L2-101 展示位必须有空值显示（— 也要显式写）
+    for s in sites:
+        if s["scope"] != "out":
+            continue
+        if not str((s["raw"].get("display") or {}).get("empty") or "").strip():
+            add(E, "L2-101", f"{s['page_id'] or ''} 的 {s['key']}（{s['label'] or ''}）没写空值显示："
+                             "为空时显示什么，也是口径")
+
+    # L2-102 业务规则必须是 schema 形状；L2-103 挂命令的规则必须给得出 message
+    for g in (proto.get("guards") or []):
+        gid = g.get("id") or "(无 id)"
+        for k in ("id", "kind", "statement"):
+            if not str(g.get(k) or "").strip():
+                add(E, "L2-102", f"guard {gid} 缺 {k}：数据形状必须是 {{id, kind, statement, …}}，"
+                                 "旧写法 desc/expr 不算")
+        if g.get("kind") and g.get("kind") not in ("block", "warn"):
+            add(E, "L2-102", f"guard {gid} 的 kind={g.get('kind')} 只能是 block/warn")
+        if not str(g.get("capabilityId") or "").strip() and not str(g.get("fallback") or "").strip():
+            add(E, "L2-102", f"guard {gid} 没挂 capabilityId，也没写 fallback："
+                             "这条规则到底在哪拦人，说不清")
+        if str(g.get("capabilityId") or "").strip() and not str(g.get("message") or "").strip():
+            add(E, "L2-103", f"guard {gid} 挂在命令 {g.get('capabilityId')} 上，但没有 message："
+                             "会在界面上拦人，却不告诉人为什么")
+
+    # L2-104 决策条目必须是 schema 形状（id / stage / kind / decision / rationale）
+    dec_ids = []
+    for dc in (proto.get("decisions") or []):
+        did = dc.get("id") or "(无 id)"
+        dec_ids.append(did)
+        if not re.match(r"^D-\d{3}$", str(dc.get("id") or "")):
+            add(E, "L2-104", f"决策 {did} 的 id 不合 ^D-\\d{{3}}$：两位号/小写 d 都不行")
+        for k in ("stage", "kind", "decision", "rationale"):
+            if not str(dc.get(k) or "").strip():
+                add(E, "L2-104", f"决策 {did} 缺 {k}")
+        if dc.get("kind") and dc.get("kind") not in ("scope", "model", "tradeoff", "no-decision"):
+            add(E, "L2-104", f"决策 {did} 的 kind={dc.get('kind')} 只能是 scope/model/tradeoff/no-decision")
+    dup = sorted({x for x in dec_ids if dec_ids.count(x) > 1})
+    for x in dup:
+        add(E, "L2-104", f"决策 id {x} 重复")
 
     # ---------- L2 I. PDA 现场策略 ----------
     for p in pages:

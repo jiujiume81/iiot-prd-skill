@@ -8,6 +8,7 @@
   python3 build.py --proto <path> --out dist/index.html
 """
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -40,6 +41,8 @@ def main():
         if re.search(r"</script", src, re.I):
             raise SystemExit(f"{name} 含 </script，内联会截断")
 
+    with open(proto_path, "rb") as f:
+        src_sha = hashlib.sha256(f.read()).hexdigest()[:16]
     data = json.dumps(proto, ensure_ascii=False, separators=(",", ":"))
     title = f"{proto['meta']['product']} · 原型与 PRD"
 
@@ -48,6 +51,7 @@ def main():
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="prd-source" content="sha256:{src_sha}">
 <title>{title}</title>
 <style id="iiot-css">
 {css}

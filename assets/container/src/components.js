@@ -13,6 +13,13 @@
     return st.currentUser || '';
   }
 
+  // 字段级 DOM 标识用：这一处渲染位属于哪一页。
+  // 弹层里的字段可能来自别的页面（L2-93 越权渲染），那边由 app.js 按 cap.owns 算，不用这个。
+  function curPageId() {
+    var st = (window.RD && window.RD.state) || {};
+    return st.pageId || '';
+  }
+
   function can(capId, rowState) {
     if (!capId) return { ok: true };
     return window.RD.can(capId, rowState, curActor());
@@ -219,12 +226,18 @@
 
   var FilterBar = {
     name: 'FilterBar',
-    props: { p: { type: Object, default: function () { return {}; } } },
+    props: { p: { type: Object, default: function () { return {}; } }, site: String },
     setup: function (props) {
       return function () {
         var p = props.p || {};
         var fields = (p.fields || []).map(function (f) {
-          return h('div', { class: 'field', key: f.key }, [
+          return h('div', {
+            class: 'field',
+            key: f.key,
+            'data-field': f.key || null,
+            'data-site': props.site || '',
+            'data-page': curPageId()
+          }, [
             h('label', { class: 'field-label' }, f.label),
             h('input', {
               class: 'input',
@@ -339,12 +352,17 @@
     }
   };
 
-  function cellRender(col, row, i) {
+  function cellRender(col, row, i, site) {
+    // 列的空值口径由契约给（display.empty），缺省 '-'
+    var empty = (col.display && col.display.empty) || '-';
+    // 字段级标识挂在既有的 div.dt-cell 上，不包 wrapper、不改层级：
+    // check_parity 的 C-09 靠数 class="dt-cell 子串核对列数
+    var fattr = { 'data-field': col.key || null, 'data-site': site || '', 'data-page': curPageId() };
     if (col.type === 'index') return h('div', { class: 'dt-cell is-idx num' }, String(i + 1));
-    if (col.type === 'num') return h('div', { class: 'dt-cell is-num num' }, String(row[col.key] == null ? '-' : row[col.key]));
+    if (col.type === 'num') return h('div', { class: 'dt-cell is-num num', 'data-field': col.key || null, 'data-site': fattr['data-site'], 'data-page': fattr['data-page'] }, String(row[col.key] == null ? empty : row[col.key]));
     if (col.type === 'tag') {
       var txt = row[col.key];
-      return h('div', { class: 'dt-cell' }, [h('span', { class: ['tag', 'is-dot', statusTone(txt)] }, txt)]);
+      return h('div', { class: 'dt-cell', 'data-field': col.key || null, 'data-site': fattr['data-site'], 'data-page': fattr['data-page'] }, [h('span', { class: ['tag', 'is-dot', statusTone(txt)] }, txt == null ? empty : txt)]);
     }
     if (col.type === 'action') {
       var rawLinks = col.actions || [];
@@ -372,7 +390,7 @@
       }
       return h('div', { class: 'dt-cell is-act' }, links);
     }
-    return h('div', { class: 'dt-cell', title: row[col.key] }, row[col.key] == null ? '-' : String(row[col.key]));
+    return h('div', { class: 'dt-cell', title: row[col.key], 'data-field': col.key || null, 'data-site': fattr['data-site'], 'data-page': fattr['data-page'] }, row[col.key] == null ? empty : String(row[col.key]));
   }
 
   var StateBlock = {
@@ -399,7 +417,7 @@
 
   var DataTable = {
     name: 'DataTable',
-    props: { p: { type: Object, default: function () { return {}; } } },
+    props: { p: { type: Object, default: function () { return {}; } }, site: String },
     setup: function (props) {
       return function () {
         var p = props.p || {};
@@ -414,7 +432,14 @@
 
         var head = h('div', { class: 'dt-head', style: { gridTemplateColumns: tpl } },
           cols.map(function (c) {
-            return h('div', { class: ['dt-cell', c.align === 'right' ? 'is-num' : ''], key: c.key, title: c.title }, c.title);
+            return h('div', {
+              class: ['dt-cell', c.align === 'right' ? 'is-num' : ''],
+              key: c.key,
+              title: c.title,
+              'data-field': c.type === 'action' || c.type === 'index' ? null : (c.key || null),
+              'data-site': props.site || '',
+              'data-page': curPageId()
+            }, c.title);
           }));
 
         var body;
@@ -462,7 +487,7 @@
                 window.RD.selectRow(row);
               }
             }, cols.map(function (c, ci) {
-              var cell = cellRender(c, row, i);
+              var cell = cellRender(c, row, i, props.site || '');
               cell.key = 'c' + ci;
               return cell;
             }));
@@ -546,10 +571,23 @@
           acts.length ? h('div', { class: 'sec-actions', style: { marginLeft: p.extra ? '0' : 'auto' } }, acts) : null
         ]) : null;
         var bodyStyle = p.cols ? { display: 'grid', gridTemplateColumns: 'repeat(' + p.cols + ', minmax(0,1fr))', gap: (p.gap || 12) + 'px' } : null;
+        // 说明文案走 props.notes，不再塞一个 DescList 子节点：
+        // DescList 只装数据字段，混进说明文案会被字段判据当成"没绑定的字段"。
+        var noteNodes = (p.notes || []).length ? h('div', {
+          class: 'sec-notes',
+          style: p.cols ? { gridColumn: '1 / -1' } : null
+        }, p.notes.map(function (n, i) {
+          return h('div', { class: 'sec-note', key: i }, [
+            h('span', { class: 'sec-note-k' }, n.label || ''),
+            h('span', { class: 'sec-note-v' }, n.text || '')
+          ]);
+        })) : null;
         return h('section', { class: 'sec-card' }, [
           head,
-          h('div', { class: ['sec-body', p.pad === false ? 'is-flush' : ''], style: bodyStyle },
-            ctx.slots.default ? ctx.slots.default() : null)
+          h('div', { class: ['sec-body', p.pad === false ? 'is-flush' : ''], style: bodyStyle }, [
+            noteNodes,
+            ctx.slots.default ? ctx.slots.default() : null
+          ])
         ]);
       };
     }
@@ -802,7 +840,7 @@
 
   var DescList = {
     name: 'DescList',
-    props: { p: { type: Object, default: function () { return {}; } } },
+    props: { p: { type: Object, default: function () { return {}; } }, site: String },
     setup: function (props) {
       return function () {
         var p = props.p || {};
@@ -811,9 +849,17 @@
         if (!items.length) return h('div', { class: 'chart-empty' }, '暂无字段');
         return h('div', { class: ['desc-list', p.bordered ? 'is-bordered' : ''], style: { gridTemplateColumns: 'repeat(' + cols + ', minmax(0,1fr))' } },
           items.map(function (it, i) {
-            return h('div', { class: 'desc-item', key: it.key || i, style: it.span ? { gridColumn: 'span ' + it.span } : {} }, [
+            return h('div', {
+              class: 'desc-item',
+              key: it.key || i,
+              'data-field': it.key || null,
+              'data-site': props.site || '',
+              'data-page': curPageId(),
+              style: it.span ? { gridColumn: 'span ' + it.span } : {}
+            }, [
               h('span', { class: 'desc-k' }, it.label),
-              h('span', { class: ['desc-v', it.tone ? 'is-' + it.tone : ''] }, it.value == null || it.value === '' ? '—' : String(it.value))
+              // 空值口径由契约给（display.empty）；缺省仍是 —
+              h('span', { class: ['desc-v', it.tone ? 'is-' + it.tone : ''] }, it.value == null || it.value === '' ? ((it.display && it.display.empty) || '—') : String(it.value))
             ]);
           }));
       };
@@ -1042,7 +1088,7 @@
   // 表单栅格：建单、执行填报、审批意见都要它。只吃 props，不校验不提交（校验规则在 guards 里）
   var FormGrid = {
     name: 'FormGrid',
-    props: { p: { type: Object, default: function () { return {}; } } },
+    props: { p: { type: Object, default: function () { return {}; } }, site: String },
     setup: function (props) {
       return function () {
         var p = props.p || {};
@@ -1086,6 +1132,9 @@
           return h('div', {
             class: ['form-item', it.type === 'textarea' || it.span ? 'is-wide' : ''],
             key: it.key || i,
+            'data-field': it.key || null,
+            'data-site': props.site || '',
+            'data-page': curPageId(),
             style: it.span ? { gridColumn: 'span ' + it.span } : null
           }, [
             h('label', { class: 'form-label' }, [
