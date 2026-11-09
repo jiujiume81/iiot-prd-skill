@@ -176,19 +176,11 @@ def check_proto(proto, catalog):
         stypes = [s.get("type") for s in sections]
         if "goal" not in stypes:
             add(E, "L2-09", f"页面 {pid} 的 PRD 缺 goal 小节")
-        if "flow" not in stypes and (p.get("interactions") or []):
-            add(W, "L2-10", f"页面 {pid} 有交互但没有 flow 流程图小节")
-        for sec in sections:
-            if sec.get("type") == "flow":
-                ids = {n.get("id") for n in (sec.get("nodes") or [])}
-                for e in (sec.get("edges") or []):
-                    if e.get("from") not in ids or e.get("to") not in ids:
-                        add(E, "L2-11", f"页面 {pid} 流程图边的端点不存在：{e.get('from')}→{e.get('to')}")
-                for n in (sec.get("nodes") or []):
-                    if n.get("kind") == "decision":
-                        outs = [e for e in (sec.get("edges") or []) if e.get("from") == n.get("id")]
-                        if any(not e.get("label") for e in outs):
-                            add(E, "L2-12", f"页面 {pid} 判定节点 {n.get('id')} 的出边缺 label")
+        # L2-10 已删除：页级 flow 不再支持（模块级图由 stateMachines 推导），
+        # 它守的对象不存在了；编号 75/76/78 同属主动删除，永不复用
+        # L2-11 / L2-12 随页级 flow 一并删除：它们分别校验 flow 边的端点、
+        # 判定节点出边的 label；页级 flow 已移除，两条都永远不可能命中。
+        # 休眠判据不保留——将来模块级流程按新结构写新判据，不拿旧的充数。
 
     # ---------- L2 C. 组件树 ----------
     for p in pages:

@@ -615,73 +615,6 @@
             "body": "让质量工程师在一屏内完成「按批次找到报告 → 核对结论 → 审核 → 导出」，不需要来回跳页。这一页只承载「已出报告」的核对与审核，取样在现场 PDA 完成。"
           },
           {
-            "type": "flow",
-            "heading": "主流程",
-            "caption": "从到货批次到报告归档",
-            "nodes": [
-              {
-                "id": "f1",
-                "label": "进入报告列表",
-                "kind": "start",
-                "sub": "/iqc/report"
-              },
-              {
-                "id": "f2",
-                "label": "按到货单号 / 供应商查询",
-                "kind": "task"
-              },
-              {
-                "id": "f3",
-                "label": "有结果？",
-                "kind": "decision"
-              },
-              {
-                "id": "f4",
-                "label": "审核报告",
-                "kind": "task",
-                "sub": "cap-approve"
-              },
-              {
-                "id": "f5",
-                "label": "导出报告交供应商",
-                "kind": "end"
-              },
-              {
-                "id": "f6",
-                "label": "放宽条件重查",
-                "kind": "warn"
-              }
-            ],
-            "edges": [
-              {
-                "from": "f1",
-                "to": "f2"
-              },
-              {
-                "from": "f2",
-                "to": "f3"
-              },
-              {
-                "from": "f3",
-                "to": "f4",
-                "label": "是"
-              },
-              {
-                "from": "f3",
-                "to": "f6",
-                "label": "否"
-              },
-              {
-                "from": "f6",
-                "to": "f2"
-              },
-              {
-                "from": "f4",
-                "to": "f5"
-              }
-            ]
-          },
-          {
             "type": "availability",
             "heading": "动作可用性",
             "body": "审核：仅「待审核」可用，其余状态置灰并说明原因（取样人不得自审）。导出：待审核 / 已审核可用，待取样时报告尚未生成，置灰。打印：始终可用。",
@@ -878,57 +811,6 @@
             "type": "goal",
             "heading": "页面目标",
             "body": "让取样员戴着手套、单手、在货场弱网下三步内完成取样提交：扫码 → 填数量 → 提交。"
-          },
-          {
-            "type": "flow",
-            "heading": "主流程",
-            "nodes": [
-              {
-                "id": "p1",
-                "label": "扫描批次码",
-                "kind": "start"
-              },
-              {
-                "id": "p2",
-                "label": "匹配到待取样任务？",
-                "kind": "decision"
-              },
-              {
-                "id": "p3",
-                "label": "录入取样数量",
-                "kind": "task"
-              },
-              {
-                "id": "p4",
-                "label": "提交（可离线）",
-                "kind": "end"
-              },
-              {
-                "id": "p5",
-                "label": "提示无任务 / 转离线",
-                "kind": "warn"
-              }
-            ],
-            "edges": [
-              {
-                "from": "p1",
-                "to": "p2"
-              },
-              {
-                "from": "p2",
-                "to": "p3",
-                "label": "是"
-              },
-              {
-                "from": "p2",
-                "to": "p5",
-                "label": "否"
-              },
-              {
-                "from": "p3",
-                "to": "p4"
-              }
-            ]
           },
           {
             "type": "rule",
@@ -1390,64 +1272,6 @@
             "type": "goal",
             "heading": "这一页解决什么问题",
             "body": "质量经理每天要知道两件事：**这批货能不能放**、**哪家供应商在变差**。前者在明细页解决，后者需要一个只看趋势和排名的页面。\n\n所以本页不做任何写操作——它只回答「现在正常吗」，异常的处置一律下钻到明细页。这也是列表页顶部不放指标卡的原因：指标和明细是两种查看方式，混在一页里两边都不好用。"
-          },
-          {
-            "type": "flow",
-            "heading": "看数到下钻",
-            "caption": "指标 → 判定 → 下钻",
-            "nodes": [
-              {
-                "id": "s1",
-                "label": "进入统计页",
-                "kind": "start",
-                "sub": "/iqc/stats"
-              },
-              {
-                "id": "s2",
-                "label": "看四项指标 + 趋势",
-                "kind": "task"
-              },
-              {
-                "id": "s3",
-                "label": "有指标越界？",
-                "kind": "decision"
-              },
-              {
-                "id": "s4",
-                "label": "下钻到明细列表",
-                "kind": "task",
-                "sub": "navigate pg-iqc-report"
-              },
-              {
-                "id": "s5",
-                "label": "结束（本页只读）",
-                "kind": "end"
-              }
-            ],
-            "edges": [
-              {
-                "from": "s1",
-                "to": "s2"
-              },
-              {
-                "from": "s2",
-                "to": "s3"
-              },
-              {
-                "from": "s3",
-                "to": "s4",
-                "label": "越界"
-              },
-              {
-                "from": "s3",
-                "to": "s5",
-                "label": "正常"
-              },
-              {
-                "from": "s4",
-                "to": "s5"
-              }
-            ]
           },
           {
             "type": "availability",

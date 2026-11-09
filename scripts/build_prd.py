@@ -63,24 +63,53 @@ def local_label(s):
             "filter-field": "筛选口径", "filter-cond": "筛选口径"}.get(s["scope"], "本处口径")
 
 
+def _ent_label(proto, eid):
+    for e in ((proto.get("dataModel") or {}).get("entities") or []):
+        if e.get("id") == eid:
+            return e.get("label") or eid
+    return eid
+
+
+def _fld_label(proto, eid, fname):
+    for e in ((proto.get("dataModel") or {}).get("entities") or []):
+        if e.get("id") == eid:
+            for f in (e.get("fields") or []):
+                if f.get("name") == fname:
+                    return f.get("label") or fname
+    return fname
+
+
 def source_text(proto, src):
+    """来源说人话：实体/字段都翻中文；只有渲染层翻译，契约里的 ref 不动。"""
     ds = {d.get("id"): d for d in (proto.get("dataSources") or [])}.get((src or {}).get("ds"))
     if not ds:
-        return "未声明"
-    k = {"entity": "实体", "dict": "字典", "calc": "计算", "api": "接口", "system": "系统"}.get(ds.get("kind"), ds.get("kind"))
-    ref = ds.get("ref") or ""
+        return "待指定"
+    kind = ds.get("kind")
+    ref = str(ds.get("ref") or "")
     fld = (src or {}).get("field")
-    # dict 的 ref 本身就是「实体.字段」，再拼一次 field 会打成 accident.level.level
-    if fld and not ref.endswith("." + fld):
-        where = ref + "." + fld
-    else:
-        where = (src or {}).get("rule") or ref
-    fb = (src or {}).get("fallback")
-    return "%s · %s%s" % (k, where, ("；兜底：" + fb) if fb else "")
+
+    if kind == "entity":
+        return ds.get("note") or _ent_label(proto, ref)
+    if kind == "dict":
+        if "." in ref:
+            e, f = ref.split(".", 1)
+            return "%s · %s（取值字典）" % (_ent_label(proto, e), _fld_label(proto, e, f))
+        return "%s · 外部字典" % ref
+    if kind == "calc":
+        rule = (src or {}).get("rule") or ""
+        return "计算" + (("（口径：%s）" % rule) if rule else "")
+    if kind == "api":
+        return "接口 · " + ref
+    if kind == "system":
+        rule = (src or {}).get("rule") or ""
+        return "系统生成" + ((" · " + rule) if rule else "")
+    return kind or "待指定"
 
 
-def target_text(t):
-    return "%s.%s" % (t.get("entity"), t.get("field")) if t else "不落库"
+def target_text(proto, t):
+    if not t:
+        return "不落库（纯展示/计算/筛选）"
+    return "%s · %s" % (_ent_label(proto, t.get("entity")), _fld_label(proto, t.get("entity"), t.get("field")))
 
 
 def caps_of_page(proto, page):
@@ -132,39 +161,43 @@ def build(proto, shaping_dir=None, source_path=None):
 
     # ---------------- 1 背景与目标 ----------------
     h2("1 背景与目标")
-    h3("1.1 要解决的问题")
-    for d in (proto.get("decisions") or []):
-        if d.get("active", True):
-            L.append("- " + (d.get("decision") or d.get("title") or ""))
-            if d.get("rationale"):
-                L.append("  - 理由：" + d["rationale"])
-    if not (proto.get("decisions") or []):
-        L.append("- （契约未登记决策，见 openQuestions）")
-    L.append("")
+    if (proto.get("decisions") or []):
+        h3("1.1 要解决的问题")
+        for d in (proto.get("decisions") or []):
+            if d.get("active", True):
+                L.append("- " + (d.get("decision") or d.get("title") or ""))
+                if d.get("rationale"):
+                    L.append("  - 理由：" + d["rationale"])
+        L.append("")
     h3("1.2 目标与度量")
     L.append("- 端：%s" % "、".join(meta.get("targets") or []))
     L.append("- 页面：%d 个 ｜ 命令：%d 条 ｜ 业务字段：%d 个" % (len(pages), len(caps), len(cat)))
     L.append("")
-    h3("1.3 非目标")
-    for q in (proto.get("openQuestions") or []):
-        if q.get("status") not in ("resolved", "assumed"):
+    unresolved = [q for q in (proto.get("openQuestions") or [])
+                  if q.get("status") not in ("resolved", "assumed")]
+    if unresolved:
+        h3("1.3 非目标")
+        for q in unresolved:
             L.append("- 未决（%s）：%s" % (q.get("priority") or "-", q.get("question") or ""))
-    L.append("")
-    h3("1.4 角色")
-    L.append("| 角色 | 说明 |")
-    L.append("|---|---|")
-    for a in (proto.get("actors") or []):
-        L.append("| %s | %s |" % (a.get("name") or a.get("id"), a.get("desc") or a.get("note") or ""))
-    L.append("")
+        L.append("")
+    if (proto.get("actors") or []):
+        h3("1.4 角色")
+        L.append("| 角色 | 说明 |")
+        L.append("|---|---|")
+        for a in (proto.get("actors") or []):
+            L.append("| %s | %s |" % (a.get("name") or a.get("id"), a.get("desc") or a.get("note") or ""))
+        L.append("")
 
     # ---------------- 2 业务流程与状态机 ----------------
     h2("2 业务流程与状态机")
-    h3("2.1 业务流程")
+    if sms:
+        h3("2.1 业务流程")
     for sm in sms:
         L.append("- %s：%s" % (sm.get("label") or sm.get("id"),
                                " → ".join(st.get(x.get("key"), x.get("label") or x.get("key")) for x in (sm.get("states") or []))))
-    L.append("")
-    h3("2.2 状态机")
+    if sms:
+        L.append("")
+        h3("2.2 状态机")
     for sm in sms:
         L.append("```mermaid")
         L.append("stateDiagram-v2")
@@ -176,20 +209,19 @@ def build(proto, shaping_dir=None, source_path=None):
             L.append("  %s --> %s : %s" % (t.get("from"), t.get("to"), lbl))
         L.append("```")
         L.append("")
-    h3("2.3 按钮可用性矩阵")
-    L.append("| 命令 | 角色 | 可用状态 | 不可用策略 | 提示 |")
-    L.append("|---|---|---|---|---|")
-    for c in (proto.get("capabilities") or []):
-        L.append("| %s | %s | %s | %s | %s |" % (
-            c.get("label") or c.get("name") or c.get("id"),
-            actors_of(proto, c.get("actor")),
-            "、".join(st.get(k, k) for k in (c.get("from") or [])) or "不限",
-            c.get("policy") or "-", c.get("reason") or "-"))
-    L.append("")
-    h3("2.4 业务规则（guards）")
-    if not (proto.get("guards") or []):
-        L.append("- （契约未登记 guards）")
-    else:
+    if (proto.get("capabilities") or []):
+        h3("2.3 按钮可用性矩阵")
+        L.append("| 命令 | 角色 | 可用状态 | 不可用策略 | 提示 |")
+        L.append("|---|---|---|---|---|")
+        for c in (proto.get("capabilities") or []):
+            L.append("| %s | %s | %s | %s | %s |" % (
+                c.get("label") or c.get("name") or c.get("id"),
+                actors_of(proto, c.get("actor")),
+                "、".join(st.get(k, k) for k in (c.get("from") or [])) or "不限",
+                c.get("policy") or "—", c.get("reason") or "—"))
+        L.append("")
+    if (proto.get("guards") or []):
+        h3("2.4 业务规则（guards）")
         L.append("| 规则 | 挂哪条命令 | 不满足时的界面表现 | 可判定形式 |")
         L.append("|---|---|---|---|")
         for g in (proto.get("guards") or []):
@@ -224,52 +256,63 @@ def build(proto, shaping_dir=None, source_path=None):
             L.append("")
             sn += 1
 
-        sub("页面职责")
-        L.append("- 任务：" + (ct.get("task") or "-"))
-        L.append("- 角色：" + actors_of(proto, ct.get("actor")))
-        L.append("- 完成条件：" + (ct.get("doneWhen") or "-"))
-        L.append("")
-        sub("功能逻辑")
-        L.append("| 按钮 | 角色 | 前置状态 | 后置状态 | 幂等 | 失败处理 |")
-        L.append("|---|---|---|---|---|---|")
-        for cid in caps_of_page(proto, p):
-            c = caps.get(cid) or {}
-            L.append("| %s | %s | %s | %s | %s | %s |" % (
-                c.get("label") or cid, actors_of(proto, c.get("actor")),
-                "、".join(st.get(k, k) for k in (c.get("from") or [])) or "不限",
-                st.get(c.get("to"), c.get("to")) if c.get("to") else "-",
-                "按实体状态机" if c.get("to") else "-", c.get("reason") or "-"))
-        L.append("")
-        sub("交互逻辑")
+        def emit(title, body, warn=None):
+            nonlocal sn
+            body = [x for x in body if str(x).strip()]
+            if not body:
+                if warn:
+                    print("WARN: " + warn, file=sys.stderr)
+                return
+            L.append("**%s.%d %s**" % (sec, sn, title))
+            L.append("")
+            L.extend(body)
+            L.append("")
+            sn += 1
+
+        duty = []
+        if ct.get("task"):
+            duty.append("- 任务：" + ct["task"])
+        if ct.get("actor"):
+            duty.append("- 角色：" + actors_of(proto, ct.get("actor")))
+        if ct.get("doneWhen"):
+            duty.append("- 完成条件：" + ct["doneWhen"])
+        emit("页面职责", duty)
+
+        func = []
+        rows = caps_of_page(proto, p)
+        if rows:
+            func.append("| 按钮 | 角色 | 前置状态 | 后置状态 | 幂等 | 失败处理 |")
+            func.append("|---|---|---|---|---|---|")
+            for cid in rows:
+                c = caps.get(cid) or {}
+                func.append("| %s | %s | %s | %s | %s | %s |" % (
+                    c.get("label") or cid, actors_of(proto, c.get("actor")),
+                    "、".join(st.get(k, k) for k in (c.get("from") or [])) or "不限",
+                    st.get(c.get("to"), c.get("to")) if c.get("to") else "—",
+                    "按实体状态机" if c.get("to") else "—", c.get("reason") or "—"))
+        emit("功能逻辑", func)
+
         ixs = p.get("interactions") or []
-        if not ixs:
-            L.append("- （本页无声明交互）")
-        for ix in ixs:
-            L.append("- %s → %s（%s）" % (ix.get("on"), ix.get("target"), ix.get("do")))
-        L.append("")
-        sub("校验规则")
-        ins = [s for s in field_sites.render_sites(proto) if s["page_id"] == p.get("id") and s["scope"] == "in"]
-        if not ins:
-            L.append("- （本页无录入位）")
-        for s in ins:
-            L.append("- %s：%s" % (s["label"] or s["key"], (s["raw"].get("rules") or {}).get("text") or "未声明"))
-        L.append("")
-        # guard 挂在命令上，命令归 owns 页；不能靠 guard.pageId（契约里没有这个字段）
+        emit("交互逻辑", ["- %s → %s（%s）" % (ix.get("on"), ix.get("target"), ix.get("do")) for ix in ixs])
+
+        ins = [x for x in field_sites.render_sites(proto)
+               if x["page_id"] == p.get("id") and x["scope"] == "in"]
+        rules = []
+        for x in ins:
+            txt = (x["raw"].get("rules") or {}).get("text")
+            if txt:
+                rules.append("- %s：%s" % (x["label"] or x["key"], txt))
+        emit("校验规则", rules)
+
         owns = set((p.get("contract") or {}).get("owns") or [])
         gs = [g for g in (proto.get("guards") or []) if g.get("capabilityId") in owns]
-        if gs:
-            sub("异常分支")
-            for g in gs:
-                L.append("- %s：%s%s" % (g.get("id") or "", g.get("statement") or "",
-                                        ("（`%s`）" % g["expr"]) if g.get("expr") else ""))
-            L.append("")
-        sub("验收要点")
+        emit("异常分支", ["- %s：%s%s" % (
+            g.get("id") or "", g.get("statement") or "",
+            ("（`%s`）" % g["expr"]) if g.get("expr") else "") for g in gs])
+
         rs = [r for r in (proto.get("requirements") or []) if p.get("id") in (r.get("pageIds") or [])]
-        for r in rs:
-            L.append("- %s %s" % (r.get("id"), r.get("title")))
-        if not rs:
-            L.append("- （无关联需求）")
-        L.append("")
+        emit("验收要点", ["- %s %s" % (r.get("id"), r.get("title")) for r in rs],
+             warn="页面 %s（%s）无关联需求，验收要点已省略" % (p.get("id"), p.get("title") or ""))
 
     # ---------------- 4 字段字典 ----------------
     h2("4 字段字典")
@@ -286,7 +329,7 @@ def build(proto, shaping_dir=None, source_path=None):
     for f in cat:
         row = "| %s | %s | %s | %s |" % (
             f.get("label"), f.get("key"), source_text(proto, f.get("source")),
-            target_text(f.get("target")))
+            target_text(proto, f.get("target")))
         if has_refs:
             row += " %s |" % ("、".join(f.get("reqRefs") or []) or "—")
         L.append(row)
@@ -306,8 +349,6 @@ def build(proto, shaping_dir=None, source_path=None):
             sn += 1
 
         sub4("本页取数链路")
-        L.append("| 数据源 | 类型 | 取值 | 喂给哪些字段 | 兜底 |")
-        L.append("|---|---|---|---|---|")
         feed = {}
         for s in ss:
             f = cat_by.get(s["biz"])
@@ -317,22 +358,34 @@ def build(proto, shaping_dir=None, source_path=None):
             # 同一业务字段在多处渲染只列一次；重复列会让"喂给哪些字段"看起来像两个字段
             feed.setdefault(dsid, {})[f.get("key")] = f.get("label")
         dsmap = {d.get("id"): d for d in (proto.get("dataSources") or [])}
+        has_note = any((dsmap.get(x) or {}).get("note") for x in feed)
+        if has_note:
+            L.append("| 数据源 | 类型 | 取值 | 喂给哪些字段 | 兜底 | 说明 |")
+            L.append("|---|---|---|---|---|---|")
+        else:
+            L.append("| 数据源 | 类型 | 取值 | 喂给哪些字段 | 兜底 |")
+            L.append("|---|---|---|---|---|")
         for dsid, names in feed.items():
             ds = dsmap.get(dsid) or {}
             srcs = [f.get("source") or {} for f in cat if ((f.get("source") or {}).get("ds") == dsid)]
             fb = next((x.get("fallback") for x in srcs if x.get("fallback")), "-")
-            L.append("| %s | %s | %s | %s | %s |" % (
-                dsid, ds.get("kind") or "-", ds.get("ref") or "-", "、".join(names.values()), fb))
+            row = "| %s | %s | %s | %s | %s |" % (
+                dsid, ds.get("kind") or "—", ds.get("ref") or "—",
+                "、".join(names.values()), fb)
+            if has_note:
+                row += " %s |" % (ds.get("note") or "")
+            L.append(row)
         L.append("")
         sub4("本页渲染位速查")
         L.append("| 位置 | 文案 | 引用字段 | 形态 | 本处口径 |")
         L.append("|---|---|---|---|---|")
         for s in ss:
             f = cat_by.get(s["biz"])
+            ref_txt = ((f.get("label") + "（" + f.get("key") + "）") if f
+                       else ("条件筛选（不指向字段）" if s["scope"] == "filter-cond" else "未绑定"))
             L.append("| %s / %s | %s | %s | %s | %s |" % (
                 s["kind"], s["site_id"] or "-", s["label"] or s["key"],
-                (f.get("label") + "（" + f.get("key") + "）") if f else "未绑定",
-                scope_text(s), site_local_text(s)))
+                ref_txt, scope_text(s), site_local_text(s)))
         L.append("")
         sub4("逐位说明")
         for i, s in enumerate(ss):
@@ -341,40 +394,51 @@ def build(proto, shaping_dir=None, source_path=None):
             L.append("")
             L.append("- 形态：" + scope_text(s))
             L.append("- %s：%s" % (local_label(s), site_local_text(s)))
-            L.append("- 业务字段：" + ((f.get("label") + "（" + f.get("key") + "）") if f else "未绑定"))
-            L.append("- 来源：" + (source_text(proto, f.get("source")) if f else "—"))
-            L.append("- 去向：" + (target_text(f.get("target")) if f else "—"))
+            if f:
+                L.append("- 业务字段：" + f.get("label") + "（" + f.get("key") + "）")
+                L.append("- 来源：" + source_text(proto, f.get("source")))
+                L.append("- 去向：" + target_text(proto, f.get("target")))
+            elif s["scope"] == "filter-cond":
+                L.append("- 业务字段：条件筛选，不指向字段")
+            else:
+                L.append("- 业务字段：未绑定")
             L.append("")
 
     # ---------------- 5 数据、分批与验收 ----------------
     h2("5 数据、分批与验收")
-    h3("5.1 数据模型")
-    for e in ((proto.get("dataModel") or {}).get("entities") or []):
-        L.append("- %s（%s）：%s" % (e.get("label") or e.get("id"), e.get("id"),
-                                    "、".join(f.get("name") for f in (e.get("fields") or []))))
-    for d in ((proto.get("dataModel") or {}).get("derived") or []):
-        L.append("- 派生 %s = `%s`（兜底：%s）" % (d.get("name"), d.get("expr"), d.get("fallback")))
-    L.append("")
-    h3("5.2 分批")
+    ents5 = ((proto.get("dataModel") or {}).get("entities") or [])
+    der5 = ((proto.get("dataModel") or {}).get("derived") or [])
+    if ents5 or der5:
+        h3("5.1 数据模型")
+        for e in ents5:
+            L.append("- %s（%s）：%s" % (e.get("label") or e.get("id"), e.get("id"),
+                                        "、".join(f.get("name") for f in (e.get("fields") or []))))
+        for d in der5:
+            L.append("- 派生 %s = `%s`（兜底：%s）" % (d.get("name"), d.get("expr"), d.get("fallback")))
+        L.append("")
     sl = []
     for x in (proto.get("slices") or []):
         sl.append(x if isinstance(x, str) else (x.get("name") or x.get("id") or "?"))
-    L.append("- 切片：" + ("、".join(sl) or "未分批"))
-    L.append("")
-    h3("5.3 验收清单")
-    for r in (proto.get("requirements") or []):
-        L.append("- %s %s（%s）" % (r.get("id"), r.get("title"), r.get("priority")))
-        for a in (r.get("acceptance") or []):
-            L.append("  - [%s] 给定 %s，当 %s，则 %s" % (
-                "非法路径" if a.get("kind") == "illegal" else "主路径",
-                a.get("given"), a.get("when"), a.get("then")))
-    L.append("")
-    h3("5.4 决策与未决")
-    for d in (proto.get("decisions") or []):
-        L.append("- %s：%s" % (d.get("id"), d.get("decision") or d.get("title") or ""))
-    for q in (proto.get("openQuestions") or []):
-        L.append("- %s：%s（%s）" % (q.get("id"), q.get("question"), q.get("status")))
-    L.append("")
+    if sl:
+        h3("5.2 分批")
+        L.append("- 切片：" + "、".join(sl))
+        L.append("")
+    if (proto.get("requirements") or []):
+        h3("5.3 验收清单")
+        for r in (proto.get("requirements") or []):
+            L.append("- %s %s（%s）" % (r.get("id"), r.get("title"), r.get("priority")))
+            for a in (r.get("acceptance") or []):
+                L.append("  - [%s] 给定 %s，当 %s，则 %s" % (
+                    "非法路径" if a.get("kind") == "illegal" else "主路径",
+                    a.get("given"), a.get("when"), a.get("then")))
+        L.append("")
+    if (proto.get("decisions") or proto.get("openQuestions")):
+        h3("5.4 决策与未决")
+        for d in (proto.get("decisions") or []):
+            L.append("- %s：%s" % (d.get("id"), d.get("decision") or d.get("title") or ""))
+        for q in (proto.get("openQuestions") or []):
+            L.append("- %s：%s（%s）" % (q.get("id"), q.get("question"), q.get("status")))
+        L.append("")
     h3("5.5 已知限制")
     L.append("- 取数链路只到「数据源/取值」两层，不下钻接口与库表字段。")
     L.append("- 外部字典与接口类数据源无法机器核对，只有 note 说明。")

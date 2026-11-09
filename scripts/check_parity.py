@@ -282,6 +282,8 @@ def check(proto_path, html_path, chrome, prd_path=None):
     check_c23(proto, prd_path, proto_path)
     # ---- C-24 产物必须自证生成来源 ----
     check_c24(proto_path, prd_path, html_path)
+    # ---- C-25 PRD 不许留占位空节 ----
+    check_c25(proto_path, prd_path)
 
     return tmpdir
 
@@ -357,6 +359,38 @@ def check_c24(proto_path, prd_path, html_path):
         add(E, "C-24", "容器产物没有 prd-source 指纹：无法证明它是当前契约构建的")
     elif mh.group(1) != cur:
         add(E, "C-24", f"容器构建自 sha256:{mh.group(1)}，当前契约是 sha256:{cur}：产物是旧版")
+
+
+def check_c25(proto_path, prd_path):
+    """C-25：PRD 正文不许留占位空节（整条只有占位词）。
+
+    只认「整条就是占位」：比如 `- （无关联需求）`、`- 暂无`、`| — | — |`。
+    不认正文里出现「本页无…」这类正常句子——那会误伤完成条件。
+    """
+    if prd_path:
+        md = open(prd_path, encoding="utf-8").read()
+    else:
+        try:
+            md = build_prd.build(json.load(open(proto_path, encoding="utf-8")), None, proto_path)
+        except Exception:
+            return
+    pats = [re.compile(r"^[-*]?\s*（无[^）]*）$"),
+            re.compile(r"^[-*]?\s*(暂无.*|N/A|—)$"),
+            re.compile(r"^[-*]?\s*本页无[^：]*$")]
+    bad = []
+    for ln in md.splitlines():
+        t = ln.strip()
+        if not t:
+            continue
+        if any(p.match(t) for p in pats):
+            bad.append(t[:40])
+            continue
+        if t.startswith("|"):
+            cells = [c.strip() for c in t.strip("|").split("|")]
+            if cells and all(c in ("", "—", "-", "暂无", "N/A") for c in cells):
+                bad.append(t[:40])
+    if bad:
+        add(E, "C-25", f"PRD 里有 {len(bad)} 处占位空节：{bad[:5]}——整节应该不出现，编号顺延")
 
 
 def _blocks(md):

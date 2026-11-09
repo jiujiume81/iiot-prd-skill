@@ -292,73 +292,6 @@
             "body": "让质量工程师在一屏内完成「按批次找到报告 → 核对结论 → 审核 → 导出」，不来回跳页。"
           },
           {
-            "type": "flow",
-            "heading": "主流程",
-            "caption": "从到货批次到报告归档",
-            "nodes": [
-              {
-                "id": "f1",
-                "label": "进入报告列表",
-                "kind": "start",
-                "sub": "/iqc/report"
-              },
-              {
-                "id": "f2",
-                "label": "按到货单号查询",
-                "kind": "task"
-              },
-              {
-                "id": "f3",
-                "label": "有结果？",
-                "kind": "decision"
-              },
-              {
-                "id": "f4",
-                "label": "审核报告",
-                "kind": "task",
-                "sub": "cap-approve"
-              },
-              {
-                "id": "f5",
-                "label": "导出并归档",
-                "kind": "end"
-              },
-              {
-                "id": "f6",
-                "label": "放宽条件重查",
-                "kind": "warn"
-              }
-            ],
-            "edges": [
-              {
-                "from": "f1",
-                "to": "f2"
-              },
-              {
-                "from": "f2",
-                "to": "f3"
-              },
-              {
-                "from": "f3",
-                "to": "f4",
-                "label": "是"
-              },
-              {
-                "from": "f3",
-                "to": "f6",
-                "label": "否"
-              },
-              {
-                "from": "f6",
-                "to": "f2"
-              },
-              {
-                "from": "f4",
-                "to": "f5"
-              }
-            ]
-          },
-          {
             "type": "availability",
             "heading": "动作可用性",
             "body": "审核仅在「待审核」可用；导出在任何状态下可用。",
@@ -538,57 +471,6 @@
             "type": "goal",
             "heading": "页面目标",
             "body": "让取样员戴着劳保手套、单手、在货场弱网下 3 步内完成取样提交。"
-          },
-          {
-            "type": "flow",
-            "heading": "主流程",
-            "nodes": [
-              {
-                "id": "p1",
-                "label": "扫码",
-                "kind": "start"
-              },
-              {
-                "id": "p2",
-                "label": "匹配到任务？",
-                "kind": "decision"
-              },
-              {
-                "id": "p3",
-                "label": "录入数量",
-                "kind": "task"
-              },
-              {
-                "id": "p4",
-                "label": "提交（可离线）",
-                "kind": "end"
-              },
-              {
-                "id": "p5",
-                "label": "提示无任务",
-                "kind": "warn"
-              }
-            ],
-            "edges": [
-              {
-                "from": "p1",
-                "to": "p2"
-              },
-              {
-                "from": "p2",
-                "to": "p3",
-                "label": "是"
-              },
-              {
-                "from": "p2",
-                "to": "p5",
-                "label": "否"
-              },
-              {
-                "from": "p3",
-                "to": "p4"
-              }
-            ]
           },
           {
             "type": "rule",

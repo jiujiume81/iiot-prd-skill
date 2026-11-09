@@ -1,6 +1,6 @@
 # 新锂想质量管理系统 · 产品需求文档
 
-> 生成源：example-02-accident.proto.json @ sha256:f54711aea71600a3（build_prd v1.2，2026-11-09 16:40）
+> 生成源：example-02-accident.proto.json @ sha256:8e6c19d8917f47d8（build_prd v1.2，2026-11-09 18:04）
 > 由 `scripts/build_prd.py` 从 `proto.json` 生成；字段字典与契约同源，改契约前请勿手改本文。
 > 版本 0.4.0 ｜ 生成于 -
 
@@ -125,8 +125,8 @@ stateDiagram-v2
 
 | 按钮 | 角色 | 前置状态 | 后置状态 | 幂等 | 失败处理 |
 |---|---|---|---|---|---|
-| 新建报告 | 安全员 | 不限 | - | - | 无前置状态限制；同一天同部门可重复报，不做唯一性校验 |
-| 导出 | 质量经理 | 不限 | - | - | 导出不受单据状态限制；无数据时导出空表并提示 |
+| 新建报告 | 安全员 | 不限 | — | — | 无前置状态限制；同一天同部门可重复报，不做唯一性校验 |
+| 导出 | 质量经理 | 不限 | — | — | 导出不受单据状态限制；无数据时导出空表并提示 |
 | 去排查 | 安全员 | 待排查 | 待分析 | 按实体状态机 | 仅「待排查」可排查 |
 | 做分析 | 质量工程师 | 待分析 | 待下发 | 按实体状态机 | 仅「待分析」可分析；未排查不能跳步分析 |
 | 下发措施 | 质量经理 | 待下发 | 措施执行中 | 按实体状态机 | 仅「待下发」可下发措施；措施未下发前不进入执行 |
@@ -180,10 +180,6 @@ stateDiagram-v2
 - g-3：原因分析人与效果验证人不得为同一人（`analyze.actor != verify.actor`）
 - g-4：审批关闭需厂长角色，且不得与下发措施人为同一人（`approve.actor != issue.actor`）
 
-**3.2.6 验收要点**
-
-- （无关联需求）
-
 ### 3.3 我的待办
 
 **3.3.1 页面职责**
@@ -196,7 +192,7 @@ stateDiagram-v2
 
 | 按钮 | 角色 | 前置状态 | 后置状态 | 幂等 | 失败处理 |
 |---|---|---|---|---|---|
-| 导出 | 质量经理 | 不限 | - | - | 导出不受单据状态限制；无数据时导出空表并提示 |
+| 导出 | 质量经理 | 不限 | — | — | 导出不受单据状态限制；无数据时导出空表并提示 |
 | 去排查 | 安全员 | 待排查 | 待分析 | 按实体状态机 | 仅「待排查」可排查 |
 | 做分析 | 质量工程师 | 待分析 | 待下发 | 按实体状态机 | 仅「待分析」可分析；未排查不能跳步分析 |
 | 去验证 | 安全员 | 待验证 | 待审批 | 按实体状态机 | 仅「待验证」可验证；措施未全部完成不能验证 |
@@ -221,10 +217,6 @@ stateDiagram-v2
 - 完成证据：必填，照片/记录编号至少一项；无证据不予验收
 - 说明：可空；有延期或变更时写原因，不超过 200 字
 
-**3.3.5 验收要点**
-
-- （无关联需求）
-
 ### 3.4 事故报告详情
 
 **3.4.1 页面职责**
@@ -233,22 +225,9 @@ stateDiagram-v2
 - 角色：安全员、质量工程师、质量经理、厂长、责任部门主管
 - 完成条件：看完无需回退即可判断这张单据卡在哪一步、缺什么
 
-**3.4.2 功能逻辑**
-
-| 按钮 | 角色 | 前置状态 | 后置状态 | 幂等 | 失败处理 |
-|---|---|---|---|---|---|
-
-**3.4.3 交互逻辑**
+**3.4.2 交互逻辑**
 
 - n-status → pg-acc-ledger（navigate）
-
-**3.4.4 校验规则**
-
-- （本页无录入位）
-
-**3.4.5 验收要点**
-
-- （无关联需求）
 
 ### 3.5 新建事故报告
 
@@ -280,84 +259,80 @@ stateDiagram-v2
 - 事故经过：必填，按时间顺序写：几点发现、看到什么、做了什么处置，不少于 50 字
 - 临时处置：写已采取的临时措施与隔离范围；未处置填「未处置」并说明原因
 
-**3.5.5 验收要点**
-
-- （无关联需求）
-
 ## 4 字段字典
 
 ### 4.1 字段主档
 
 | 字段 | key | 来源 | 去向 |
 |---|---|---|---|
-| 事故编号 | accNo | 系统 · SG-{yyyyMM}-{3 位流水}，按部门月度连续，提交时生成 | accident.accNo |
-| 发生部门 | dept | 字典 · 组织架构.deptName；兜底：组织架构取不到时允许手填并标记待同步 | accident.dept |
-| 事故等级 | level | 字典 · accident.level | accident.level |
-| 事故类型 | type | 字典 · accident.type | accident.type |
-| 发生时间 | at | 实体 · accident.at | accident.at |
-| 报告人 | reporter | 实体 · accident.reporter；兜底：无账号班组长由安全员代录 | accident.reporter |
-| 报告状态 | accStatus | 字典 · accident.status | 不落库 |
-| 停留天数 | stay | 计算 · 当前时间 − 最近一次状态迁移时间，按自然日向上取整；兜底：已关闭单据显示总周期 | 不落库 |
-| 措施条数 | measureCount | 计算 · 统计该事故下未关闭的措施条数；兜底：无措施显示 0 | 不落库 |
-| 发生地点 | place | 实体 · accident.place | accident.place |
-| 涉及人员 | people | 实体 · accident.people | accident.people |
-| 损失工时 | loss | 实体 · accident.loss | accident.loss |
-| 事故经过 | story | 实体 · accident.story | accident.story |
-| 临时处置 | temp | 实体 · accident.temp | accident.temp |
-| 排查人 | patrolBy | 实体 · accident.patrolBy | accident.patrolBy |
-| 到场时间 | arriveAt | 实体 · accident.arriveAt | accident.arriveAt |
-| 排查结论 | patrolResult | 字典 · accident.patrolResult | accident.patrolResult |
-| 责任部门 | patrolDept | 字典 · 组织架构.deptName；兜底：组织架构取不到时允许手填 | accident.patrolDept |
-| 现场勘查情况 | scene | 实体 · accident.scene | accident.scene |
-| 是否已停机 | stopLine | 实体 · accident.stopLine | accident.stopLine |
-| 分析方法 | tool | 实体 · accident.tool | accident.tool |
-| 分析人 | analyzeBy | 实体 · accident.analyzeBy | accident.analyzeBy |
-| 直接原因 | directCause | 实体 · accident.directCause | accident.directCause |
-| 根本原因 | rootCause | 实体 · accident.rootCause | accident.rootCause |
-| Why 链条 | whyChain | 计算 · 按 why1→why4 顺序拼接，空层跳过；兜底：未完成分析时显示「待分析」 | 不落库 |
-| Why1 | why1 | 实体 · accident.why1 | accident.why1 |
-| Why2 | why2 | 实体 · accident.why2 | accident.why2 |
-| Why3 | why3 | 实体 · accident.why3 | accident.why3 |
-| Why4 | why4 | 实体 · accident.why4 | accident.why4 |
-| 措施编号 | measureNo | 实体 · measure.measureNo | 不落库 |
-| 措施内容 | content | 实体 · measure.content | measure.content |
-| 责任人 | owner | 实体 · measure.owner | measure.owner |
-| 完成期限 | due | 实体 · measure.due | measure.due |
-| 措施状态 | measureStatus | 字典 · measure.status | 不落库 |
-| 责任部门（措施） | measureDept | 字典 · 组织架构.deptName；兜底：组织架构取不到时允许手填 | measure.dept |
-| 验收标准 | acceptance | 实体 · measure.acceptance | measure.acceptance |
-| 验证方式 | verifyWay | 实体 · measure.verifyWay | measure.verifyWay |
-| 验证结论 | verifyResult | 实体 · measure.verifyResult | measure.verifyResult |
-| 验证依据 | evidence | 实体 · measure.evidence | measure.evidence |
-| 无效依据 | invalidReason | 实体 · measure.invalidReason | measure.invalidReason |
-| 执行计划 | plan | 实体 · measure.plan | measure.plan |
-| 实际完成时间 | doneAt | 实体 · measure.doneAt | measure.doneAt |
-| 完成证据 | proof | 实体 · measure.proof | measure.proof |
-| 说明 | note | 实体 · measure.note | measure.note |
-| 审批意见 | conclusion | 实体 · accident.conclusion | accident.conclusion |
-| 是否纳入月度安环通报 | monthlyReport | 实体 · accident.monthlyReport | accident.monthlyReport |
-| 退回原因 | rejectReason | 实体 · accident.rejectReason | accident.rejectReason |
-| 单据编号 | docNo | 实体 · measure.measureNo | 不落库 |
-| 待办事项 | todo | 实体 · measure.todo | 不落库 |
-| 待办类型 | todoKind | 字典 · measure.kind | 不落库 |
-| 剩余天数 | daysLeft | 计算 · 要求完成日期 − 今天，按自然日向下取整；兜底：已完成为 0，超期为负数 | 不落库 |
+| 事故编号 | accNo | 系统生成 · SG-{yyyyMM}-{3 位流水}，按部门月度连续，提交时生成 | 事故报告 · 事故编号 |
+| 发生部门 | dept | 组织架构 · 外部字典 | 事故报告 · 发生部门 |
+| 事故等级 | level | 事故报告 · 事故等级（取值字典） | 事故报告 · 事故等级 |
+| 事故类型 | type | 事故报告 · 事故类型（取值字典） | 事故报告 · 事故类型 |
+| 发生时间 | at | 事故报告主表 | 事故报告 · 发生时间 |
+| 报告人 | reporter | 事故报告主表 | 事故报告 · 报告人 |
+| 报告状态 | accStatus | 事故报告 · 当前状态（取值字典） | 不落库（纯展示/计算/筛选） |
+| 停留天数 | stay | 计算（口径：当前时间 − 最近一次状态迁移时间，按自然日向上取整） | 不落库（纯展示/计算/筛选） |
+| 措施条数 | measureCount | 计算（口径：统计该事故下未关闭的措施条数） | 不落库（纯展示/计算/筛选） |
+| 发生地点 | place | 事故报告主表 | 事故报告 · 发生地点 |
+| 涉及人员 | people | 事故报告主表 | 事故报告 · 涉及人员 |
+| 损失工时 | loss | 事故报告主表 | 事故报告 · 损失工时 |
+| 事故经过 | story | 事故报告主表 | 事故报告 · 事故经过 |
+| 临时处置 | temp | 事故报告主表 | 事故报告 · 临时处置 |
+| 排查人 | patrolBy | 事故报告主表 | 事故报告 · 排查人 |
+| 到场时间 | arriveAt | 事故报告主表 | 事故报告 · 到场时间 |
+| 排查结论 | patrolResult | 事故报告 · 排查结论（取值字典） | 事故报告 · 排查结论 |
+| 责任部门 | patrolDept | 组织架构 · 外部字典 | 事故报告 · 责任部门 |
+| 现场勘查情况 | scene | 事故报告主表 | 事故报告 · 现场勘查情况 |
+| 是否已停机 | stopLine | 事故报告主表 | 事故报告 · 是否已停机 |
+| 分析方法 | tool | 事故报告主表 | 事故报告 · 分析方法 |
+| 分析人 | analyzeBy | 事故报告主表 | 事故报告 · 分析人 |
+| 直接原因 | directCause | 事故报告主表 | 事故报告 · 直接原因 |
+| 根本原因 | rootCause | 事故报告主表 | 事故报告 · 根本原因 |
+| Why 链条 | whyChain | 计算（口径：按 why1→why4 顺序拼接，空层跳过） | 不落库（纯展示/计算/筛选） |
+| Why1 | why1 | 事故报告主表 | 事故报告 · Why1 |
+| Why2 | why2 | 事故报告主表 | 事故报告 · Why2 |
+| Why3 | why3 | 事故报告主表 | 事故报告 · Why3 |
+| Why4 | why4 | 事故报告主表 | 事故报告 · Why4 |
+| 措施编号 | measureNo | 措施单 | 不落库（纯展示/计算/筛选） |
+| 措施内容 | content | 措施单 | 整改措施单 · 措施内容 |
+| 责任人 | owner | 措施单 | 整改措施单 · 责任人 |
+| 完成期限 | due | 措施单 | 整改措施单 · 完成期限 |
+| 措施状态 | measureStatus | 整改措施单 · 措施状态（取值字典） | 不落库（纯展示/计算/筛选） |
+| 责任部门（措施） | measureDept | 组织架构 · 外部字典 | 整改措施单 · 责任部门 |
+| 验收标准 | acceptance | 措施单 | 整改措施单 · 验收标准 |
+| 验证方式 | verifyWay | 措施单 | 整改措施单 · 验证方式 |
+| 验证结论 | verifyResult | 措施单 | 整改措施单 · 验证结论 |
+| 验证依据 | evidence | 措施单 | 整改措施单 · 验证依据 |
+| 无效依据 | invalidReason | 措施单 | 整改措施单 · 无效依据 |
+| 执行计划 | plan | 措施单 | 整改措施单 · 执行计划 |
+| 实际完成时间 | doneAt | 措施单 | 整改措施单 · 实际完成时间 |
+| 完成证据 | proof | 措施单 | 整改措施单 · 完成证据 |
+| 说明 | note | 措施单 | 整改措施单 · 说明 |
+| 审批意见 | conclusion | 事故报告主表 | 事故报告 · 审批意见 |
+| 是否纳入月度安环通报 | monthlyReport | 事故报告主表 | 事故报告 · 是否纳入月度安环通报 |
+| 退回原因 | rejectReason | 事故报告主表 | 事故报告 · 退回原因 |
+| 单据编号 | docNo | 措施单 | 不落库（纯展示/计算/筛选） |
+| 待办事项 | todo | 措施单 | 不落库（纯展示/计算/筛选） |
+| 待办类型 | todoKind | 整改措施单 · 待办类型（取值字典） | 不落库（纯展示/计算/筛选） |
+| 剩余天数 | daysLeft | 计算（口径：要求完成日期 − 今天，按自然日向下取整） | 不落库（纯展示/计算/筛选） |
 
 ### 4.2 事故报告台账
 
 **4.2.1 本页取数链路**
 
-| 数据源 | 类型 | 取值 | 喂给哪些字段 | 兜底 |
-|---|---|---|---|---|
-| ds-serial | system | accNo | 事故编号 | - |
-| ds-org | dict | 组织架构 | 发生部门、责任部门、责任部门（措施） | 组织架构取不到时允许手填并标记待同步 |
-| ds-acc-level | dict | accident.level | 事故等级 | - |
-| ds-acc-type | dict | accident.type | 事故类型 | - |
-| ds-accident | entity | accident | 发生时间、报告人、到场时间、现场勘查情况、是否已停机、分析方法、直接原因、根本原因、Why1、Why2、Why3、Why4、审批意见、是否纳入月度安环通报、退回原因 | 无账号班组长由安全员代录 |
-| ds-acc-status | dict | accident.status | 报告状态 | - |
-| ds-stay | calc | stayDays | 停留天数 | 已关闭单据显示总周期 |
-| ds-measure-count | calc | measureCount | 措施条数 | 无措施显示 0 |
-| ds-patrol-result | dict | accident.patrolResult | 排查结论 | - |
-| ds-measure | entity | measure | 措施内容、责任人、完成期限、验收标准、验证方式、验证结论、验证依据、无效依据 | - |
+| 数据源 | 类型 | 取值 | 喂给哪些字段 | 兜底 | 说明 |
+|---|---|---|---|---|---|
+| ds-serial | system | accNo | 事故编号 | - |  |
+| ds-org | dict | 组织架构 | 发生部门、责任部门、责任部门（措施） | 组织架构取不到时允许手填并标记待同步 | 组织架构由 HR 系统维护，本系统只读；接口未定，先按部门名取 |
+| ds-acc-level | dict | accident.level | 事故等级 | - |  |
+| ds-acc-type | dict | accident.type | 事故类型 | - |  |
+| ds-accident | entity | accident | 发生时间、报告人、到场时间、现场勘查情况、是否已停机、分析方法、直接原因、根本原因、Why1、Why2、Why3、Why4、审批意见、是否纳入月度安环通报、退回原因 | 无账号班组长由安全员代录 | 事故报告主表 |
+| ds-acc-status | dict | accident.status | 报告状态 | - |  |
+| ds-stay | calc | stayDays | 停留天数 | 已关闭单据显示总周期 |  |
+| ds-measure-count | calc | measureCount | 措施条数 | 无措施显示 0 |  |
+| ds-patrol-result | dict | accident.patrolResult | 排查结论 | - |  |
+| ds-measure | entity | measure | 措施内容、责任人、完成期限、验收标准、验证方式、验证结论、验证依据、无效依据 | - | 措施单 |
 
 **4.2.2 本页渲染位速查**
 
@@ -366,7 +341,7 @@ stateDiagram-v2
 | filter / n-filter | 事故编号 | 事故编号（accNo） | 字段筛选 | 按该字段值筛选 |
 | filter / n-filter | 发生部门 | 发生部门（dept） | 字段筛选 | 按该字段值筛选 |
 | filter / n-filter | 事故等级 | 事故等级（level） | 字段筛选 | 按该字段值筛选 |
-| filter / n-filter | 发生日期 | 未绑定 | 条件筛选 | 按发生时间区间筛选，含首尾当天 |
+| filter / n-filter | 发生日期 | 条件筛选（不指向字段） | 条件筛选 | 按发生时间区间筛选，含首尾当天 |
 | column / n-table | 事故编号 | 事故编号（accNo） | 展示 | — |
 | column / n-table | 事故类型 | 事故类型（type） | 展示 | — |
 | column / n-table | 发生部门 | 发生部门（dept） | 展示 | — |
@@ -408,316 +383,314 @@ stateDiagram-v2
 - 形态：字段筛选
 - 筛选口径：按该字段值筛选
 - 业务字段：事故编号（accNo）
-- 来源：系统 · SG-{yyyyMM}-{3 位流水}，按部门月度连续，提交时生成
-- 去向：accident.accNo
+- 来源：系统生成 · SG-{yyyyMM}-{3 位流水}，按部门月度连续，提交时生成
+- 去向：事故报告 · 事故编号
 
 #### field-pg-acc-ledger-n-filter-dept 发生部门
 
 - 形态：字段筛选
 - 筛选口径：按该字段值筛选
 - 业务字段：发生部门（dept）
-- 来源：字典 · 组织架构.deptName；兜底：组织架构取不到时允许手填并标记待同步
-- 去向：accident.dept
+- 来源：组织架构 · 外部字典
+- 去向：事故报告 · 发生部门
 
 #### field-pg-acc-ledger-n-filter-level 事故等级
 
 - 形态：字段筛选
 - 筛选口径：按该字段值筛选
 - 业务字段：事故等级（level）
-- 来源：字典 · accident.level
-- 去向：accident.level
+- 来源：事故报告 · 事故等级（取值字典）
+- 去向：事故报告 · 事故等级
 
 #### field-pg-acc-ledger-n-filter-range 发生日期
 
 - 形态：条件筛选
 - 筛选口径：按发生时间区间筛选，含首尾当天
-- 业务字段：未绑定
-- 来源：—
-- 去向：—
+- 业务字段：条件筛选，不指向字段
 
 #### field-pg-acc-ledger-n-table-accNo 事故编号
 
 - 形态：展示
 - 空值显示：—
 - 业务字段：事故编号（accNo）
-- 来源：系统 · SG-{yyyyMM}-{3 位流水}，按部门月度连续，提交时生成
-- 去向：accident.accNo
+- 来源：系统生成 · SG-{yyyyMM}-{3 位流水}，按部门月度连续，提交时生成
+- 去向：事故报告 · 事故编号
 
 #### field-pg-acc-ledger-n-table-type 事故类型
 
 - 形态：展示
 - 空值显示：—
 - 业务字段：事故类型（type）
-- 来源：字典 · accident.type
-- 去向：accident.type
+- 来源：事故报告 · 事故类型（取值字典）
+- 去向：事故报告 · 事故类型
 
 #### field-pg-acc-ledger-n-table-dept 发生部门
 
 - 形态：展示
 - 空值显示：—
 - 业务字段：发生部门（dept）
-- 来源：字典 · 组织架构.deptName；兜底：组织架构取不到时允许手填并标记待同步
-- 去向：accident.dept
+- 来源：组织架构 · 外部字典
+- 去向：事故报告 · 发生部门
 
 #### field-pg-acc-ledger-n-table-level 等级
 
 - 形态：展示
 - 空值显示：—
 - 业务字段：事故等级（level）
-- 来源：字典 · accident.level
-- 去向：accident.level
+- 来源：事故报告 · 事故等级（取值字典）
+- 去向：事故报告 · 事故等级
 
 #### field-pg-acc-ledger-n-table-at 发生时间
 
 - 形态：展示
 - 空值显示：—
 - 业务字段：发生时间（at）
-- 来源：实体 · accident.at
-- 去向：accident.at
+- 来源：事故报告主表
+- 去向：事故报告 · 发生时间
 
 #### field-pg-acc-ledger-n-table-reporter 报告人
 
 - 形态：展示
 - 空值显示：—
 - 业务字段：报告人（reporter）
-- 来源：实体 · accident.reporter；兜底：无账号班组长由安全员代录
-- 去向：accident.reporter
+- 来源：事故报告主表
+- 去向：事故报告 · 报告人
 
 #### field-pg-acc-ledger-n-table-status 当前状态
 
 - 形态：展示
 - 空值显示：—
 - 业务字段：报告状态（accStatus）
-- 来源：字典 · accident.status
-- 去向：不落库
+- 来源：事故报告 · 当前状态（取值字典）
+- 去向：不落库（纯展示/计算/筛选）
 
 #### field-pg-acc-ledger-n-table-stay 停留(天)
 
 - 形态：展示
 - 空值显示：—
 - 业务字段：停留天数（stay）
-- 来源：计算 · 当前时间 − 最近一次状态迁移时间，按自然日向上取整；兜底：已关闭单据显示总周期
-- 去向：不落库
+- 来源：计算（口径：当前时间 − 最近一次状态迁移时间，按自然日向上取整）
+- 去向：不落库（纯展示/计算/筛选）
 
 #### field-pg-acc-ledger-n-table-measure 措施
 
 - 形态：展示
 - 空值显示：—
 - 业务字段：措施条数（measureCount）
-- 来源：计算 · 统计该事故下未关闭的措施条数；兜底：无措施显示 0
-- 去向：不落库
+- 来源：计算（口径：统计该事故下未关闭的措施条数）
+- 去向：不落库（纯展示/计算/筛选）
 
 #### field-pg-acc-ledger-cap-patrol-arriveAt 到场时间
 
 - 形态：录入
 - 校验规则：必填，到场时间不得早于事故发生时间
 - 业务字段：到场时间（arriveAt）
-- 来源：实体 · accident.arriveAt
-- 去向：accident.arriveAt
+- 来源：事故报告主表
+- 去向：事故报告 · 到场时间
 
 #### field-pg-acc-ledger-cap-patrol-patrolResult 排查结论
 
 - 形态：录入
 - 校验规则：必填，从结论字典中选择；选择「管理缺陷」时须在勘查情况中写明依据
 - 业务字段：排查结论（patrolResult）
-- 来源：字典 · accident.patrolResult
-- 去向：accident.patrolResult
+- 来源：事故报告 · 排查结论（取值字典）
+- 去向：事故报告 · 排查结论
 
 #### field-pg-acc-ledger-cap-patrol-scene 现场勘查情况
 
 - 形态：录入
 - 校验规则：必填，写现场勘查看到的事实，不写判断；不少于 30 字
 - 业务字段：现场勘查情况（scene）
-- 来源：实体 · accident.scene
-- 去向：accident.scene
+- 来源：事故报告主表
+- 去向：事故报告 · 现场勘查情况
 
 #### field-pg-acc-ledger-cap-patrol-duty 责任部门
 
 - 形态：录入
 - 校验规则：必填，从组织架构中选择责任部门
 - 业务字段：责任部门（patrolDept）
-- 来源：字典 · 组织架构.deptName；兜底：组织架构取不到时允许手填
-- 去向：accident.patrolDept
+- 来源：组织架构 · 外部字典
+- 去向：事故报告 · 责任部门
 
 #### field-pg-acc-ledger-cap-patrol-stopLine 是否已停机
 
 - 形态：录入
 - 校验规则：必填，是否已停线停机；选「是」后须在临时处置中写明停线时间
 - 业务字段：是否已停机（stopLine）
-- 来源：实体 · accident.stopLine
-- 去向：accident.stopLine
+- 来源：事故报告主表
+- 去向：事故报告 · 是否已停机
 
 #### field-pg-acc-ledger-cap-analyze-tool 分析方法
 
 - 形态：录入
 - 校验规则：必填，注明分析方法（5Why/鱼骨图等）
 - 业务字段：分析方法（tool）
-- 来源：实体 · accident.tool
-- 去向：accident.tool
+- 来源：事故报告主表
+- 去向：事故报告 · 分析方法
 
 #### field-pg-acc-ledger-cap-analyze-direct 直接原因
 
 - 形态：录入
 - 校验规则：必填，写直接触发因素，不少于 20 字
 - 业务字段：直接原因（directCause）
-- 来源：实体 · accident.directCause
-- 去向：accident.directCause
+- 来源：事故报告主表
+- 去向：事故报告 · 直接原因
 
 #### field-pg-acc-ledger-cap-analyze-root 根本原因
 
 - 形态：录入
 - 校验规则：必填，写可整改的根本原因；不得写「管理不到位」这类无法落措施的结论
 - 业务字段：根本原因（rootCause）
-- 来源：实体 · accident.rootCause
-- 去向：accident.rootCause
+- 来源：事故报告主表
+- 去向：事故报告 · 根本原因
 
 #### field-pg-acc-ledger-cap-analyze-why1 Why1 为什么厚度不均
 
 - 形态：录入
 - 校验规则：按 5Why 逐层追问，每层不超过 120 字，不得跳层
 - 业务字段：Why1（why1）
-- 来源：实体 · accident.why1
-- 去向：accident.why1
+- 来源：事故报告主表
+- 去向：事故报告 · Why1
 
 #### field-pg-acc-ledger-cap-analyze-why2 Why2 为什么会有划痕
 
 - 形态：录入
 - 校验规则：按 5Why 逐层追问，每层不超过 120 字，不得跳层
 - 业务字段：Why2（why2）
-- 来源：实体 · accident.why2
-- 去向：accident.why2
+- 来源：事故报告主表
+- 去向：事故报告 · Why2
 
 #### field-pg-acc-ledger-cap-analyze-why3 Why3 为什么异物没被清理
 
 - 形态：录入
 - 校验规则：按 5Why 逐层追问，每层不超过 120 字，不得跳层
 - 业务字段：Why3（why3）
-- 来源：实体 · accident.why3
-- 去向：accident.why3
+- 来源：事故报告主表
+- 去向：事故报告 · Why3
 
 #### field-pg-acc-ledger-cap-analyze-why4 Why4 为什么没有这个动作
 
 - 形态：录入
 - 校验规则：按 5Why 逐层追问，每层不超过 120 字，不得跳层
 - 业务字段：Why4（why4）
-- 来源：实体 · accident.why4
-- 去向：accident.why4
+- 来源：事故报告主表
+- 去向：事故报告 · Why4
 
 #### field-pg-acc-ledger-cap-issue-measure-measure 措施内容
 
 - 形态：录入
 - 校验规则：必填，措施须可验收：写清做什么、做到什么程度，不少于 20 字
 - 业务字段：措施内容（content）
-- 来源：实体 · measure.content
-- 去向：measure.content
+- 来源：措施单
+- 去向：整改措施单 · 措施内容
 
 #### field-pg-acc-ledger-cap-issue-measure-dept 责任部门
 
 - 形态：录入
 - 校验规则：必填，从组织架构中选择承接措施的部门
 - 业务字段：责任部门（措施）（measureDept）
-- 来源：字典 · 组织架构.deptName；兜底：组织架构取不到时允许手填
-- 去向：measure.dept
+- 来源：组织架构 · 外部字典
+- 去向：整改措施单 · 责任部门
 
 #### field-pg-acc-ledger-cap-issue-measure-owner 责任人
 
 - 形态：录入
 - 校验规则：必填，从人员字典选择；不得填部门代替个人
 - 业务字段：责任人（owner）
-- 来源：实体 · measure.owner
-- 去向：measure.owner
+- 来源：措施单
+- 去向：整改措施单 · 责任人
 
 #### field-pg-acc-ledger-cap-issue-measure-due 完成期限
 
 - 形态：录入
 - 校验规则：必填，不得早于今天；超期需在说明中写延期理由
 - 业务字段：完成期限（due）
-- 来源：实体 · measure.due
-- 去向：measure.due
+- 来源：措施单
+- 去向：整改措施单 · 完成期限
 
 #### field-pg-acc-ledger-cap-issue-measure-check 验收标准
 
 - 形态：录入
 - 校验规则：必填，写可判定的验收标准（数量/状态/文件），不写「整改完成」
 - 业务字段：验收标准（acceptance）
-- 来源：实体 · measure.acceptance
-- 去向：measure.acceptance
+- 来源：措施单
+- 去向：整改措施单 · 验收标准
 
 #### field-pg-acc-ledger-cap-verify-pass-way 验证方式
 
 - 形态：录入
 - 校验规则：必填，注明验证方式（现场复核/记录抽查/试运行）
 - 业务字段：验证方式（verifyWay）
-- 来源：实体 · measure.verifyWay
-- 去向：measure.verifyWay
+- 来源：措施单
+- 去向：整改措施单 · 验证方式
 
 #### field-pg-acc-ledger-cap-verify-pass-result 验证结论
 
 - 形态：录入
 - 校验规则：必填，从结论字典选择；判定无效须转「退回」并写无效依据
 - 业务字段：验证结论（verifyResult）
-- 来源：实体 · measure.verifyResult
-- 去向：measure.verifyResult
+- 来源：措施单
+- 去向：整改措施单 · 验证结论
 
 #### field-pg-acc-ledger-cap-verify-pass-evidence 验证依据
 
 - 形态：录入
 - 校验规则：必填，写验证依据的编号或附件名，可追溯
 - 业务字段：验证依据（evidence）
-- 来源：实体 · measure.evidence
-- 去向：measure.evidence
+- 来源：措施单
+- 去向：整改措施单 · 验证依据
 
 #### field-pg-acc-ledger-cap-verify-fail-why 无效依据
 
 - 形态：录入
 - 校验规则：必填，写清哪一条不满足验收标准，不少于 20 字
 - 业务字段：无效依据（invalidReason）
-- 来源：实体 · measure.invalidReason
-- 去向：measure.invalidReason
+- 来源：措施单
+- 去向：整改措施单 · 无效依据
 
 #### field-pg-acc-ledger-cap-approve-conclusion 审批意见
 
 - 形态：录入
 - 校验规则：必填，写明同意/不同意及理由；不同意须指明退回环节
 - 业务字段：审批意见（conclusion）
-- 来源：实体 · accident.conclusion
-- 去向：accident.conclusion
+- 来源：事故报告主表
+- 去向：事故报告 · 审批意见
 
 #### field-pg-acc-ledger-cap-approve-report 是否纳入月度安环通报
 
 - 形态：录入
 - 校验规则：必填，是否纳入月度安环通报；选「是」后由安环汇总
 - 业务字段：是否纳入月度安环通报（monthlyReport）
-- 来源：实体 · accident.monthlyReport
-- 去向：accident.monthlyReport
+- 来源：事故报告主表
+- 去向：事故报告 · 是否纳入月度安环通报
 
 #### field-pg-acc-ledger-cap-reject-reason 退回原因
 
 - 形态：录入
 - 校验规则：必填，写退回原因与需补充的材料，不少于 20 字
 - 业务字段：退回原因（rejectReason）
-- 来源：实体 · accident.rejectReason
-- 去向：accident.rejectReason
+- 来源：事故报告主表
+- 去向：事故报告 · 退回原因
 
 ### 4.3 我的待办
 
 **4.3.1 本页取数链路**
 
-| 数据源 | 类型 | 取值 | 喂给哪些字段 | 兜底 |
-|---|---|---|---|---|
-| ds-org | dict | 组织架构 | 发生部门 | 组织架构取不到时允许手填并标记待同步 |
-| ds-measure | entity | measure | 单据编号、待办事项、完成期限、执行计划、实际完成时间、完成证据、说明 | - |
-| ds-measure-kind | dict | measure.kind | 待办类型 | - |
-| ds-serial | system | accNo | 事故编号 | - |
-| ds-days-left | calc | daysLeft | 剩余天数 | 已完成为 0，超期为负数 |
-| ds-measure-status | dict | measure.status | 措施状态 | - |
+| 数据源 | 类型 | 取值 | 喂给哪些字段 | 兜底 | 说明 |
+|---|---|---|---|---|---|
+| ds-org | dict | 组织架构 | 发生部门 | 组织架构取不到时允许手填并标记待同步 | 组织架构由 HR 系统维护，本系统只读；接口未定，先按部门名取 |
+| ds-measure | entity | measure | 单据编号、待办事项、完成期限、执行计划、实际完成时间、完成证据、说明 | - | 措施单 |
+| ds-measure-kind | dict | measure.kind | 待办类型 | - |  |
+| ds-serial | system | accNo | 事故编号 | - |  |
+| ds-days-left | calc | daysLeft | 剩余天数 | 已完成为 0，超期为负数 |  |
+| ds-measure-status | dict | measure.status | 措施状态 | - |  |
 
 **4.3.2 本页渲染位速查**
 
 | 位置 | 文案 | 引用字段 | 形态 | 本处口径 |
 |---|---|---|---|---|
-| filter / n-filter | 关键词 | 未绑定 | 条件筛选 | 在单据编号、待办事项、关联事故中模糊匹配 |
-| filter / n-filter | 是否超期 | 未绑定 | 条件筛选 | 按要求完成日期早于今天且未关闭判定超期 |
+| filter / n-filter | 关键词 | 条件筛选（不指向字段） | 条件筛选 | 在单据编号、待办事项、关联事故中模糊匹配 |
+| filter / n-filter | 是否超期 | 条件筛选（不指向字段） | 条件筛选 | 按要求完成日期早于今天且未关闭判定超期 |
 | filter / n-filter | 责任部门 | 发生部门（dept） | 字段筛选 | 按该字段值筛选 |
 | column / n-table | 单据编号 | 单据编号（docNo） | 展示 | — |
 | column / n-table | 类型 | 待办类型（todoKind） | 展示 | — |
@@ -737,128 +710,124 @@ stateDiagram-v2
 
 - 形态：条件筛选
 - 筛选口径：在单据编号、待办事项、关联事故中模糊匹配
-- 业务字段：未绑定
-- 来源：—
-- 去向：—
+- 业务字段：条件筛选，不指向字段
 
 #### field-pg-acc-mine-n-filter-overdue 是否超期
 
 - 形态：条件筛选
 - 筛选口径：按要求完成日期早于今天且未关闭判定超期
-- 业务字段：未绑定
-- 来源：—
-- 去向：—
+- 业务字段：条件筛选，不指向字段
 
 #### field-pg-acc-mine-n-filter-dept 责任部门
 
 - 形态：字段筛选
 - 筛选口径：按该字段值筛选
 - 业务字段：发生部门（dept）
-- 来源：字典 · 组织架构.deptName；兜底：组织架构取不到时允许手填并标记待同步
-- 去向：accident.dept
+- 来源：组织架构 · 外部字典
+- 去向：事故报告 · 发生部门
 
 #### field-pg-acc-mine-n-table-docNo 单据编号
 
 - 形态：展示
 - 空值显示：—
 - 业务字段：单据编号（docNo）
-- 来源：实体 · measure.measureNo
-- 去向：不落库
+- 来源：措施单
+- 去向：不落库（纯展示/计算/筛选）
 
 #### field-pg-acc-mine-n-table-kind 类型
 
 - 形态：展示
 - 空值显示：—
 - 业务字段：待办类型（todoKind）
-- 来源：字典 · measure.kind
-- 去向：不落库
+- 来源：整改措施单 · 待办类型（取值字典）
+- 去向：不落库（纯展示/计算/筛选）
 
 #### field-pg-acc-mine-n-table-todo 待办事项
 
 - 形态：展示
 - 空值显示：—
 - 业务字段：待办事项（todo）
-- 来源：实体 · measure.todo
-- 去向：不落库
+- 来源：措施单
+- 去向：不落库（纯展示/计算/筛选）
 
 #### field-pg-acc-mine-n-table-accNo 关联事故
 
 - 形态：展示
 - 空值显示：—
 - 业务字段：事故编号（accNo）
-- 来源：系统 · SG-{yyyyMM}-{3 位流水}，按部门月度连续，提交时生成
-- 去向：accident.accNo
+- 来源：系统生成 · SG-{yyyyMM}-{3 位流水}，按部门月度连续，提交时生成
+- 去向：事故报告 · 事故编号
 
 #### field-pg-acc-mine-n-table-due 要求完成
 
 - 形态：展示
 - 空值显示：—
 - 业务字段：完成期限（due）
-- 来源：实体 · measure.due
-- 去向：measure.due
+- 来源：措施单
+- 去向：整改措施单 · 完成期限
 
 #### field-pg-acc-mine-n-table-left 剩余(天)
 
 - 形态：展示
 - 空值显示：—
 - 业务字段：剩余天数（daysLeft）
-- 来源：计算 · 要求完成日期 − 今天，按自然日向下取整；兜底：已完成为 0，超期为负数
-- 去向：不落库
+- 来源：计算（口径：要求完成日期 − 今天，按自然日向下取整）
+- 去向：不落库（纯展示/计算/筛选）
 
 #### field-pg-acc-mine-n-table-status 当前状态
 
 - 形态：展示
 - 空值显示：—
 - 业务字段：措施状态（measureStatus）
-- 来源：字典 · measure.status
-- 去向：不落库
+- 来源：整改措施单 · 措施状态（取值字典）
+- 去向：不落库（纯展示/计算/筛选）
 
 #### field-pg-acc-mine-cap-start-measure-plan 执行计划
 
 - 形态：录入
 - 校验规则：必填，写执行步骤与完成时点，不少于 20 字
 - 业务字段：执行计划（plan）
-- 来源：实体 · measure.plan
-- 去向：measure.plan
+- 来源：措施单
+- 去向：整改措施单 · 执行计划
 
 #### field-pg-acc-mine-cap-finish-measure-doneAt 实际完成时间
 
 - 形态：录入
 - 校验规则：必填，不得晚于当前时间，且不得早于措施下发时间
 - 业务字段：实际完成时间（doneAt）
-- 来源：实体 · measure.doneAt
-- 去向：measure.doneAt
+- 来源：措施单
+- 去向：整改措施单 · 实际完成时间
 
 #### field-pg-acc-mine-cap-finish-measure-proof 完成证据
 
 - 形态：录入
 - 校验规则：必填，照片/记录编号至少一项；无证据不予验收
 - 业务字段：完成证据（proof）
-- 来源：实体 · measure.proof
-- 去向：measure.proof
+- 来源：措施单
+- 去向：整改措施单 · 完成证据
 
 #### field-pg-acc-mine-cap-finish-measure-note 说明
 
 - 形态：录入
 - 校验规则：可空；有延期或变更时写原因，不超过 200 字
 - 业务字段：说明（note）
-- 来源：实体 · measure.note
-- 去向：measure.note
+- 来源：措施单
+- 去向：整改措施单 · 说明
 
 ### 4.4 事故报告详情
 
 **4.4.1 本页取数链路**
 
-| 数据源 | 类型 | 取值 | 喂给哪些字段 | 兜底 |
-|---|---|---|---|---|
-| ds-acc-type | dict | accident.type | 事故类型 | - |
-| ds-acc-level | dict | accident.level | 事故等级 | - |
-| ds-org | dict | 组织架构 | 发生部门、责任部门 | 组织架构取不到时允许手填并标记待同步 |
-| ds-accident | entity | accident | 发生地点、涉及人员、损失工时、事故经过、临时处置、排查人、到场时间、现场勘查情况、分析方法、分析人、直接原因、根本原因 | 无账号班组长由安全员代录 |
-| ds-patrol-result | dict | accident.patrolResult | 排查结论 | - |
-| ds-why-chain | calc | whyChain | Why 链条 | 未完成分析时显示「待分析」 |
-| ds-measure | entity | measure | 措施编号、措施内容、责任人、完成期限 | - |
-| ds-measure-status | dict | measure.status | 措施状态 | - |
+| 数据源 | 类型 | 取值 | 喂给哪些字段 | 兜底 | 说明 |
+|---|---|---|---|---|---|
+| ds-acc-type | dict | accident.type | 事故类型 | - |  |
+| ds-acc-level | dict | accident.level | 事故等级 | - |  |
+| ds-org | dict | 组织架构 | 发生部门、责任部门 | 组织架构取不到时允许手填并标记待同步 | 组织架构由 HR 系统维护，本系统只读；接口未定，先按部门名取 |
+| ds-accident | entity | accident | 发生地点、涉及人员、损失工时、事故经过、临时处置、排查人、到场时间、现场勘查情况、分析方法、分析人、直接原因、根本原因 | 无账号班组长由安全员代录 | 事故报告主表 |
+| ds-patrol-result | dict | accident.patrolResult | 排查结论 | - |  |
+| ds-why-chain | calc | whyChain | Why 链条 | 未完成分析时显示「待分析」 |  |
+| ds-measure | entity | measure | 措施编号、措施内容、责任人、完成期限 | - | 措施单 |
+| ds-measure-status | dict | measure.status | 措施状态 | - |  |
 
 **4.4.2 本页渲染位速查**
 
@@ -895,195 +864,195 @@ stateDiagram-v2
 - 形态：展示
 - 空值显示：—
 - 业务字段：事故类型（type）
-- 来源：字典 · accident.type
-- 去向：accident.type
+- 来源：事故报告 · 事故类型（取值字典）
+- 去向：事故报告 · 事故类型
 
 #### field-pg-acc-detail-n-desc-level 事故等级
 
 - 形态：展示
 - 空值显示：—
 - 业务字段：事故等级（level）
-- 来源：字典 · accident.level
-- 去向：accident.level
+- 来源：事故报告 · 事故等级（取值字典）
+- 去向：事故报告 · 事故等级
 
 #### field-pg-acc-detail-n-desc-dept 发生部门
 
 - 形态：展示
 - 空值显示：—
 - 业务字段：发生部门（dept）
-- 来源：字典 · 组织架构.deptName；兜底：组织架构取不到时允许手填并标记待同步
-- 去向：accident.dept
+- 来源：组织架构 · 外部字典
+- 去向：事故报告 · 发生部门
 
 #### field-pg-acc-detail-n-desc-place 发生地点
 
 - 形态：展示
 - 空值显示：—
 - 业务字段：发生地点（place）
-- 来源：实体 · accident.place
-- 去向：accident.place
+- 来源：事故报告主表
+- 去向：事故报告 · 发生地点
 
 #### field-pg-acc-detail-n-desc-people 涉及人员
 
 - 形态：展示
 - 空值显示：—
 - 业务字段：涉及人员（people）
-- 来源：实体 · accident.people
-- 去向：accident.people
+- 来源：事故报告主表
+- 去向：事故报告 · 涉及人员
 
 #### field-pg-acc-detail-n-desc-loss 损失工时
 
 - 形态：展示
 - 空值显示：—
 - 业务字段：损失工时（loss）
-- 来源：实体 · accident.loss
-- 去向：accident.loss
+- 来源：事故报告主表
+- 去向：事故报告 · 损失工时
 
 #### field-pg-acc-detail-n-desc-story 事故经过
 
 - 形态：展示
 - 空值显示：—
 - 业务字段：事故经过（story）
-- 来源：实体 · accident.story
-- 去向：accident.story
+- 来源：事故报告主表
+- 去向：事故报告 · 事故经过
 
 #### field-pg-acc-detail-n-desc-temp 临时处置
 
 - 形态：展示
 - 空值显示：—
 - 业务字段：临时处置（temp）
-- 来源：实体 · accident.temp
-- 去向：accident.temp
+- 来源：事故报告主表
+- 去向：事故报告 · 临时处置
 
 #### field-pg-acc-detail-n-desc-patrol-patrolBy 排查人
 
 - 形态：展示
 - 空值显示：—
 - 业务字段：排查人（patrolBy）
-- 来源：实体 · accident.patrolBy
-- 去向：accident.patrolBy
+- 来源：事故报告主表
+- 去向：事故报告 · 排查人
 
 #### field-pg-acc-detail-n-desc-patrol-arriveAt 到场时间
 
 - 形态：展示
 - 空值显示：—
 - 业务字段：到场时间（arriveAt）
-- 来源：实体 · accident.arriveAt
-- 去向：accident.arriveAt
+- 来源：事故报告主表
+- 去向：事故报告 · 到场时间
 
 #### field-pg-acc-detail-n-desc-patrol-patrolResult 排查结论
 
 - 形态：展示
 - 空值显示：—
 - 业务字段：排查结论（patrolResult）
-- 来源：字典 · accident.patrolResult
-- 去向：accident.patrolResult
+- 来源：事故报告 · 排查结论（取值字典）
+- 去向：事故报告 · 排查结论
 
 #### field-pg-acc-detail-n-desc-patrol-patrolDept 责任部门
 
 - 形态：展示
 - 空值显示：—
 - 业务字段：责任部门（patrolDept）
-- 来源：字典 · 组织架构.deptName；兜底：组织架构取不到时允许手填
-- 去向：accident.patrolDept
+- 来源：组织架构 · 外部字典
+- 去向：事故报告 · 责任部门
 
 #### field-pg-acc-detail-n-desc-patrol-scene 现场勘查情况
 
 - 形态：展示
 - 空值显示：—
 - 业务字段：现场勘查情况（scene）
-- 来源：实体 · accident.scene
-- 去向：accident.scene
+- 来源：事故报告主表
+- 去向：事故报告 · 现场勘查情况
 
 #### field-pg-acc-detail-n-desc-why-tool 分析方法
 
 - 形态：展示
 - 空值显示：—
 - 业务字段：分析方法（tool）
-- 来源：实体 · accident.tool
-- 去向：accident.tool
+- 来源：事故报告主表
+- 去向：事故报告 · 分析方法
 
 #### field-pg-acc-detail-n-desc-why-analyzeBy 分析人
 
 - 形态：展示
 - 空值显示：—
 - 业务字段：分析人（analyzeBy）
-- 来源：实体 · accident.analyzeBy
-- 去向：accident.analyzeBy
+- 来源：事故报告主表
+- 去向：事故报告 · 分析人
 
 #### field-pg-acc-detail-n-desc-why-directCause 直接原因
 
 - 形态：展示
 - 空值显示：—
 - 业务字段：直接原因（directCause）
-- 来源：实体 · accident.directCause
-- 去向：accident.directCause
+- 来源：事故报告主表
+- 去向：事故报告 · 直接原因
 
 #### field-pg-acc-detail-n-desc-why-rootCause 根本原因
 
 - 形态：展示
 - 空值显示：—
 - 业务字段：根本原因（rootCause）
-- 来源：实体 · accident.rootCause
-- 去向：accident.rootCause
+- 来源：事故报告主表
+- 去向：事故报告 · 根本原因
 
 #### field-pg-acc-detail-n-desc-why-whyChain Why 链条
 
 - 形态：展示
 - 空值显示：—
 - 业务字段：Why 链条（whyChain）
-- 来源：计算 · 按 why1→why4 顺序拼接，空层跳过；兜底：未完成分析时显示「待分析」
-- 去向：不落库
+- 来源：计算（口径：按 why1→why4 顺序拼接，空层跳过）
+- 去向：不落库（纯展示/计算/筛选）
 
 #### field-pg-acc-detail-n-table-measure-no 措施编号
 
 - 形态：展示
 - 空值显示：—
 - 业务字段：措施编号（measureNo）
-- 来源：实体 · measure.measureNo
-- 去向：不落库
+- 来源：措施单
+- 去向：不落库（纯展示/计算/筛选）
 
 #### field-pg-acc-detail-n-table-measure-content 措施内容
 
 - 形态：展示
 - 空值显示：—
 - 业务字段：措施内容（content）
-- 来源：实体 · measure.content
-- 去向：measure.content
+- 来源：措施单
+- 去向：整改措施单 · 措施内容
 
 #### field-pg-acc-detail-n-table-measure-owner 责任人
 
 - 形态：展示
 - 空值显示：—
 - 业务字段：责任人（owner）
-- 来源：实体 · measure.owner
-- 去向：measure.owner
+- 来源：措施单
+- 去向：整改措施单 · 责任人
 
 #### field-pg-acc-detail-n-table-measure-due 完成期限
 
 - 形态：展示
 - 空值显示：—
 - 业务字段：完成期限（due）
-- 来源：实体 · measure.due
-- 去向：measure.due
+- 来源：措施单
+- 去向：整改措施单 · 完成期限
 
 #### field-pg-acc-detail-n-table-measure-status 状态
 
 - 形态：展示
 - 空值显示：—
 - 业务字段：措施状态（measureStatus）
-- 来源：字典 · measure.status
-- 去向：不落库
+- 来源：整改措施单 · 措施状态（取值字典）
+- 去向：不落库（纯展示/计算/筛选）
 
 ### 4.5 新建事故报告
 
 **4.5.1 本页取数链路**
 
-| 数据源 | 类型 | 取值 | 喂给哪些字段 | 兜底 |
-|---|---|---|---|---|
-| ds-accident | entity | accident | 发生时间、涉及人员、损失工时、事故经过、临时处置 | 无账号班组长由安全员代录 |
-| ds-org | dict | 组织架构 | 发生部门 | 组织架构取不到时允许手填并标记待同步 |
-| ds-acc-type | dict | accident.type | 事故类型 | - |
-| ds-acc-level | dict | accident.level | 事故等级 | - |
+| 数据源 | 类型 | 取值 | 喂给哪些字段 | 兜底 | 说明 |
+|---|---|---|---|---|---|
+| ds-accident | entity | accident | 发生时间、涉及人员、损失工时、事故经过、临时处置 | 无账号班组长由安全员代录 | 事故报告主表 |
+| ds-org | dict | 组织架构 | 发生部门 | 组织架构取不到时允许手填并标记待同步 | 组织架构由 HR 系统维护，本系统只读；接口未定，先按部门名取 |
+| ds-acc-type | dict | accident.type | 事故类型 | - |  |
+| ds-acc-level | dict | accident.level | 事故等级 | - |  |
 
 **4.5.2 本页渲染位速查**
 
@@ -1105,64 +1074,64 @@ stateDiagram-v2
 - 形态：录入
 - 校验规则：必填，不得晚于当前时间；精确到分钟，与现场记录一致
 - 业务字段：发生时间（at）
-- 来源：实体 · accident.at
-- 去向：accident.at
+- 来源：事故报告主表
+- 去向：事故报告 · 发生时间
 
 #### field-pg-acc-new-n-form-dept 发生部门
 
 - 形态：录入
 - 校验规则：必填，从组织架构中选择发生部门；跨部门事故选主要责任车间
 - 业务字段：发生部门（dept）
-- 来源：字典 · 组织架构.deptName；兜底：组织架构取不到时允许手填并标记待同步
-- 去向：accident.dept
+- 来源：组织架构 · 外部字典
+- 去向：事故报告 · 发生部门
 
 #### field-pg-acc-new-n-form-type 事故类型
 
 - 形态：录入
 - 校验规则：必填，按设备失效/操作违规/物料异常/环境因素/管理缺陷单选
 - 业务字段：事故类型（type）
-- 来源：字典 · accident.type
-- 去向：accident.type
+- 来源：事故报告 · 事故类型（取值字典）
+- 去向：事故报告 · 事故类型
 
 #### field-pg-acc-new-n-form-level 事故等级
 
 - 形态：录入
 - 校验规则：必填，按损失与影响分级；「较大」及以上进入厂长审批
 - 业务字段：事故等级（level）
-- 来源：字典 · accident.level
-- 去向：accident.level
+- 来源：事故报告 · 事故等级（取值字典）
+- 去向：事故报告 · 事故等级
 
 #### field-pg-acc-new-n-form-people 涉及人员
 
 - 形态：录入
 - 校验规则：参与人员用顿号分隔；无人员受伤填「无」，不得留空
 - 业务字段：涉及人员（people）
-- 来源：实体 · accident.people
-- 去向：accident.people
+- 来源：事故报告主表
+- 去向：事故报告 · 涉及人员
 
 #### field-pg-acc-new-n-form-loss 损失工时(h)
 
 - 形态：录入
 - 校验规则：保留 1 位小数，单位小时；不足 0.5 小时按 0.5 计
 - 业务字段：损失工时（loss）
-- 来源：实体 · accident.loss
-- 去向：accident.loss
+- 来源：事故报告主表
+- 去向：事故报告 · 损失工时
 
 #### field-pg-acc-new-n-form-story 事故经过
 
 - 形态：录入
 - 校验规则：必填，按时间顺序写：几点发现、看到什么、做了什么处置，不少于 50 字
 - 业务字段：事故经过（story）
-- 来源：实体 · accident.story
-- 去向：accident.story
+- 来源：事故报告主表
+- 去向：事故报告 · 事故经过
 
 #### field-pg-acc-new-n-form-temp 临时处置
 
 - 形态：录入
 - 校验规则：写已采取的临时措施与隔离范围；未处置填「未处置」并说明原因
 - 业务字段：临时处置（temp）
-- 来源：实体 · accident.temp
-- 去向：accident.temp
+- 来源：事故报告主表
+- 去向：事故报告 · 临时处置
 
 ## 5 数据、分批与验收
 
