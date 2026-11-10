@@ -1,6 +1,6 @@
 # 新锂想质量管理系统 · 产品需求文档
 
-> 生成源：example-02-accident.proto.json @ sha256:8e6c19d8917f47d8（build_prd v1.2，2026-11-09 18:04）
+> 生成源：example-02-accident.proto.json @ sha256:8e6c19d8917f47d8（build_prd v1.2，2026-11-10 12:39）
 > 由 `scripts/build_prd.py` 从 `proto.json` 生成；字段字典与契约同源，改契约前请勿手改本文。
 > 版本 0.4.0 ｜ 生成于 -
 
@@ -41,38 +41,11 @@
 
 - 事故报告生命周期：待排查 → 待分析 → 待下发 → 措施执行中 → 待验证 → 待审批 → 已关闭
 - 整改措施单生命周期：待开始 → 执行中 → 已完成
-
 ### 2.2 状态机
 
-```mermaid
-stateDiagram-v2
-  state "待排查" as reported
-  state "待分析" as patrolled
-  state "待下发" as analyzed
-  state "措施执行中" as measuring
-  state "待验证" as verifying
-  state "待审批" as approving
-  state "已关闭" as closed
-  [*] --> reported
-  reported --> patrolled : 去排查
-  patrolled --> analyzed : 做分析
-  analyzed --> measuring : 下发措施
-  measuring --> verifying : 系统
-  verifying --> approving : 去验证
-  verifying --> analyzed : 判无效
-  approving --> closed : 审批
-  approving --> analyzed : 退回
-```
+![事故报告生命周期](figs/sm-accident.svg)
 
-```mermaid
-stateDiagram-v2
-  state "待开始" as planned
-  state "执行中" as doing
-  state "已完成" as done
-  [*] --> planned
-  planned --> doing : 开始执行
-  doing --> done : 提交完成
-```
+![整改措施单生命周期](figs/sm-measure.svg)
 
 ### 2.3 按钮可用性矩阵
 
@@ -1177,3 +1150,41 @@ stateDiagram-v2
 
 - 取数链路只到「数据源/取值」两层，不下钻接口与库表字段。
 - 外部字典与接口类数据源无法机器核对，只有 note 说明。
+
+## 附录 B 图源（mermaid）
+
+图由 `scripts/render_figs.py` 预渲染成 SVG；改图请改这里再重跑，不要手改 SVG。
+
+### sm-accident
+
+```mermaid
+stateDiagram-v2
+  state "待排查" as reported
+  state "待分析" as patrolled
+  state "待下发" as analyzed
+  state "措施执行中" as measuring
+  state "待验证" as verifying
+  state "待审批" as approving
+  state "已关闭" as closed
+  [*] --> reported
+  reported --> patrolled : 去排查
+  patrolled --> analyzed : 做分析
+  analyzed --> measuring : 下发措施
+  measuring --> verifying : 系统
+  verifying --> approving : 去验证
+  verifying --> analyzed : 判无效
+  approving --> closed : 审批
+  approving --> analyzed : 退回
+```
+
+### sm-measure
+
+```mermaid
+stateDiagram-v2
+  state "待开始" as planned
+  state "执行中" as doing
+  state "已完成" as done
+  [*] --> planned
+  planned --> doing : 开始执行
+  doing --> done : 提交完成
+```

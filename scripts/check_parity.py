@@ -303,7 +303,7 @@ def check_c23(proto, prd_path, proto_path=None):
         md = open(prd_path, encoding="utf-8").read()
     else:
         try:
-            md = build_prd.build(proto, None, proto_path)
+            md = build_prd.build(proto, None, proto_path, None, False)
         except Exception as e:
             add(E, "C-23", f"PRD 生成器跑不起来：{e}")
             return
@@ -339,7 +339,7 @@ def check_c24(proto_path, prd_path, html_path):
         md = open(prd_path, encoding="utf-8").read()
     else:
         try:
-            md = build_prd.build(json.load(open(proto_path, encoding="utf-8")), None, proto_path)
+            md = build_prd.build(json.load(open(proto_path, encoding="utf-8")), None, proto_path, None, False)
         except Exception as e:
             add(E, "C-24", f"PRD 生成器跑不起来：{e}")
             md = ""
@@ -348,6 +348,33 @@ def check_c24(proto_path, prd_path, html_path):
         add(E, "C-24", "PRD 头部没有「生成源：… sha256:…」指纹：无法证明这份文档是当前契约生成的")
     elif m.group(1) != cur:
         add(E, "C-24", f"PRD 生成自 sha256:{m.group(1)}，当前契约是 sha256:{cur}：PRD 是旧版")
+
+    # 单文件 HTML 版 PRD：必须存在且指纹一致
+    if prd_path:
+        prd_html = os.path.splitext(prd_path)[0] + ".html"
+        if not os.path.exists(prd_html):
+            add(E, "C-24", "PRD 缺少单文件 HTML 版：md 有了，发送版没生成")
+        else:
+            bh = open(prd_html, encoding="utf-8", errors="ignore").read(3000)
+            mh2 = re.search(r'name="prd-source" content="sha256:([0-9a-f]{16})"', bh)
+            if not mh2:
+                add(E, "C-24", "PRD 的 HTML 版没有 prd-source 指纹")
+            elif mh2.group(1) != cur:
+                add(E, "C-24", f"PRD 的 HTML 版生成自 sha256:{mh2.group(1)}，当前契约是 sha256:{cur}")
+
+    # 图：figs/*.svg 里也要有同一份指纹
+    if prd_path:
+        figdir = os.path.join(os.path.dirname(os.path.abspath(prd_path)), "figs")
+        if os.path.isdir(figdir):
+            for fn in sorted(os.listdir(figdir)):
+                if not fn.endswith(".svg"):
+                    continue
+                body = open(os.path.join(figdir, fn), encoding="utf-8", errors="ignore").read(600)
+                mf = re.search(r"proto-sha256:([0-9a-f]{16})", body)
+                if not mf:
+                    add(E, "C-24", f"图 {fn} 没有 proto-sha256 指纹：无法证明它按当前契约渲染")
+                elif mf.group(1) != cur:
+                    add(E, "C-24", f"图 {fn} 渲染自 sha256:{mf.group(1)}，当前契约是 sha256:{cur}")
 
     # 容器
     try:
@@ -371,7 +398,7 @@ def check_c25(proto_path, prd_path):
         md = open(prd_path, encoding="utf-8").read()
     else:
         try:
-            md = build_prd.build(json.load(open(proto_path, encoding="utf-8")), None, proto_path)
+            md = build_prd.build(json.load(open(proto_path, encoding="utf-8")), None, proto_path, None, False)
         except Exception:
             return
     pats = [re.compile(r"^[-*]?\s*（无[^）]*）$"),
@@ -409,7 +436,7 @@ def check_c22(proto, prd_path, proto_path=None):
         md = open(prd_path, encoding="utf-8").read()
     else:
         try:
-            md = build_prd.build(proto, None, proto_path)
+            md = build_prd.build(proto, None, proto_path, None, False)
         except Exception as e:                     # 生成器自己崩了，比字段错更严重
             add(E, "C-22", f"PRD 生成器跑不起来：{e}")
             return

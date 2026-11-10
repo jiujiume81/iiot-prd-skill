@@ -20,6 +20,7 @@ import sys
 import time
 
 import field_sites
+import render_figs
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -130,7 +131,7 @@ def caps_of_page(proto, page):
     return out
 
 
-def build(proto, shaping_dir=None, source_path=None):
+def build(proto, shaping_dir=None, source_path=None, out_dir=None, render=True):
     meta = proto.get("meta") or {}
     sms = proto.get("stateMachines") or []
     pages = proto.get("pages") or []
@@ -196,19 +197,49 @@ def build(proto, shaping_dir=None, source_path=None):
         L.append("- %s：%s" % (sm.get("label") or sm.get("id"),
                                " → ".join(st.get(x.get("key"), x.get("label") or x.get("key")) for x in (sm.get("states") or []))))
     if sms:
-        L.append("")
         h3("2.2 状态机")
+    sources = []
+    proto_sha = None
+    if source_path:
+        with open(source_path, "rb") as f:
+            proto_sha = hashlib.sha256(f.read()).hexdigest()[:16]
     for sm in sms:
-        L.append("```mermaid")
-        L.append("stateDiagram-v2")
+        code = ["stateDiagram-v2"]
         for x in (sm.get("states") or []):
-            L.append("  state \"%s\" as %s" % (x.get("label") or x.get("key"), x.get("key")))
-        L.append("  [*] --> %s" % sm.get("initial"))
+            code.append("  state \"%s\" as %s" % (x.get("label") or x.get("key"), x.get("key")))
+        code.append("  [*] --> %s" % sm.get("initial"))
         for t in (sm.get("transitions") or []):
             lbl = "系统" if t.get("system") else (caps.get(t.get("trigger"), {}).get("label") or t.get("trigger") or "")
-            L.append("  %s --> %s : %s" % (t.get("from"), t.get("to"), lbl))
-        L.append("```")
-        L.append("")
+            code.append("  %s --> %s : %s" % (t.get("from"), t.get("to"), lbl))
+        sources.append((sm.get("id"), sm.get("label") or sm.get("id"), "\n".join(code) + "\n"))
+
+    # 两张图共用一次 Chrome：37s 里绝大部分是启动 + 加载 5.2MB mermaid，渲染本身不到 1s
+    results = {}
+    if render and out_dir and sources:
+        items = [{"key": sid, "code": mmd,
+                  "out": os.path.join(out_dir, "figs", sid + ".svg")} for sid, _, mmd in sources]
+        try:
+            results = render_figs.render_many(items, proto_sha)
+        except Exception as e:
+            results = {sid: {"ok": False, "error": str(e)} for sid, _, _ in sources}
+    for sid, slabel, mmd in sources:
+        rel = "figs/%s.svg" % sid
+        if not render:
+            L.append("![%s](%s)" % (slabel, rel))
+            L.append("")
+        elif not out_dir:
+            # 一致性校验时的内存生成：不落图，避免误以为有文件
+            L.append("> 图未落盘（本次只生成正文用于比对），图源见附录")
+            L.append("")
+        elif results.get(sid, {}).get("ok"):
+            L.append("![%s](%s)" % (slabel, rel))
+            L.append("")
+        else:
+            err = (results.get(sid) or {}).get("error") or "未知错误"
+            print("WARN: 状态机 %s 渲染失败：%s，图源见附录" % (sid, err), file=sys.stderr)
+            L.append("> 图渲染失败：%s，图源见附录" % str(err).replace("\n", " "))
+            L.append("")
+
     if (proto.get("capabilities") or []):
         h3("2.3 按钮可用性矩阵")
         L.append("| 命令 | 角色 | 可用状态 | 不可用策略 | 提示 |")
@@ -443,6 +474,11 @@ def build(proto, shaping_dir=None, source_path=None):
     L.append("- 取数链路只到「数据源/取值」两层，不下钻接口与库表字段。")
     L.append("- 外部字典与接口类数据源无法机器核对，只有 note 说明。")
     L.append("")
+    if sources:
+        L.extend(["## 附录 B 图源（mermaid）", "",
+                  "图由 `scripts/render_figs.py` 预渲染成 SVG；改图请改这里再重跑，不要手改 SVG。", ""])
+        for sid, _, mmd in sources:
+            L.extend(["### %s" % sid, "", "```mermaid", mmd.rstrip(), "```", ""])
     if shaping_dir:
         L.extend(["## 附录 A 澄清原文", ""])
         for fn in sorted(os.listdir(shaping_dir)):
@@ -457,12 +493,18 @@ def main():
     ap.add_argument("--proto", required=True)
     ap.add_argument("--out", required=True)
     ap.add_argument("--shaping", default=None)
+    ap.add_argument("--no-html", action="store_true", help="只出 md，不生成单文件 html")
     args = ap.parse_args()
     proto = load(args.proto)
-    md = build(proto, args.shaping, args.proto)
+    md = build(proto, args.shaping, args.proto, os.path.dirname(os.path.abspath(args.out)))
     with open(args.out, "w", encoding="utf-8") as f:
         f.write(md)
     print("written: %s (%d 行)" % (args.out, md.count("\n") + 1))
+    if not args.no_html:
+        import build_prd_html
+        r = build_prd_html.build(args.out)
+        print("html   : %s (%.1f KB, 内联图 %d 张)" % (
+            r["out"], r["bytes"] / 1024.0, len(r["figs"])))
     return 0
 
 
