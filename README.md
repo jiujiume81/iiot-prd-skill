@@ -159,7 +159,6 @@ https://github.com/jiujiume81/iiot-prd-skill
 
 - `USAGE.md` —— 给人看的操作手册，比这份更细
 - `shared/references/08-run-contract.md` —— 48 字执行约束，可单独贴给别的 agent
-- `_design/` —— 架构与执行框架的设计稿（维护者看）
 
 ---
 
