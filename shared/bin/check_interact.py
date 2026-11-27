@@ -7,8 +7,8 @@
 上一版事故报告原型就是契约齐全、引擎不认，页面上点下去什么都不发生。
 
 用法：
-    python3 scripts/check_interact.py --proto <你的契约>.proto.json \
-        --html dist/index.html
+    python3 scripts/check_interact.py --proto examples/example-02-accident.proto.json \
+        --html examples/dist-accident.html
 
 判定：命令承载层要弹得出来 / Esc 关得上 / 导航点了要换页 / 行点了要进详情。
 """

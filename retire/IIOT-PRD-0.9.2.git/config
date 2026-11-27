@@ -1,0 +1,19 @@
+[core]
+	repositoryformatversion = 0
+	filemode = true
+	bare = false
+	logallrefupdates = true
+	ignorecase = true
+	precomposeunicode = true
+[http]
+	proxy = http://127.0.0.1:53505
+[credential]
+	helper = osxkeychain
+[remote "origin"]
+	url = https://github.com/jiujiume81/iiot-prd-skill.git
+	fetch = +refs/heads/*:refs/remotes/origin/*
+[branch "main"]
+	remote = origin
+	merge = refs/heads/main
+[https]
+	proxy = http://127.0.0.1:53505

@@ -206,7 +206,7 @@ grep -c "name: iiot-" */SKILL.md                                                
    python3 -c "
    import json,glob
    ks=set(); pk=set()
-   for f in glob.glob('**/*.proto.json',recursive=True):   # 指你的契约目录
+   for f in glob.glob('examples/**/*.proto.json',recursive=True):
        d=json.load(open(f))
        for c in d.get('capabilities') or []: ks|=set(c.keys())
        for p in d.get('pages') or []: pk|=set(p.keys())

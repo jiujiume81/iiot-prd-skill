@@ -1,0 +1,42 @@
+{
+  "planVersion": "1.0",
+  "product": "新锂想质量管理系统",
+  "slices": [
+    {
+      "id": "s-01",
+      "title": "取样员现场取样闭环",
+      "actor": "取样员",
+      "goal": "扫码 → 录入数量 → 提交（含离线队列）",
+      "targets": ["pda"],
+      "pages": ["pg-iqc-sample-pda"],
+      "capabilities": ["cap-submit-sample"],
+      "requirements": ["REQ-001"],
+      "nodesBudget": 5,
+      "acceptance": [
+        "弱网或断网提交后本地队列可见，恢复网络自动上传",
+        "数量越界就地拦截，不进入下一步",
+        "非「待取样」状态下提交按钮置灰并给出原因"
+      ],
+      "dependsOn": [],
+      "status": "done"
+    },
+    {
+      "id": "s-02",
+      "title": "质量工程师审核并导出报告",
+      "actor": "质量工程师",
+      "goal": "按批次核对报告 → 审核 → 导出归档",
+      "targets": ["pc"],
+      "pages": ["pg-iqc-report"],
+      "capabilities": ["cap-approve", "cap-export-report"],
+      "requirements": ["REQ-002"],
+      "nodesBudget": 4,
+      "acceptance": [
+        "仅「待审核」可审核，其余状态按钮置灰并说明原因",
+        "取样人自审被拒绝",
+        "导出内容与当前筛选一致"
+      ],
+      "dependsOn": ["s-01"],
+      "status": "done"
+    }
+  ]
+}

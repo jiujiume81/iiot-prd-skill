@@ -1,0 +1,14 @@
+0000000000000000000000000000000000000000 a6fb5f0940a992ccec108928e8da8b5d85c588c9 jiujiume81 <129500911+jiujiume81@users.noreply.github.com> 1793267373 +0800	commit (initial): feat: IIOT-PRD 工业互联网需求分析与高保真原型工作台 v0.3.0
+a6fb5f0940a992ccec108928e8da8b5d85c588c9 a859cbfb90634bf5bf94b50b8de589289037c6a0 jiujiume81 <129500911+jiujiume81@users.noreply.github.com> 1793607904 +0800	commit: feat(v0.4.0): 推进动作状态化 + 可点击交互引擎 + 交互实测层
+a859cbfb90634bf5bf94b50b8de589289037c6a0 400caeca9299b26359bc958d45311905bf996327 jiujiume81 <129500911+jiujiume81@users.noreply.github.com> 1793608145 +0800
+400caeca9299b26359bc958d45311905bf996327 b5653e722d07ab615cbf6081fddf379be2d89382 jiujiume81 <129500911+jiujiume81@users.noreply.github.com> 1793613757 +0800	commit: fix(v0.4.1): 修三个「契约有、引擎无」的空块 + 加三条判据
+b5653e722d07ab615cbf6081fddf379be2d89382 991f0ce92bafeb768369eff747b7b60bbbb01b66 jiujiume81 <129500911+jiujiume81@users.noreply.github.com> 1793670236 +0800	commit: docs(06): 补充清空废纸篓被 TCC 静默拦截的处理办法
+991f0ce92bafeb768369eff747b7b60bbbb01b66 1be2501979d9a365befd93dd3b6649da1bf52ea9 jiujiume81 <129500911+jiujiume81@users.noreply.github.com> 1793677093 +0800	commit: fix(v0.4.2): 弹层不再盖住顶部工具条
+1be2501979d9a365befd93dd3b6649da1bf52ea9 9085e79acc661606ccff09ad40d06f8f3ea1aa6b jiujiume81 <129500911+jiujiume81@users.noreply.github.com> 1793692195 +0800	commit: feat(v0.5.0): 目录改树形、标注能钉在弹层上且跨版留存、A1-A3 改说人话
+9085e79acc661606ccff09ad40d06f8f3ea1aa6b 39f114b0c6b9f8f7c640329350e156ce3dbbd636 jiujiume81 <129500911+jiujiume81@users.noreply.github.com> 1793695304 +0800	commit: fix(v0.5.1): 升版不再丢标注、一条脏数据不再拖垮全部 pin
+39f114b0c6b9f8f7c640329350e156ce3dbbd636 2991c8385cc8adc0fc4cdcc8fc779a2d978ab2a1 jiujiume81 <129500911+jiujiume81@users.noreply.github.com> 1793787881 +0800	commit: feat(v0.6.0): 页面目录（顶栏「目录」）也改成按功能聚合的树
+2991c8385cc8adc0fc4cdcc8fc779a2d978ab2a1 44e5ef633ed695c7aae7561e8474a5740184c2bf jiujiume81 <129500911+jiujiume81@users.noreply.github.com> 1793871627 +0800	commit: feat(v0.7.0): 状态不是页面——一张单据一个主列表，阶段不许拆页
+44e5ef633ed695c7aae7561e8474a5740184c2bf ad80462a0885de3c95147b100049ab1bc19fe0bd jiujiume81 <129500911+jiujiume81@users.noreply.github.com> 1793881075 +0800	commit: feat(v0.8.0): 角色门禁与判据收敛——四眼原则从"写在 PRD 里"变成"运行时能验"
+ad80462a0885de3c95147b100049ab1bc19fe0bd a660559f2ae69a7b79bbab346c947b0f7c445777 jiujiume81 <129500911+jiujiume81@users.noreply.github.com> 1794213671 +0800	commit: feat(v0.9.0): 字段字典与取数链路——PRD 从"需求背景"变成"能照着做"
+a660559f2ae69a7b79bbab346c947b0f7c445777 17c747acdc4d7d06be223374f4a5e6706551ac5b jiujiume81 <129500911+jiujiume81@users.noreply.github.com> 1794219069 +0800	commit: fix(v0.9.1): PRD 可读性四条反馈——空节、人话、去重复流程
+17c747acdc4d7d06be223374f4a5e6706551ac5b 33a29210243fafdcc849535a669680929a4ccb07 jiujiume81 <129500911+jiujiume81@users.noreply.github.com> 1794286159 +0800	commit: feat(v0.9.2): 流程图真的能看见了——预渲染 SVG + 单文件 HTML

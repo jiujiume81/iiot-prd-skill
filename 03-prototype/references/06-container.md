@@ -20,7 +20,7 @@ assets/container/src/
 
 ```bash
 cd assets/container/src
-python3 build.py --proto <你的契约>.proto.json \
+python3 build.py --proto ../../../examples/example-01-qms-incoming.proto.json \
                  --out ../dist/index.html
 ```
 
@@ -240,8 +240,8 @@ index.html#test=1                            自检覆盖层是否挤压画布
 
 ```bash
 python3 scripts/check_interact.py \
-  --proto <你的契约>.proto.json \
-  --html dist/index.html
+  --proto examples/example-02-accident.proto.json \
+  --html examples/dist-accident.html
 ```
 
 它从契约里推出用例：每条 dialog/drawer 命令点开一次、看承载形式对不对、按 Esc 看关不关得上；每个目录项点一次、看页面有没有换；每个列表页点一次、看进不进详情。无头 Chrome 跑，输出逐条 OK/FAIL。
