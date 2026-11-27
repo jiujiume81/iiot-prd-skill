@@ -4,7 +4,7 @@
 把 Vue 运行时、渲染层、组件库、数据契约、样式内联成一个可双击打开的单文件 HTML。
 
 用法：
-  python3 build.py --proto ../../examples/example-01-qms-incoming.proto.json
+  python3 build.py --proto <你的契约>.proto.json
   python3 build.py --proto <path> --out dist/index.html
 """
 import argparse

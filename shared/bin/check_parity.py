@@ -6,7 +6,7 @@ IIOT-PRD 三处一致校验（C 系列判据）
 「同一份 proto.json，容器所见 = 导出 MD = 校验报告」——这句话不能靠肉眼。
 
 用法：
-  python3 scripts/check_parity.py examples/example-01-qms-incoming.proto.json
+  python3 scripts/check_parity.py <你的契约>.proto.json
   python3 scripts/check_parity.py <proto> --html assets/container/dist/index.html
   python3 scripts/check_parity.py <proto> --chrome "/path/to/Chrome" --keep
 

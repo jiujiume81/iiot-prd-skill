@@ -160,12 +160,11 @@ https://github.com/jiujiume81/iiot-prd-skill
 - `USAGE.md` —— 给人看的操作手册，比这份更细
 - `shared/references/08-run-contract.md` —— 48 字执行约束，可单独贴给别的 agent
 - `_design/` —— 架构与执行框架的设计稿（维护者看）
-- `examples/qms-incoming/` —— 端到端样例：来料检验，场景表→PRD→原型全齐
 
 ---
 
 ## 现在的状态
 
-三个 skill 已挂载可用。样例 `examples/qms-incoming/` 是一条完整链路（来料检验：场景表 → PRD → 原型），拿它对照看产物长什么样最快。
+三个 skill 已挂载可用。
 
 内部有一套判据在跑，但那只保证「结构齐、口径对、不自相矛盾」，**不保证业务判断是对的**——那件事只有你和业务方能保证。

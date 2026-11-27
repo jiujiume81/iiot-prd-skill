@@ -111,7 +111,6 @@ L3 呈现（覆盖层展开时画布宽度不变、表头不裁切、字号集�
 | `$SUITE/shared/schemas/proto.schema.json` | 改 proto 前：字段名与必填以 schema 为准 |
 | `$SUITE/shared/schemas/catalog.json` | 选组件前：54 个登记、24 个 `impl=done`，只能用 done 的 |
 | `$SUITE/shared/bin/README.md` | 不确定跑哪条时：stage → 命令的唯一索引 |
-| `$SUITE/shared/samples/` | 写"推进动作成为状态"、无权空态、PRD 章节时对照三份正例 |
 
 ## 五、本段不做
 
