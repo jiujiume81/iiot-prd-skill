@@ -1,0 +1,123 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "_gate.json",
+  "description": "mfg-req-analysis 的进度真相。模型不许凭记忆说『上次做到第几步』，一律读这个文件。",
+  "type": "object",
+  "required": ["gateVersion", "skill", "product", "steps", "confirmations", "matrix"],
+  "properties": {
+    "gateVersion": { "const": "1.0" },
+    "skill": { "const": "mfg-req-analysis" },
+    "product": { "type": "string", "minLength": 1 },
+    "createdAt": { "type": "string", "description": "ISO8601，带时区" },
+    "updatedAt": { "type": "string" },
+    "steps": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "required": ["no", "key", "file", "status"],
+        "properties": {
+          "no": { "type": "integer", "minimum": 1, "maximum": 6 },
+          "key": { "enum": ["problem", "roles", "scenarios", "flows", "exceptions", "review"] },
+          "file": {
+            "enum": ["M1-problem.md", "M2-roles.md", "M3-scenarios.md",
+                     "M4-flows.md", "M5-exceptions.md", "M6-review.md"]
+          },
+          "status": { "enum": ["pending", "in_progress", "done", "blocked"] },
+          "doneAt": { "type": ["string", "null"] },
+          "rows": { "type": "integer", "minimum": 0, "description": "该步主表的数据行数：M1 原话表 / M2 角色表 / M3 场景表 / M4 主流程 / M5 异常清单 / M6 四角色问题表之和。只此处登记，别处不许再写条数。" }
+        }
+      }
+    },
+    "nonGoals": { "type": "array", "items": { "type": "string" } },
+    "scale": {
+      "type": "object",
+      "properties": {
+        "records": { "type": ["number", "integer"] },
+        "dailyNew": { "type": ["number", "integer"] },
+        "batchSize": { "type": "array", "items": { "type": "integer" } },
+        "note": { "type": "string" }
+      }
+    },
+    "confirmations": {
+      "type": "object",
+      "required": ["M1", "M3", "M6"],
+      "properties": {
+        "M1": { "$ref": "#/definitions/confirm" },
+        "M3": { "$ref": "#/definitions/confirm" },
+        "M6": { "$ref": "#/definitions/confirm" }
+      },
+      "additionalProperties": false
+    },
+    "waived": {
+      "type": "object",
+      "properties": {
+        "reviewRoles": {
+          "type": "object",
+          "properties": {
+            "fieldUser": {
+              "type": "object",
+              "properties": {
+                "waived": { "type": "boolean" },
+                "reason": { "type": ["string", "null"] }
+              }
+            }
+          }
+        }
+      }
+    },
+    "matrix": {
+      "type": "object",
+      "required": ["enabledDims", "totalCells", "mapped", "excluded", "pending"],
+      "properties": {
+        "enabledDims": {
+          "type": "array",
+          "items": { "enum": ["D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10"] },
+          "description": "启用维度。总格数由取值表算，脚本不接受手写的 totalCells。"
+        },
+        "totalCells": { "type": "integer", "minimum": 0 },
+        "mapped": { "type": "integer", "minimum": 0 },
+        "excluded": { "type": "integer", "minimum": 0 },
+        "pending": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "openQuestions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "text", "status"],
+        "properties": {
+          "id": { "type": "string" },
+          "text": { "type": "string" },
+          "status": { "enum": ["open", "resolved", "assumed"] },
+          "suggest": { "type": "string" },
+          "decision": { "type": ["string", "null"] }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "confirm": {
+      "type": "object",
+      "required": ["confirmed"],
+      "properties": {
+        "confirmed": { "type": "boolean" },
+        "by": {
+          "type": ["string", "null"],
+          "description": "必须是真人。写模型/AI/助手 会被 A-25 判红。"
+        },
+        "at": { "type": ["string", "null"], "description": "ISO8601，不许在未来" },
+        "quote": {
+          "type": ["string", "null"],
+          "description": "用户原话。≥4 字且含 S 编号/维度名/没遗漏/≥2 个业务实词才算数。"
+        },
+        "contentHash": {
+          "type": ["string", "null"],
+          "description": "M3 场景表剔除『确认记录』节后的 sha256 前 12 位，用 --hash 生成"
+        },
+        "decision": { "type": ["string", "null"] }
+      }
+    }
+  }
+}

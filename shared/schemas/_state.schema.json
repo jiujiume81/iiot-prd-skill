@@ -1,0 +1,173 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "_state.json",
+  "description": "iiot-prd-suite 的进度真相，v2.0（由 _gate.json v1.0 升级）。模型不许凭记忆说「上次做到哪」，一律读这个文件。stages / artifacts / current 都是脚本派生并回写的，人不许手改。",
+  "type": "object",
+  "required": ["stateVersion", "product", "stage", "current", "steps", "confirmations", "matrix"],
+  "properties": {
+    "stateVersion": { "const": "2.0" },
+    "product": { "type": "string", "minLength": 1 },
+    "createdAt": { "type": "string", "description": "ISO8601，带时区" },
+    "updatedAt": { "type": "string" },
+    "protoFile": { "type": "string", "description": "本产品的契约文件名；目录里只有一个 *.proto.json 时由脚本自动填" },
+    "upgradedFrom": { "type": "string", "description": "由旧格式升级而来时记一行来源，便于追溯" },
+
+    "stage": {
+      "type": "integer", "minimum": 1, "maximum": 3,
+      "description": "当前段：1 业务分析 / 2 需求分析 / 3 原型。由 stages 派生，第一个未 done 的段。"
+    },
+    "current": {
+      "type": "object",
+      "required": ["stage", "step", "file", "status"],
+      "properties": {
+        "stage": { "type": "integer", "minimum": 1, "maximum": 3 },
+        "step": { "type": ["integer", "null"], "minimum": 1, "maximum": 6 },
+        "file": { "type": ["string", "null"] },
+        "status": { "type": "string" }
+      }
+    },
+
+    "steps": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "required": ["no", "stage", "key", "file", "status"],
+        "properties": {
+          "no": { "type": "integer", "minimum": 1, "maximum": 6 },
+          "stage": { "enum": [1, 2], "description": "1~3 步属第 1 段，4~6 步属第 2 段" },
+          "key": { "enum": ["problem", "roles", "scenarios", "flows", "exceptions", "review"] },
+          "file": {
+            "enum": ["M1-problem.md", "M2-roles.md", "M3-scenarios.md",
+                     "M4-flows.md", "M5-exceptions.md", "M6-review.md"]
+          },
+          "status": { "enum": ["pending", "in_progress", "done", "blocked", "skipped"] },
+          "doneAt": { "type": ["string", "null"] },
+          "rows": { "type": "integer", "minimum": 0, "description": "该步主表的数据行数。只此处登记，别处不许再写条数。" }
+        }
+      }
+    },
+
+    "stages": {
+      "type": "object",
+      "description": "派生块：按段汇总 steps，并导出下一段要读的机读交接数据。",
+      "properties": {
+        "1": { "$ref": "#/definitions/stage" },
+        "2": { "$ref": "#/definitions/stage" },
+        "3": { "$ref": "#/definitions/stage" }
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "description": "产物指纹：文件名 → sha256 前 12 位。变了说明被改过，闸门前要重签。",
+      "additionalProperties": { "type": ["string", "null"] }
+    },
+
+    "nonGoals": { "type": "array", "items": { "type": "string" } },
+    "scale": {
+      "type": "object",
+      "properties": {
+        "records": { "type": ["number", "integer"] },
+        "dailyNew": { "type": ["number", "integer"] },
+        "batchSize": { "type": "array", "items": { "type": "integer" } },
+        "note": { "type": "string" }
+      }
+    },
+    "confirmations": {
+      "type": "object",
+      "required": ["M1", "M3", "M6"],
+      "properties": {
+        "M1": { "$ref": "#/definitions/confirm" },
+        "M3": { "$ref": "#/definitions/confirm" },
+        "M6": { "$ref": "#/definitions/confirm" }
+      },
+      "additionalProperties": false
+    },
+    "waived": {
+      "type": "object",
+      "properties": {
+        "reviewRoles": {
+          "type": "object",
+          "properties": {
+            "fieldUser": {
+              "type": "object",
+              "properties": {
+                "waived": { "type": "boolean" },
+                "reason": { "type": ["string", "null"] }
+              }
+            }
+          }
+        }
+      }
+    },
+    "matrix": {
+      "type": "object",
+      "required": ["enabledDims", "totalCells", "mapped", "excluded", "pending"],
+      "properties": {
+        "enabledDims": {
+          "type": "array",
+          "items": { "enum": ["D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10"] },
+          "description": "启用维度。总格数由取值表算，脚本不接受手写的 totalCells。"
+        },
+        "totalCells": { "type": "integer", "minimum": 0 },
+        "mapped": { "type": "integer", "minimum": 0 },
+        "excluded": { "type": "integer", "minimum": 0 },
+        "pending": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "openQuestions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "text", "status"],
+        "properties": {
+          "id": { "type": "string" },
+          "text": { "type": "string" },
+          "question": { "type": "string", "description": "旧写法兼容：text 的别名" },
+          "status": { "enum": ["open", "resolved", "assumed"] },
+          "suggest": { "type": "string" },
+          "decision": { "type": ["string", "null"] }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "stage": {
+      "type": "object",
+      "required": ["status", "artifacts"],
+      "properties": {
+        "status": { "enum": ["pending", "in_progress", "done", "stale"] },
+        "doneAt": { "type": ["string", "null"] },
+        "artifacts": {
+          "type": "object",
+          "additionalProperties": { "type": ["string", "null"] }
+        },
+        "export": {
+          "type": "object",
+          "description": "交给下一段的机读数据。第 1 段导 p0/p1/roles/openQuestions；第 2 段导 proto 与三段产物 hash。",
+          "properties": {
+            "p0": { "type": "array", "items": { "type": "string" } },
+            "p1": { "type": "array", "items": { "type": "string" } },
+            "roles": { "type": "array", "items": { "type": "string" } },
+            "openQuestions": { "type": "array", "items": { "type": "string" } },
+            "proto": { "type": "string" },
+            "artifacts": { "type": "object" }
+          }
+        }
+      }
+    },
+    "confirm": {
+      "type": "object",
+      "required": ["confirmed"],
+      "properties": {
+        "confirmed": { "type": "boolean" },
+        "by": { "type": ["string", "null"], "description": "必须是真人。写模型/AI/助手 会被 A-25 判红。" },
+        "at": { "type": ["string", "null"], "description": "ISO8601，不许在未来" },
+        "quote": { "type": ["string", "null"], "description": "用户原话。≥4 字且含 S 编号/维度名/没遗漏/≥2 个业务实词才算数。" },
+        "contentHash": { "type": ["string", "null"], "description": "M3 场景表剔除『确认记录』节后的 sha256 前 12 位，用 --hash 生成" },
+        "decision": { "type": ["string", "null"] }
+      }
+    }
+  }
+}
