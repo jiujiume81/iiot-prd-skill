@@ -4,3 +4,8 @@ _run/
 *.pyc
 __pycache__/
 .DS_Store
+
+# 发布版不含：本机维护资产（示例、设计稿、历史归档）——只留本地
+examples/
+_design/
+retire/
