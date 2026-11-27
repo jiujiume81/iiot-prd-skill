@@ -1,7 +1,7 @@
 # 03 原型设计
 
 ```bash
-SUITE=/Users/yuxiufu/WorkBuddy/原型PRD/iiot-prd-suite
+SUITE="$PWD"        # 在套件根目录下执行（含 01-business/ shared/ 的那一层）
 python3 $SUITE/shared/assets/container/src/build.py --proto $PWD/<产品>.proto.json --out $PWD/dist/index.html
 python3 $SUITE/shared/bin/check_contract.py <产品>.proto.json
 ```

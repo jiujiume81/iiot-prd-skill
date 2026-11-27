@@ -239,7 +239,7 @@ iiot-prd-suite/
    └─ samples/              qms-incoming + 4 份 proto（回归用，见 §5）
 ```
 
-- 每份 SKILL.md 第二行写死：`SUITE=/Users/yuxiufu/WorkBuddy/原型PRD/iiot-prd-suite`，之后所有命令用 `$SUITE/...`。**不用相对路径，不用 `../`，不依赖软链怎么解。**
+- 每份 SKILL.md 第二行写死：`SUITE=<套件根>`，之后所有命令用 `$SUITE/...`。**不用相对路径，不用 `../`，不依赖软链怎么解。**
 - 不要给 01/02 复制 `assets/`：它们用不到，白占 700KB 还会让人误以为 01 能出原型。
 - 不要为了「看起来自包含」复制 `vendor/mermaid.min.js`：5.2MB×3，且它是唯一会随版本升级的二进制，三份必然不同步。
 
@@ -367,7 +367,7 @@ EOF
 ### 5.3 最小可验证命令序列（三段各一条）
 
 ```bash
-SUITE=/Users/yuxiufu/WorkBuddy/原型PRD/iiot-prd-suite
+SUITE=<套件根>
 S=$SUITE/shared/samples
 ```
 
@@ -455,7 +455,7 @@ git -C IIOT-PRD status --short
 git -C IIOT-PRD diff > /tmp/iiot-prd-wip.patch          # 备份改动本身
 git -C IIOT-PRD add -A && git -C IIOT-PRD commit -m "chore: 存档 v0.9.2 工作区（拆分为三段前的快照）"
 # ② 再复制（连 .git 一起，历史保得住）
-cp -a IIOT-PRD /Users/yuxiufu/WorkBuddy/原型PRD/iiot-prd-suite/shared/upstream-iiot
+cp -a IIOT-PRD <套件根>/shared/upstream-iiot
 ```
 
 注：`commit` 会改 `IIOT-PRD/.git`（历史变了），但**不改技能文件内容**。若「一个字节都不许改」被理解为连提交也不许，则退化为只 `cp -a` + 保留 `/tmp/iiot-prd-wip.patch`，并明确接受「新目录里 .git 是脏的」。
@@ -482,7 +482,7 @@ cp -a IIOT-PRD /Users/yuxiufu/WorkBuddy/原型PRD/iiot-prd-suite/shared/upstream
 | 4 | `~/.workbuddy/skills/{IIOT-PRD,mfg-req-analysis}` 软链的 target | 记下原 target 才知道怎么恢复 | `ls -l ~/.workbuddy/skills/ > /tmp/skills-links.txt` |
 | 5 | `QMS-事故报告-正式交付/`（含 `build_prd.py`/`build_proto.py` 脚本快照、`figs/`、`shaping/` 旧格式） | 交付物，不在任何 git 里 | `cp -a` 或 tar 到 `/tmp` |
 | 6 | `IIOT-PRD/examples/*.proto.json` + `dist-*.html` | `.gitignore` 忽略 `*.proto.json`（`!examples/*` 例外，但产物 html 没保护） | `cp -a` |
-| 7 | 用户工程 `/Users/yuxiufu/WorkBuddy/2026-11-03-09-41-01/` | 角色定义里点了名：重建过它的 `dist/事故报告管理.html` | 至少备份 `accident.proto.json` + `dist/` |
+| 7 | 用户工程 用户工程（本地路径从略） | 角色定义里点了名：重建过它的 `dist/事故报告管理.html` | 至少备份 `accident.proto.json` + `dist/` |
 
 ---
 

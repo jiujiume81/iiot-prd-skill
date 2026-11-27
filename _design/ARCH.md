@@ -36,7 +36,7 @@
 **一个物理目录，四个一级子目录，四根软链。** 不是四个并列目录。
 
 ```
-/Users/yuxiufu/WorkBuddy/原型PRD/iiot-prd-suite/     ← 唯一物理根，唯一 git 仓
+<套件根>/     ← 唯一物理根，唯一 git 仓
 ```
 
 理由（WorkBuddy 的加载规则直接决定了这个形态）：
@@ -156,10 +156,10 @@ iiot-prd-suite/
 ### 1.4 四根软链
 
 ```bash
-ln -s /Users/yuxiufu/WorkBuddy/原型PRD/iiot-prd-suite/01-business    ~/.workbuddy/skills/iiot-biz-analysis
-ln -s /Users/yuxiufu/WorkBuddy/原型PRD/iiot-prd-suite/02-requirement  ~/.workbuddy/skills/iiot-req-spec
-ln -s /Users/yuxiufu/WorkBuddy/原型PRD/iiot-prd-suite/03-prototype   ~/.workbuddy/skills/iiot-prototype
-ln -s /Users/yuxiufu/WorkBuddy/原型PRD/iiot-prd-suite/suite          ~/.workbuddy/skills/iiot-suite
+ln -s <套件根>/01-business    ~/.workbuddy/skills/iiot-biz-analysis
+ln -s <套件根>/02-requirement  ~/.workbuddy/skills/iiot-req-spec
+ln -s <套件根>/03-prototype   ~/.workbuddy/skills/iiot-prototype
+ln -s <套件根>/suite          ~/.workbuddy/skills/iiot-suite
 ```
 
 | 软链 | 定位 |

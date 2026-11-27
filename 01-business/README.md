@@ -1,7 +1,7 @@
 # 01 业务分析（默认入口）
 
 ```bash
-SUITE=/Users/yuxiufu/WorkBuddy/原型PRD/iiot-prd-suite
+SUITE="$PWD"        # 在套件根目录下执行（含 01-business/ shared/ 的那一层）
 python3 $SUITE/shared/bin/check_analysis.py analysis/<产品>/ --stage 1
 ```
 
