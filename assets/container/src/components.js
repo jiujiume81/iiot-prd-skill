@@ -239,12 +239,18 @@
             'data-page': curPageId()
           }, [
             h('label', { class: 'field-label' }, f.label),
-            h('input', {
-              class: 'input',
-              placeholder: f.placeholder || '请输入',
-              value: (window.RD.state.filters || {})[f.key] || '',
-              onInput: function (e) { window.RD.state.filters[f.key] = e.target.value; }
-            })
+            (f.options && f.options.length)
+              ? h('select', {
+                  class: 'input',
+                  onChange: function (e) { window.RD.state.filters[f.key] = e.target.value; }
+                }, [h('option', { value: '' }, f.placeholder || '全部')].concat(
+                  f.options.map(function (o) { return h('option', { value: o }, o); })))
+              : h('input', {
+                  class: 'input',
+                  placeholder: f.placeholder || '请输入',
+                  value: (window.RD.state.filters || {})[f.key] || '',
+                  onInput: function (e) { window.RD.state.filters[f.key] = e.target.value; }
+                })
           ]);
         });
         var acts = (p.actions || []).map(function (a) {

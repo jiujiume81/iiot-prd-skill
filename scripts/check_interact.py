@@ -89,8 +89,12 @@ def host_page(pages, cid):
 def actions_of(node):
     props = node.get("props") or {}
     acts = list(props.get("actions") or [])
-    for col in props.get("columns") or []:
-        acts += list(col.get("actions") or [])
+    # columns 只认 list：DescList 也用 columns，但那是列数（int 2），
+    # 直接遍历会 TypeError —— 与 check_contract 一样先判类型
+    cols = props.get("columns")
+    for col in (cols if isinstance(cols, list) else []):
+        if isinstance(col, dict):
+            acts += list(col.get("actions") or [])
     return acts
 
 
@@ -384,7 +388,8 @@ def _row_action_columns(proto, page):
     cols = []
     for n in walk(page.get("componentTree") or {}, []):
         props = n.get("props") if isinstance(n.get("props"), dict) else {}
-        for col in (props.get("columns") or []):
+        cols_pr = props.get("columns")
+        for col in (cols_pr if isinstance(cols_pr, list) else []):
             if not isinstance(col, dict) or col.get("type") != "action":
                 continue
             if col.get("scope") != "row":

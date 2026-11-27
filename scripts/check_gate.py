@@ -367,9 +367,11 @@ def check(shaping_dir, proto_path=None):
             if q.get("priority") == "P0" and q.get("status") not in ("resolved", "assumed"):
                 add(E, "G-23", f"proto.openQuestions 的 P0「{q.get('question')}」未 resolved/assumed，"
                                "不许冻结契约")
-        # 需求要点名的字段必须有登记
-        if not (proto.get("fieldRegistry") or []):
-            add(W, "G-24", "proto.fieldRegistry 为空：源文档点名的业务字段没有落位")
+        # 需求要点名的字段必须有登记。
+        # fieldRegistry 自 2026-11-09 v2 起由 fieldCatalog + 渲染位取代（见 check_contract L2-96/97），
+        # 这里先读 fieldCatalog，再兼容旧写法——否则新契约永远报「字段没落位」，是假红。
+        if not (proto.get("fieldCatalog") or proto.get("fieldRegistry") or []):
+            add(W, "G-24", "proto.fieldCatalog 为空：源文档点名的业务字段没有落位")
 
     if not issues:
         add("OK", "PASS", f"{product} 七步澄清已走完，三道卡点均已签署，可以进入契约与组件树")

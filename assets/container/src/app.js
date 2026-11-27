@@ -105,6 +105,10 @@
       if (!n || typeof n !== 'object') return;
       var props = (n.props && typeof n.props === 'object') ? n.props : {};
       var refs = [];
+      // 单按钮节点（PDA 的 BigAction / SectionCard 的 props.capability）也是渲染位：
+      // 漏了这一种，PDA 页就推不出「本页能做什么」，默认态落回 initial，大按钮一进来是灰的。
+      // check_contract.py 的 rendered_caps 认三种写法，这里必须与它对齐。
+      if (typeof props.capability === 'string' && props.capability) refs.push(props.capability);
       (props.actions || []).forEach(function (a) { if (a && a.capability) refs.push(a.capability); });
       var cols = Array.isArray(props.columns) ? props.columns : [];
       cols.forEach(function (col) {
