@@ -125,16 +125,15 @@ analysis/<产品名>/
 
 ## 装
 
-三个 skill 通过软链挂进 WorkBuddy：
+把这个链接丢给你的 AI（Claude Code / Codex / Cursor / WorkBuddy 都行）：
 
-```bash
-SUITE=/Users/yuxiufu/WorkBuddy/原型PRD/iiot-prd-suite
-ln -s $SUITE/01-business    ~/.workbuddy/skills/iiot-business-analysis
-ln -s $SUITE/02-requirement ~/.workbuddy/skills/iiot-req-analysis
-ln -s $SUITE/03-prototype   ~/.workbuddy/skills/iiot-prototype
+```
+https://github.com/jiujiume81/iiot-prd-skill
 ```
 
-不需要装依赖，脚本只用 Python 标准库。
+说一句「按仓库说明装上这三个 skill」，剩下的它自己会做——仓库里的 `README.md` 和 `USAGE.md` 就是写给 AI 看的安装与使用说明。
+
+> 想手工装：把 `01-business`、`02-requirement`、`03-prototype` 三个目录链到你的 skills 目录。脚本只用 Python 标准库，没有依赖。
 
 ---
 
